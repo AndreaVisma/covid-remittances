@@ -1,0 +1,13 @@
+country,year,usd_billion,yoy_pct,index_2019,source
+Mexico,2019,37.25048580,,100.00000000,data/mex_remittances.xlsx
+Mexico,2020,41.70393320,11.95540757,111.95540757,data/mex_remittances.xlsx
+Mexico,2021,52.52259820,25.94159392,140.99842478,data/mex_remittances.xlsx
+Mexico,2022,58.86782820,12.08095223,158.03237712,data/mex_remittances.xlsx
+Pakistan,2019,22.12410000,,100.00000000,https://www.sbp.org.pk/reports/annual/arFY23/Stats/Eng/Chapter-9.pdf
+Pakistan,2020,25.94420000,17.26669107,117.26669107,https://www.sbp.org.pk/reports/annual/arFY23/Stats/Eng/Chapter-9.pdf
+Pakistan,2021,31.07300000,19.76858026,140.44865102,https://www.sbp.org.pk/reports/annual/arFY23/Stats/Eng/Chapter-9.pdf
+Pakistan,2022,29.58410000,-4.79161973,133.71888574,https://www.sbp.org.pk/reports/annual/arFY23/Stats/Eng/Chapter-9.pdf
+Philippines,2019,30.13300000,,100.00000000,https://www.bsp.gov.ph/Media_And_Research/Media%20Releases/2023_07/news-07172023a1.aspx
+Philippines,2020,29.90300000,-0.76328278,99.23671722,https://www.bsp.gov.ph/Media_And_Research/Media%20Releases/2023_07/news-07172023a1.aspx
+Philippines,2021,31.41800000,5.06638130,104.26442770,https://www.bsp.gov.ph/Media_And_Research/Media%20Releases/2023_07/news-07172023a1.aspx
+Philippines,2022,32.53900000,3.56801833,107.98460160,https://www.bsp.gov.ph/Media_And_Research/Media%20Releases/2023_07/news-07172023a1.aspx

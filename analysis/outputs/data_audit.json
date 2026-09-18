@@ -1,0 +1,172 @@
+{
+  "interpretation": "origin is migrant origin/remittance recipient; destination is migrant destination/reported remitting country",
+  "units": "Mexico total_mln: USD millions; pickle remittances: USD, inferred from scale and central-bank checks",
+  "inputs": {
+    "mex_remittances.xlsx": {
+      "rows": 353,
+      "missing_dates": 0,
+      "missing_values": {
+        "date": 0,
+        "total_mln": 0,
+        "money_orders_mln": 0,
+        "checks_mln": 0,
+        "electronic_transfers_mln": 0,
+        "cash_goods_mln": 0,
+        "total_operations": 0,
+        "money_orders_operations": 0,
+        "checks_operations": 0,
+        "electronic_transfers_operations": 0,
+        "cash_goods_operations": 0,
+        "total_mean_op": 0,
+        "money_orders_mean_op": 0,
+        "checks_mean_op": 0,
+        "electronic_transfers_mean_op": 0,
+        "cash_goods_mean_op": 0
+      },
+      "start": "1995-01-01",
+      "end": "2024-05-01",
+      "sha256": "b29e2895712051458c1168b10b19c9d32dfff8e3528e79c14208397f36ebda49"
+    },
+    "pak_remittances_detail.pkl": {
+      "rows": 14828,
+      "missing_dates": 0,
+      "missing_values": {
+        "date": 0,
+        "destination": 0,
+        "remittances": 0,
+        "origin": 0
+      },
+      "start": "1972-07-31",
+      "end": "2025-04-30",
+      "sha256": "7c6327c187719a204904cb66c91242af8c30f8b7470e1c350b82f874b180c1e3"
+    },
+    "phil_remittances_detail.pkl": {
+      "rows": 18216,
+      "missing_dates": 772,
+      "missing_values": {
+        "origin": 0,
+        "destination": 0,
+        "date": 772,
+        "remittances": 1
+      },
+      "start": "2013-01-31",
+      "end": "2020-12-31",
+      "sha256": "7dbab369271f171af62a803c17f4fd91e47fa20192bf2f0557e7e55ba619248d"
+    }
+  },
+  "mexico_max_component_discrepancy_usd_million": 0.00010000000065701897,
+  "pakistan_countries": [
+    "Australia",
+    "Bahrain",
+    "Belgium",
+    "Canada",
+    "Denmark",
+    "France",
+    "Germany",
+    "Greece",
+    "Ireland",
+    "Italy",
+    "Japan",
+    "Kuwait",
+    "Malaysia",
+    "Netherlands",
+    "Norway",
+    "Oman",
+    "Qatar",
+    "Saudi Arabia",
+    "South Africa",
+    "South Korea",
+    "Spain",
+    "Sweden",
+    "Switzerland",
+    "USA",
+    "United Arab Emirates",
+    "United Kingdom"
+  ],
+  "philippines_us_absent": false,
+  "philippines_valid_date_duplicates": 0,
+  "philippines_missing_months": {
+    "2013.0": [],
+    "2014.0": [],
+    "2015.0": [],
+    "2016.0": [],
+    "2017.0": [
+      9
+    ],
+    "2018.0": [
+      9
+    ],
+    "2019.0": [
+      9
+    ],
+    "2020.0": [
+      9
+    ]
+  },
+  "philippines_date_reconstruction_sensitivity_only": [
+    {
+      "start_position": 10496,
+      "end_position": 10688,
+      "rows": 193,
+      "inferred_date": "2017-09-30",
+      "basis": "Complete country block between adjacent August and October"
+    },
+    {
+      "start_position": 12812,
+      "end_position": 13004,
+      "rows": 193,
+      "inferred_date": "2018-09-30",
+      "basis": "Complete country block between adjacent August and October"
+    },
+    {
+      "start_position": 15128,
+      "end_position": 15320,
+      "rows": 193,
+      "inferred_date": "2019-09-30",
+      "basis": "Complete country block between adjacent August and October"
+    },
+    {
+      "start_position": 17444,
+      "end_position": 17636,
+      "rows": 193,
+      "inferred_date": "2020-09-30",
+      "basis": "Complete country block between adjacent August and October"
+    }
+  ],
+  "Pakistan calendar year": {
+    "countries": 26,
+    "months": 12,
+    "baseline_usd_billion": 21.623816156673,
+    "current_usd_billion": 25.314035247459,
+    "change_pct": 17.065531190465745,
+    "excluded_countries": []
+  },
+  "Pakistan H2 (post reporting change)": {
+    "countries": 26,
+    "months": 6,
+    "baseline_usd_billion": 11.059284799853002,
+    "current_usd_billion": 13.837780672620001,
+    "change_pct": 25.123648798735452,
+    "excluded_countries": []
+  },
+  "Philippines matched 11 months": {
+    "countries": 192,
+    "months": 11,
+    "baseline_usd_billion": 27.616061437349114,
+    "current_usd_billion": 27.202547754151155,
+    "change_pct": -1.49736661086185,
+    "excluded_countries": [
+      "El Salvador"
+    ]
+  },
+  "Philippines inferred September sensitivity": {
+    "countries": 192,
+    "months": 12,
+    "baseline_usd_billion": 29.98178167794807,
+    "current_usd_billion": 29.79597323336757,
+    "change_pct": -0.6197378347170268,
+    "excluded_countries": [
+      "El Salvador"
+    ]
+  }
+}

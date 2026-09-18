@@ -1,0 +1,33 @@
+{
+  "population": 1000,
+  "seed": 42,
+  "start": "2018-01",
+  "end": "2022-12",
+  "initial_state_shares": [0.70, 0.06, 0.24],
+  "transition_normal": [[0.975, 0.015, 0.010], [0.20, 0.75, 0.05], [0.025, 0.015, 0.960]],
+  "transition_crisis": [[0.86, 0.11, 0.03], [0.07, 0.88, 0.05], [0.012, 0.018, 0.970]],
+  "earnings_median": 2800,
+  "earnings_log_sd": 0.40,
+  "consumption_median": 1700,
+  "consumption_log_sd": 0.20,
+  "savings_median": 3500,
+  "savings_log_sd": 0.90,
+  "zero_savings_share": 0.20,
+  "fiscal_eligible_share": 0.65,
+  "family_ties_log_sd": 0.50,
+  "remit_probability": 0.45,
+  "need_log_odds": 1.0,
+  "remit_income_share": 0.15,
+  "remit_savings_share": 0.02,
+  "need_amount_effect": 0.50,
+  "reserve_months": 1.0,
+  "mexico_support_effect": 0.40,
+  "pandemic": [
+    {"start": "2020-03", "end": "2020-06", "labour_shock": 1.0, "hours_loss": 0.18, "mexico_need": 0.80, "mexico_support": 0.20, "ui_monthly": 1800},
+    {"start": "2020-07", "end": "2020-12", "labour_shock": 0.40, "hours_loss": 0.08, "mexico_need": 1.0, "mexico_support": 0.30, "ui_monthly": 900},
+    {"start": "2021-01", "end": "2021-06", "labour_shock": 0.20, "hours_loss": 0.04, "mexico_need": 0.85, "mexico_support": 0.30, "ui_monthly": 1000},
+    {"start": "2021-07", "end": "2021-12", "labour_shock": 0.10, "hours_loss": 0.02, "mexico_need": 0.55, "mexico_support": 0.25, "ui_monthly": 400},
+    {"start": "2022-01", "end": "2022-12", "labour_shock": 0.0, "hours_loss": 0.0, "mexico_need": 0.20, "mexico_support": 0.15, "ui_monthly": 0}
+  ],
+  "stimulus": {"2020-04": 1200, "2021-01": 600, "2021-03": 1400}
+}

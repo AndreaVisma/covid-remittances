@@ -1,0 +1,9 @@
+country,year,dated_rows,months,countries,missing_values,sum_observed_usd_billion,status
+Pakistan,2019,312,12,26,0,21.62381616,"Covered-country sum, not national total"
+Pakistan,2020,312,12,26,0,25.31403525,"Covered-country sum, not national total"
+Pakistan,2021,312,12,26,0,30.28540081,"Covered-country sum, not national total"
+Pakistan,2022,312,12,26,0,29.05861952,"Covered-country sum, not national total"
+Philippines,2019,2123,11,193,1,27.61606526,Incomplete dates and countries; not annual national total
+Philippines,2020,2123,11,193,0,27.20256694,Incomplete dates and countries; not annual national total
+Philippines,2021,0,0,0,0,,Incomplete dates and countries; not annual national total
+Philippines,2022,0,0,0,0,,Incomplete dates and countries; not annual national total
