@@ -26,4 +26,4 @@ fig.update_layout(
 fig.show()
 
 ## save
-df.to_parquet("C:\\git-projects\\covid-remittances\\oct-26\\data-prep\\mexico-rem-monthly-total.parquet")
+df.to_parquet("C:\\git-projects\\covid-remittances\\oct-26\\data-prep\\outputs\\mexico-rem-monthly-total.parquet")
