@@ -1,0 +1,60 @@
+{
+  "path": "C:\\git-projects\\covid-remittances\\data\\mex_remittances.xlsx",
+  "sheets": {
+    "Sheet2": {
+      "rows": 12,
+      "columns": 14
+    },
+    "Sheet1": {
+      "rows": 354,
+      "columns": 18
+    }
+  },
+  "currency_assumption": "USD; not explicitly documented in workbook",
+  "coverage_warning": "No sending-country or migrant-population identification in workbook; aggregate Mexico comparison only.",
+  "multiplier_to_usd_assumed": 1000000,
+  "columns": [
+    "date",
+    "month",
+    "year",
+    "total_mln",
+    "money_orders_mln",
+    "checks_mln",
+    "electronic_transfers_mln",
+    "cash_goods_mln",
+    "total_operations",
+    "money_orders_operations",
+    "checks_operations",
+    "electronic_transfers_operations",
+    "cash_goods_operations",
+    "total_mean_op",
+    "money_orders_mean_op",
+    "checks_mean_op",
+    "electronic_transfers_mean_op",
+    "cash_goods_mean_op"
+  ],
+  "missing_by_column": {
+    "date": 0,
+    "month": 0,
+    "year": 0,
+    "total_mln": 0,
+    "money_orders_mln": 0,
+    "checks_mln": 0,
+    "electronic_transfers_mln": 0,
+    "cash_goods_mln": 0,
+    "total_operations": 0,
+    "money_orders_operations": 0,
+    "checks_operations": 0,
+    "electronic_transfers_operations": 0,
+    "cash_goods_operations": 0,
+    "total_mean_op": 0,
+    "money_orders_mean_op": 0,
+    "checks_mean_op": 0,
+    "electronic_transfers_mean_op": 0,
+    "cash_goods_mean_op": 0
+  },
+  "start": "1995-01-01",
+  "end": "2024-05-01",
+  "observations": 353,
+  "missing_months": []
+}

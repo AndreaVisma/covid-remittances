@@ -1,0 +1,11 @@
+# Raw and licensed data (IPUMS, MMP, ENIGH, Banxico downloads): never publish.
+data/
+!data/mex_remittances.xlsx
+!data/pak_remittances_detail.pkl
+!data/phil_remittances_detail.pkl
+# Large outputs that include MMP-derived household/migrant panels.
+oct-26/outputs/
+# Python and OS clutter
+__pycache__/
+*.pyc
+__MACOSX/

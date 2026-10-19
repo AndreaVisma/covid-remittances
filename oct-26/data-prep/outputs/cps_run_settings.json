@@ -1,0 +1,72 @@
+{
+  "source": "C:\\git-projects\\covid-remittances\\data\\cps_00001.dat",
+  "source_sha256": "ba15dfee844c2c398fd9d0750b1819f99e3f494286d9d620806f08e8a4fb6921",
+  "source_records": 23579903,
+  "latino_adult_records": 2319395,
+  "baseline_year": 2019,
+  "missing_months": [
+    "2025-10"
+  ],
+  "workbook": "C:\\git-projects\\covid-remittances\\oct-26\\data-prep\\outputs\\cps_earnings_employment.xlsx",
+  "sheets": {
+    "baseline_2019": 12,
+    "monthly_earnings": 2400,
+    "monthly_employment": 2400,
+    "linked_earnings_risk": 378,
+    "earnings_cutoffs": 2,
+    "occupation_mapping": 479,
+    "sample_coverage": 200,
+    "column_dictionary": 15,
+    "methodology": 29
+  },
+  "occupation_ranges": {
+    "Agriculture": [
+      [
+        6000,
+        6130
+      ]
+    ],
+    "Production/construction/transport": [
+      [
+        6200,
+        8965
+      ],
+      [
+        9000,
+        9750
+      ]
+    ],
+    "Sales/personal services": [
+      [
+        3600,
+        4650
+      ],
+      [
+        4700,
+        4965
+      ]
+    ],
+    "Professional/administrative": [
+      [
+        10,
+        3540
+      ],
+      [
+        5000,
+        5940
+      ]
+    ]
+  },
+  "weeks_per_month": 4.333333333333333,
+  "settings": {
+    "start_year": 2010,
+    "end_year": 2026,
+    "min_age": 18,
+    "min_earn_n": 30,
+    "min_earn_effective_n": 20,
+    "min_labour_force_n": 100,
+    "min_unemployed_n": 5,
+    "min_standard_cell_n": 3,
+    "min_standard_coverage": 0.9
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "source": "data\\cps_00001.dat",
+  "population": "Mexican origin (fallback: extract has no BPL)",
+  "period": [
+    201701,
+    202312
+  ],
+  "age_range": [
+    18,
+    64
+  ],
+  "baseline_year": 2019,
+  "smooth_months": 3,
+  "reliability": {
+    "min_lf_n": 100,
+    "min_unemployed_n": 5
+  },
+  "occupation_ranges_occ2010": {
+    "Agriculture": [
+      [
+        6000,
+        6130
+      ]
+    ],
+    "Production/construction/transport": [
+      [
+        6200,
+        8965
+      ],
+      [
+        9000,
+        9750
+      ]
+    ],
+    "Sales/personal services": [
+      [
+        3600,
+        4650
+      ],
+      [
+        4700,
+        4965
+      ]
+    ],
+    "Professional/administrative": [
+      [
+        10,
+        3540
+      ],
+      [
+        5000,
+        5940
+      ]
+    ]
+  },
+  "linked_pairs_2019": 37530,
+  "recommended_phi": 0.9129674282239176,
+  "notes": [
+    "Model input column: rate_model (raw if reliable_raw, else centred smooth).",
+    "Rates use occupation of current or last job; NILF have no occupation.",
+    "rate_exit_adjusted counts labour-force exits since 2019 as job loss.",
+    "phi from raw CPS flows; classification error in month-to-month status biases flows up and phi down."
+  ]
+}

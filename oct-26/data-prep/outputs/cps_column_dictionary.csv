@@ -1,0 +1,16 @@
+column,description
+earn_n,Unweighted number of valid earnings observations.
+earn_effective_n,"Kish effective sample size: sum(w)^2/sum(w^2), not design-adjusted."
+earn_weight,Sum of earnings weights (baseline divided by 12).
+monthly_mean_usd,"Weighted usual weekly mean multiplied by 52/12, nominal gross USD."
+monthly_standardized_usd,Mean with 2019 demographic cell shares; blank if coverage insufficient.
+standard_coverage,"Baseline cell weight share supported by this month, conditional on known baseline cells."
+unemployment_rate,WTFINL-weighted unemployed / (employed + unemployed).
+unemployment_reliable,Meets configured labour-force and unemployed observation thresholds.
+earnings_reliable,Meets configured raw and effective earnings sample thresholds.
+employment_population_rate,Overall employed / adult civilians; deliberately blank by occupation.
+participation_rate,Overall labour force / adult civilians; deliberately blank by occupation.
+fixed_topcode_share,Weighted share >=2884.61 through March 2023; later blank.
+matched_unemployment_rate,Origin-EARNWT weighted U/(E+U) in linked sample only.
+matched_nonemployment_rate,Origin-EARNWT weighted (U+NILF)/(E+U+NILF) in linked sample only.
+use_for_abm,"Baseline: known job and both reliability flags pass. Linked risk: always False, no attrition-adjusted weights."

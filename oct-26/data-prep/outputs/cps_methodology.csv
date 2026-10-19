@@ -1,0 +1,30 @@
+topic,detail
+Source,IPUMS CPS extract cps_00001.dat; supplied extract codebook dated 2026-10-13. Original data remain unchanged.
+Source URL,https://cps.ipums.org/ ; https://cps.ipums.org/cps/citation.shtml
+Population,"Hispanic/Latino civilians age 18+ of any race. Mexican origin is an overlapping subset, not Mexican-born status. Do not add populations."
+Scope,Basic Monthly only (ASECFLAG != 1). Complete available history within configured year bounds. October 2025 is absent in this extract; do not fill missing months with zero.
+Baseline,Pooled 2019 observations weighted by EARNWT for earnings and WTFINL for labour force. Weight totals divided by 12 are average monthly totals. Counts are person-month observations.
+Units,Nominal USD. Monthly equivalents = usual gross weekly earnings * 52/12. These are neither net disposable budgets nor actual calendar-month earnings. No inflation adjustment.
+Earnings universe,"Employed adult wage/salary workers in MISH 4/8, positive EARNWT, valid EARNWEEK2. Includes part-time and temporarily absent workers. Excludes self-employed and unpaid family workers."
+Missing and zero,"999999.99 is EARNWEEK2 NIU, not dollars. Valid zero earnings are retained. Nonworkers are excluded from conditional earnings, not assigned missing-code dollars."
+Weights / decimals,Use codebook field widths and implied decimals: EARNWEEK2 /100; EARNWT and WTFINL /10000. Applied once to raw fixed-width integers.
+Earnings documentation,https://cps.ipums.org/cps-action/variables/EARNWEEK2 ; https://cps.ipums.org/cps/outgoing_rotation_notes.shtml
+Occupation,"OCC2010 harmonized codes, not IND industry. Crosswalk shows all code labels and assignments. Unknown jobs retained separately. Working student/pensioner cannot be identified from this extract."
+Unemployment,"Weighted U/(E+U), with current occupation for employed and last reported occupation for unemployed. New entrants/unassignable jobs remain Unknown. Employment counts include self-employment."
+Nonparticipation,Overall employment/population and participation use all adult civilians. Occupation-specific NILF denominators are not used because past occupation coverage is incomplete.
+Employment documentation,https://cps.ipums.org/cps-action/variables/EMPSTAT ; https://cps.ipums.org/cps-action/variables/OCC ; https://cps.ipums.org/cps-action/variables/WTFINL
+Composition adjustment,"Direct standardization within each population/job to 2019 joint age (18-34/35-54/55+), sex and education (<=high school / some college+) earnings-weight shares. Does not remove unobserved selection or finer occupational shifts."
+Standardization gaps,Cell mean requires n>=3; supported baseline mass must be >= 90%. Otherwise adjusted earnings blank. Supported shares renormalized; coverage exported. Unknown demographic cells excluded from reference.
+Earnings quality,"Reliable flag requires raw n>=30 and Kish effective n>=20. Effective n reflects unequal weights only, not full survey-design variance."
+Unemployment quality,Reliable flag requires labour-force n>=100 and unemployed n>=5. Raw rates retained even when flagged. No design-based standard errors or confidence intervals.
+Unknown unemployment,"Unknown often consists of unassignable unemployed/new entrants and nonparticipants, with no employed denominator. Its rate can be 100% by construction. Diagnostic only: never use it as a migrant job-loss probability."
+Topcoding,Pre-April 2023 fixed topcode share measures earnings >=2884.61. Later values blank because dynamic/phased topcoding is not reconstructed. Public-use topcodes retained; means are not topcode-corrected.
+Pandemic measurement,Official EMPSTAT used without speculative reclassification. Early-2020 temporary-absence misclassification can understate unemployment. https://www.bls.gov/blog/2020/update-on-the-misclassification-that-affected-the-unemployment-rate.htm
+Prior earnings risk,2019 MISH4 earners linked by CPSIDV and calendar month to MISH8 in 2020. Quartiles from pooled 2019 earnings in each population. Boundary ties go to lower quartile; categories need not contain exactly 25%.
+Linked risk limitation,"Origin EARNWT only, no longitudinal/attrition weights. Matched-sample descriptive rates, not population unemployment estimates. Coverage and sample flags exported; use_for_abm is False."
+Linking documentation,https://cps.ipums.org/cps-action/variables/CPSIDV ; https://cps.ipums.org/cps/cps_linking_documentation.shtml
+ABM use,Read baseline_2019 for static inputs and monthly_earnings/monthly_employment for time paths. Join by population/job_group/year/month. Check quality flags; never silently replace missing with zero.
+Capacity use,"Earnings are gross upper bounds, not remittable disposable income. Unemployment rates are stocks, not job-loss probabilities. Do not simulate unemployment and also multiply employed earnings by 1-u."
+Refresh,"Edit Python dictionaries/settings, then rerun script. Workbook cells are materialized analysis outputs for reliable pandas reading; Excel edits do not rerun microdata analysis."
+Missing months in requested observed span,2025-10
+Composition reference missing demographics,0

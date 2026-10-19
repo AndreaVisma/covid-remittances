@@ -34,18 +34,20 @@ agg_rules = {
 
 weekly_df = df.groupby('country').resample('W').agg(agg_rules).reset_index()
 monthly_df = df.groupby('country').resample('M').agg(agg_rules).reset_index()
+quarterly_df = df.groupby('country').resample('QE').agg(agg_rules).reset_index()
 
 ## save
 weekly_df.to_parquet("C:\\git-projects\\covid-remittances\\oct-26\\data-prep\\outputs\\america-covid-weekly.parquet")
 monthly_df.to_parquet("C:\\git-projects\\covid-remittances\\oct-26\\data-prep\\outputs\\america-covid-monthly.parquet")
+quarterly_df.to_parquet("C:\\git-projects\\covid-remittances\\oct-26\\data-prep\\outputs\\america-covid-quarter-end.parquet")
 
 ## mexico
-df_mex = monthly_df[monthly_df.country == "Mexico"]
+df_mex = quarterly_df[quarterly_df.country == "Mexico"]
 
 #plot
 
-df_rem = pd.read_parquet("c://git-ptojects//covid-remittances//oct-26//data-prep//outputs//mexico-rem-monthly-total.parquet")
-df_rem = df_rem[(df_rem.date.dt.year > 2018) & (df_rem.date.dt.year < 2024)]
+df_rem = pd.read_parquet("C:\\git-projects\\covid-remittances\\oct-26\\data-prep\\outputs\\mexico-rem-quarterly-total.parquet")
+df_rem = df_rem[(df_rem.date.dt.year > 2017) & (df_rem.date.dt.year < 2025)]
 
 # --- 3. Create Subplots with a Secondary Y-Axis ---
 fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -54,8 +56,8 @@ fig = make_subplots(specs=[[{"secondary_y": True}]])
 fig.add_trace(
     go.Scatter(
         x=df_mex["date"],
-        y=df_mex["new_cases_per_million"],
-        name="New Cases per Million",
+        y=df_mex["new_deaths_per_million"],
+        name="New Deaths per Million",
         line=dict(color="blue")
     ),
     secondary_y=False,
@@ -65,7 +67,7 @@ fig.add_trace(
 fig.add_trace(
     go.Scatter(
         x=df_rem["date"],
-        y=df_rem["total_mln"],
+        y=df_rem["total_usd"],
         name="Total Remittances (Absolute)",
         line=dict(color="green", dash="dot")
     ),
@@ -85,6 +87,6 @@ fig.update_yaxes(title_text="Remittances (Absolute USD)", secondary_y=True)
 
 # --- 7. Save as SVG ---
 # Note: Saving static image formats like SVG/PNG in Plotly requires 'kaleido' (pip install kaleido)
-fig.write_image("C:\\git-projects\\covid-remittances\\oct-26\\outputs\\general\\mexico_covid_remittances.svg")
+fig.write_image("C:\\git-projects\\covid-remittances\\oct-26\\outputs\\general\\mexico_covid_remittances_deaths.svg")
 
 fig.show()

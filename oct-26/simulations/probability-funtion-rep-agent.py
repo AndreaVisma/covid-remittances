@@ -25,7 +25,7 @@ if monthly_df['date'].duplicated().any():
 df_merged = pd.merge(df_actual, monthly_df, on = "date", how= "inner")
 df_merged["monthly_earnings_nominal"] *= 0.2
 
-df_merged["needed_senders"] = df_merged["total_mln"] / df_merged["monthly_earnings_nominal"]
+df_merged["needed_senders"] = df_merged["total_usd"] / df_merged["monthly_earnings_nominal"]
 df_merged["pct_migrant_senders"] = df_merged["needed_senders"] / 11_000_000
 
 fig = px.line(df_merged, x="date", y="pct_migrant_senders")
