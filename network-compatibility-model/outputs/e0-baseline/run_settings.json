@@ -1,0 +1,69 @@
+{
+  "kappa_rule": "logit theta_kin = alpha_kin + beta*S_t + kappa*1[eligible core, none able]",
+  "fitted": [
+    {
+      "kappa": 0.0,
+      "alpha_core": 0.30528703621691644,
+      "alpha_kin": -3.1755128468703067,
+      "weighted_rmse_pp": 0.19960701917559787,
+      "success": true
+    },
+    {
+      "kappa": 1.0,
+      "alpha_core": 0.2986087753713261,
+      "alpha_kin": -3.178146581370789,
+      "weighted_rmse_pp": 0.23609282414681895,
+      "success": true
+    },
+    {
+      "kappa": 2.0,
+      "alpha_core": 0.2859101380469263,
+      "alpha_kin": -3.1832070251031053,
+      "weighted_rmse_pp": 0.3057316003066646,
+      "success": true
+    },
+    {
+      "kappa": 3.0,
+      "alpha_core": 0.26887041140131224,
+      "alpha_kin": -3.1889898454070105,
+      "weighted_rmse_pp": 0.3992058365419629,
+      "success": true
+    },
+    {
+      "kappa": 4.0,
+      "alpha_core": 0.25419842991129893,
+      "alpha_kin": -3.1917433018167296,
+      "weighted_rmse_pp": 0.47919651563494964,
+      "success": true
+    }
+  ],
+  "phi": 0.9129674282239176,
+  "kappas": [
+    0.0,
+    1.0,
+    2.0,
+    3.0,
+    4.0
+  ],
+  "seeds": [
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "households": 3405,
+  "migrants": 7999,
+  "core_migrants": 1996,
+  "eligible_migrants": 6580,
+  "households_with_eligible_core": 929,
+  "fit_households": 3252,
+  "source_households": 3252,
+  "banxico_2019_monthly_transactions": 9520484.583333334,
+  "enigh_2018_recipient_monthly_usd": {
+    "median": 76.35537382702493,
+    "mean": 144.50028245089214
+  },
+  "receipt_mapping": "MMP remus compared with monthly receipt probability",
+  "cps_population": "Mexican origin (fallback: extract has no BPL)"
+}

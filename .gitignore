@@ -9,3 +9,5 @@ oct-26/outputs/
 __pycache__/
 *.pyc
 __MACOSX/
+# MMP-derived household/migrant microdata
+network-compatibility-model/data-prep/population/

@@ -16,6 +16,13 @@ Design principles: **few free parameters**, the decision to send separated from 
 
 ## 2. Entities and state variables
 
+**Population (rebuilt 19 Oct 2026, `data-prep/build_population.py`).** Every connected MMP household interviewed in Mexico in 2010–19 is used once (3,405 households). Links:
+- **core:** head, spouse or child currently in the US;
+- **close kin:** parents, siblings and other roster relatives currently in the US;
+- **distant kin:** uncles, cousins, nephews and in-laws, collapsed into one aggregated link per household.
+
+Close kin and the distant link are both "kin" in §4.3.
+
 ### Households `h` (origin, Mexico)
 
 | Variable | Meaning | Source |
@@ -57,8 +64,8 @@ Time step: one month. Period: 2019-01 to 2022-12, plus burn-in. The 2019 conditi
 2. **Employment:** draw `E_j,t` for every migrant (§4.1).
 3. **Benefits:** set `B_j,t` (§4.2); compute ability to send `A_j,t`.
 4. **Stage 1, core migrants:** every core migrant with `A_j,t = 1` decides independently whether to send, with probability `θ_core,t` (§4.3).
-5. Update `N_h,t` with stage-1 transfers.
-6. **Stage 2, kin migrants:** every kin migrant with `A_j,t = 1` decides with probability `θ_kin,h,t`, which depends on `N_h,t` through the coordination parameter `κ`. In households without core migrants, kin decide with `N_h,t = 0`.
+5. Set the trigger `U_h,t` = 1 if the household's eligible core migrants are all unable to send.
+6. **Stage 2, kin migrants:** every kin migrant with `A_j,t = 1` decides with probability `θ_kin,h,t`, which rises by `κ` (logit scale) if the household's eligible core migrants are all unable to send this month.
 7. Transfer amounts are `m_j` for every sender (§4.4). Compute `R_h,t`, `N_h,t`.
 8. Record the observation outputs (§5).
 
@@ -91,8 +98,12 @@ Benefits change only **whether** a migrant can send. They do not change θ or th
 
 ```
 logit θ_core,t      = α_core + β · S_t
-logit θ_kin,h,t     = α_kin  + β · S_t − κ · N_h,t
+logit θ_kin,h,t     = α_kin  + β · S_t + κ · U_h,t
+U_h,t = 1 if household h has eligible core migrants (adult, working occupation)
+          and none of them is able to send in month t
 ```
+
+*Revised 19 Oct 2026.* The first version (`− κ · N_h,t`, kin held back by core transfers) could only remove a suppression, so stepping-in was capped at kin's routine θ ≈ 0.008 and changed transfers by ≤ 2%. The trigger now responds to core **inability** (job loss without benefits), not to a routine month in which an able core migrant chooses not to send. Households whose core migrants can never send (under 18, 'Not working') are not triggered; that would be structural, not crisis substitution.
 
 - `α_core`, `α_kin`: **baseline propensities**, calibrated to 2019 (§7).
 - `S_t`: **national salience index**, standardized so that its 2019 mean is 0 (β then has no effect in 2019):
@@ -103,10 +114,10 @@ logit θ_kin,h,t     = α_kin  + β · S_t − κ · N_h,t
   - Deaths: COVID deaths, with excess mortality as a sensitivity because reported COVID deaths were undercounted.
   - Equal weights are fixed. Splitting into two coefficients is a later test, not part of the base model.
 - `β ≥ 0`: **need responsiveness**. Axis 1 of the behavioural map.
-- `κ ≥ 0`: **coordination**. Kin are less likely to send when core migrants have already sent this month. Axis 2 of the behavioural map.
-  - `κ = 0`: independent decisions.
-  - Large `κ`: kin send mostly when core migrants did not, i.e. they step in.
-  - Under this rule, a negative COVID shock to core migrants' employment automatically raises kin sending if `κ > 0`. That is the "relatives stepping in" mechanism, with no extra parameter.
+- `κ ≥ 0`: **stepping in**. Kin become more likely to send when the household's core migrants cannot send. Axis 2 of the behavioural map.
+  - `κ = 0`: kin ignore what happens to core migrants.
+  - Large `κ`: kin respond strongly when core migrants lose the ability to send.
+  - A COVID job-loss shock to core migrants therefore raises kin sending automatically if `κ > 0`, with no extra parameter.
 
 Monthly decisions are independent over time given the state (no sending persistence in the base model). Persistence is a sensitivity, needed only if the receipt reference periods cannot be matched without it.
 
@@ -118,7 +129,9 @@ Amount strategy "B": each migrant has a fixed routine amount.
 m_j ~ LogNormal(μ, σ²),   E[m_j] = Banxico 2019 mean transaction amount
 ```
 
-- `σ`: from the dispersion of reported remittance amounts in MMP (migrant-level) or ENIGH (household-level, adjusted for multiple senders). Set externally.
+- `σ`: from the dispersion of reported remittance amounts in MMP (migrant-level) or ENIGH (household-level, adjusted for multiple senders). Set externally. Estimated `σ = 0.81` from MMP (heads and other migrants, trips 2000–19, 2019 USD, within 5-year periods); `μ = 5.46` given the $326 mean.
+- Kin migrants use the same distribution as core migrants. MMP records amounts for only ~10 extended-kin migrants, too few to calibrate a difference. Sensitivity: kin amounts × 0.5.
+- **Level: Banxico 2019 mean per transaction ($326), decided.** MMP is used for the dispersion only. MMP's mean ($497, 2019 USD) is higher, but that reflects several factors besides transactions per month: deflation from trip start year on long trips, heads with dependants dominating the sample, rounding, recall and proxy reports, and mostly 2000s trips. It is not evidence of ~1.5 transactions per sender-month. Count indices do not depend on the level in any case.
 - Every transfer by `j` equals `m_j`. One transfer per sender-month.
 - The simulated mean transfer can still change over time, because the mix of senders changes. Any further change in the observed mean amount is **outside the model** and is reported as the amount margin (§5).
 - **Robustness check (wage indexing, no new parameter):** `m_j,t = m_j · w_t / w_2019`, where `w_t` is a real median-earnings index for Mexican-born (or Hispanic) workers. It tests whether wage growth closes the gap in total dollars. The transfer count remains the main target and is unaffected.
@@ -159,7 +172,9 @@ Benchmark for E3: with `κ = 0` and `ρ = 0`, receipt probability is `1 − ∏_
 
 ### 2019 (E0)
 
-For each `κ` on the grid, fit `α_core` and `α_kin` to the 2019 receipt rates of core-only, kin-only and mixed households (MMP; ENIGH 2018 as a check). Each cell of the map therefore starts from a baseline that fits 2019. `κ` partly shows up in the 2019 cross-section through the shape of receipt by network size. Report how strongly the pre-COVID data alone constrain `κ`.
+For each `κ` on the grid, fit `α_core` and `α_kin` to the 2019 receipt rates of core-only, kin-only and mixed households (MMP; ENIGH 2018 as a check), so every cell of the map starts from a baseline that fits 2019. Report the `κ` profile, i.e. the best 2019 fit at each `κ`. First result: 2019 barely constrains `κ` (weighted RMSE 0.3 pp at `κ = 0`, 0.8 pp at `κ = 8`), because few households have all core migrants unable in a normal year.
+
+**Network size (decided 19 Oct 2026):** no dilution parameter. The saturation seen in the first E0 run came from counting every distant relative as an independent potential sender. After the population rebuild (distant kin as one aggregated link), the kin-only size gradient matches MMP within ~1 pp. The remaining size misfits are in core networks (±8–12 pp in some bins) and are reported as a limitation.
 
 Known problem to resolve first: the current model underpredicts receipt in single-migrant core households (≈42% simulated vs 54% in MMP) and in kin-only households with older residents. Report whether the simpler model reduces or worsens these errors.
 
@@ -203,7 +218,7 @@ A cell `(β, κ, π)` is **compatible** if both hold:
 1. CPS: rebuild occupation-month employment rates for Mexican-born workers; estimate `φ` from month-to-month transitions. *Done for Mexican origin (the extract has no birthplace variable); `φ ≈ 0.91`. See `handoff.md`.*
 2. Mexico: build `S_t` from ENOE/ETOE employed population and national (excess) deaths.
 3. Benefit schedule table; external range for `π`.
-4. Amount distribution `σ` from MMP/ENIGH; Banxico 2019 mean transaction amount.
+4. Amount distribution `σ` from MMP/ENIGH; Banxico 2019 mean transaction amount. *Done: mean $326 (Banxico), `σ ≈ 0.81` (MMP, within-period). Kin use the core distribution. See `handoff.md`.*
 4b. Real earnings index `w_t` (from `data/weekly-earnings-median-race.xlsx` or CPS earnings, Mexican-born where possible), deflated with US CPI.
 5. Refactor the ABM: two-stage decision, yes/no ability gate replacing the surplus budget rule, fixed `m_j`, latent-factor employment.
 6. E0 calibration over the `κ` grid; diagnose the singleton and kin-only misfits.

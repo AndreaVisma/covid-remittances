@@ -1,0 +1,39 @@
+{
+  "distribution": "lognormal",
+  "mean_usd_2019": 326.05558286752125,
+  "mu": 5.462179329795389,
+  "sigma": 0.8060875096806023,
+  "median_usd_2019": 235.61033788783215,
+  "level_source": "Banxico 2019 total USD / transactions (one transaction per sender-month)",
+  "sigma_source": "MMP MIG+MIGOTHER, trips 2000-2019, 2019 USD, within 5-year trip periods",
+  "dispersion": {
+    "sigma_within_period": 0.8060875096806023,
+    "sigma_within_period_robust": 0.8846574786132364,
+    "sigma_pooled": 0.8094377858801094,
+    "n": 1289
+  },
+  "trim_top_usd_2019": 3511.684474165878,
+  "trip_years": [
+    2000,
+    2019
+  ],
+  "mmp_zero_share": 0.1690051020408163,
+  "mmp_median_usd_2019": 360.89356295878036,
+  "mmp_mean_usd_2019": 496.557252919758,
+  "kin_rule": "Kin use the same distribution as core migrants (MMP has ~13 positive kin amounts).",
+  "sensitivity": {
+    "kin_amount_factor": 0.5
+  },
+  "enigh_2018_validation": {
+    "fx_2018_mxn_per_usd": 19.217900803212853,
+    "recipient_share": 0.04728548395278385,
+    "recipient_n": 4584,
+    "recipient_monthly_usd_median": 76.35537382702493,
+    "recipient_monthly_usd_mean": 144.50028245089214,
+    "recipient_log_sd": 1.3539485684487444,
+    "enigh_annual_total_usd": 2820607943.367977,
+    "banxico_2018_total_usd": 34435116500.0,
+    "enigh_to_banxico_ratio": 0.08191080008014427,
+    "note": "ENIGH: quarterly MXN, converted at the 2018 mean FX. Averages over months incl. months without receipt; validation only."
+  }
+}

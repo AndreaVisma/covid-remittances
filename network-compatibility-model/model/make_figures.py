@@ -1,0 +1,479 @@
+"""PNG figures for the rebuilt population, model inputs and E0 calibration.
+
+Run: python network-compatibility-model/model/make_figures.py
+Plan: network-compatibility-model/figures-plan.md. Captions: figures/captions.md.
+Figures show aggregates only (no MMP microdata rows).
+
+Colour roles (dataviz reference palette, light mode; validated):
+  link types   Core #2a78d6, Close kin #eb6834, Distant kin #1baf7a (all-pairs pass)
+  occupations  #e87ba4, #008300, #6250d6, #e34948 (adjacent pass); Not working and
+               Unknown in neutral grays
+  data vs model  MMP = primary ink + 95% Wilson interval, model = blue
+  error        diverging blue (model below MMP) / red (model above)
+"""
+from pathlib import Path
+import json
+import sys
+import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent / 'data-prep'))
+import abm
+import remittance_amounts as ra
+
+BASE = abm.HERE
+FIG = BASE / 'figures'
+E0 = BASE / 'outputs/e0-baseline'
+OLD_POP = abm.ROOT / 'oct-26/outputs/synthetic-migrants-house-networks'
+
+SURFACE, INK, INK2, MUTED, GRID, AXIS = '#fcfcfb', '#0b0b0b', '#52514e', '#898781', '#e1e0d9', '#c3c2b7'
+BLUE, ORANGE, AQUA = '#2a78d6', '#eb6834', '#1baf7a'
+RED, GRAY_LIGHT = '#e34948', '#c3c2b7'
+LINK_COLORS = {'Core': BLUE, 'Close kin': ORANGE, 'Distant kin': AQUA}
+OCC_ORDER = ['Agriculture', 'Production/construction/transport', 'Sales/personal services',
+             'Professional/administrative', 'Not working', 'Other/unknown']
+OCC_COLORS = dict(zip(OCC_ORDER, ['#e87ba4', '#008300', '#6250d6', '#e34948', MUTED, GRAY_LIGHT]))
+OCC_SHORT = {'Agriculture': 'Agriculture', 'Production/construction/transport': 'Production/constr./transport',
+             'Sales/personal services': 'Sales/personal services',
+             'Professional/administrative': 'Professional/admin.', 'Not working': 'Not working',
+             'Other/unknown': 'Other/unknown'}
+DPI = 200
+CAPTIONS = {}
+
+
+def style():
+    plt.rcParams.update({
+        'figure.facecolor': SURFACE, 'axes.facecolor': SURFACE, 'savefig.facecolor': SURFACE,
+        'axes.edgecolor': AXIS, 'axes.linewidth': 0.8, 'axes.labelcolor': INK2, 'axes.titlecolor': INK,
+        'axes.titlesize': 11, 'axes.titleweight': 'semibold', 'axes.titlelocation': 'left',
+        'axes.labelsize': 9, 'xtick.color': MUTED, 'ytick.color': MUTED, 'xtick.labelcolor': INK2,
+        'ytick.labelcolor': INK2, 'xtick.labelsize': 8.5, 'ytick.labelsize': 8.5,
+        'axes.grid': True, 'grid.color': GRID, 'grid.linewidth': 0.8, 'grid.linestyle': '-',
+        'axes.spines.top': False, 'axes.spines.right': False, 'legend.frameon': False,
+        'legend.fontsize': 8.5, 'legend.labelcolor': INK2, 'font.size': 9, 'lines.linewidth': 2,
+        'lines.solid_capstyle': 'round', 'lines.solid_joinstyle': 'round'})
+
+
+def wilson(p, n, z=1.96):
+    p, n = np.asarray(p, float), np.asarray(n, float)
+    d = 1 + z ** 2 / n
+    c = (p + z ** 2 / (2 * n)) / d
+    h = z * np.sqrt(p * (1 - p) / n + z ** 2 / (4 * n ** 2)) / d
+    return c - h, c + h
+
+
+def pct_axis(ax, axis='y'):
+    fmt = matplotlib.ticker.PercentFormatter(1.0, decimals=0)
+    (ax.yaxis if axis == 'y' else ax.xaxis).set_major_formatter(fmt)
+
+
+def save(fig, name, title, caption, title_y=None):
+    """title_y: figure-fraction height of the title; tall figures pass a value
+    close to 1 so the title does not float far above the plot."""
+    fig.suptitle(title, x=0.01, ha='left', fontsize=12.5, fontweight='semibold', color=INK,
+                 **({} if title_y is None else dict(y=title_y)))
+    fig.savefig(FIG / f'{name}.png', dpi=DPI, bbox_inches='tight')
+    plt.close(fig)
+    CAPTIONS[name] = (title, caption)
+    print('saved', name)
+
+
+def ring_dot(ax, x, y, color, size=40, zorder=4, **kw):
+    ax.scatter(x, y, s=size, color=color, edgecolor=SURFACE, linewidth=1.5, zorder=zorder, **kw)
+
+
+# %% A. Population
+def strongest_tie(h):
+    return np.select([h.core_count.gt(0), h.close_kin_count.gt(0)], ['Core', 'Close kin'], 'Distant kin')
+
+
+def a1_network_sizes(h):
+    h = h.assign(tie=strongest_tie(h), size=h.network_size.clip(upper=10))
+    t = h.groupby(['size', 'tie']).size().unstack(fill_value=0).reindex(columns=list(LINK_COLORS), fill_value=0)
+    fig, ax = plt.subplots(figsize=(7.2, 3.8))
+    bottom = np.zeros(len(t))
+    x = np.arange(len(t))
+    for tie, color in LINK_COLORS.items():
+        ax.bar(x, t[tie], bottom=bottom, width=0.62, color=color, edgecolor=SURFACE, linewidth=1.5, label=tie)
+        bottom += t[tie].to_numpy()
+    for xi, total in zip(x, bottom):
+        ax.text(xi, total + 15, f'{int(total):,}', ha='center', va='bottom', fontsize=8, color=INK2)
+    ax.set_xticks(x, [str(s) if s < 10 else '10+' for s in t.index])
+    ax.set_xlabel('Links per household (network size)')
+    ax.set_ylabel('Households')
+    ax.grid(axis='x', visible=False)
+    ax.legend(title='Closest tie in the US', title_fontsize=8.5, loc='upper right')
+    save(fig, 'A1_network_sizes', 'Most households are linked to one or two US migrants',
+         f'Households in the rebuilt population ({len(h):,} connected MMP households, Mexico interviews '
+         '2010–19) by number of links, coloured by the closest tie: core (head, spouse or child in the US), '
+         'close kin (parents, siblings, other roster relatives) or distant kin only (aggregated link).')
+
+
+def a2_old_vs_new(h):
+    old = pd.read_parquet(OLD_POP / 'households.parquet')
+    fig, ax = plt.subplots(figsize=(7.2, 3.6))
+    for frame, color, label, z in [(old, MUTED, 'Old population (resampled, all kin individual)', 2),
+                                   (h, BLUE, 'Rebuilt population (distant kin aggregated)', 3)]:
+        s = frame.network_size.sort_values().to_numpy()
+        share = np.cumsum(s) / s.sum()
+        ax.step(s, share, where='post', color=color, lw=2, zorder=z, label=label)
+        ring_dot(ax, s.max(), 1, color, size=30)
+        ax.annotate(f'max {s.max()}', (s.max(), 1), xytext=(0, 9), textcoords='offset points',
+                    ha='center', fontsize=8.5, color=INK2)
+    ax.set_xscale('log')
+    ax.set_xticks([1, 2, 5, 10, 20, 50, 100, 169], ['1', '2', '5', '10', '20', '50', '100', '169'])
+    ax.minorticks_off()
+    pct_axis(ax)
+    ax.set_xlabel('Household network size (log scale)')
+    ax.set_ylabel('Cumulative share of all links')
+    ax.set_ylim(0, 1.1)
+    ax.set_yticks(np.arange(0, 1.01, 0.2))
+    ax.legend(loc='lower right')
+    save(fig, 'A2_old_vs_rebuilt', 'The rebuild removes the long tail of distant relatives',
+         'Cumulative share of links held by households up to a given network size. Old population: '
+         '1,019 households resampled with replacement until 10,000 migrants, every counted cousin, '
+         'nephew and in-law a separate link (54% of links in households with 20+ links). Rebuilt: every '
+         'connected household once, distant kin collapsed into one link per household.')
+
+
+def a3_close_vs_distant(summary):
+    close = summary.loc[summary.dimension.eq('close kin (no core)') & summary.group.ne('0')]
+    distant = summary.loc[summary.dimension.eq('distant relatives (distant only)') & summary.group.ne('0')]
+    fig, axes = plt.subplots(1, 2, figsize=(8.4, 4.0), sharey=True)
+    for ax, d, color, xlabel, title in [
+            (axes[0], close, ORANGE, 'Close kin in the US', 'Households without core migrants'),
+            (axes[1], distant, AQUA, 'Distant relatives in the US', 'Households with only distant kin')]:
+        x = np.arange(len(d))
+        lo, hi = wilson(d.receipt, d.n)
+        ax.bar(x, d.receipt, width=0.55, color=color, zorder=2)
+        ax.errorbar(x, d.receipt, yerr=[d.receipt - lo, hi - d.receipt], fmt='none', ecolor=INK2,
+                    elinewidth=1, capsize=3, zorder=3)
+        for xi, r, top in zip(x, d.receipt, hi):
+            ax.text(xi, top + 0.004, f'{r:.1%}', ha='center', va='bottom', fontsize=8, color=INK)
+        ax.set_xticks(x, [f'{g}\nn={n:,}' for g, n in zip(d.group.astype(str), d.n)])
+        ax.set_xlabel(xlabel)
+        ax.set_title(title, fontsize=10)
+        ax.grid(axis='x', visible=False)
+        ax.set_ylim(0, 0.25)
+        ax.set_yticks(np.arange(0, 0.251, 0.05))
+    pct_axis(axes[0])
+    axes[0].set_ylabel('MMP households receiving US remittances')
+    save(fig, 'A3_close_vs_distant_kin', 'Receipt rises with close kin, not with the number of distant relatives',
+         'Share of MMP households (Mexico, 2010–19) that receive US remittances, with 95% Wilson intervals. '
+         'Left: households without core migrants, by number of close kin in the US. Right: households whose '
+         'only ties are distant relatives (uncles/aunts, cousins, nieces/nephews, in-laws), by how many are '
+         'in the US. This is why each close relative is a separate link and distant relatives form one '
+         'aggregated link.')
+
+
+def a4_occupations(m):
+    m = m.assign(link=m.link_type.map({'Core': 'Core', 'Close kin': 'Close kin',
+                                        'Distant kin (aggregated)': 'Distant kin'}),
+                 occ=m.job_group.where(m.job_group.isin(OCC_ORDER[:5]), 'Other/unknown'))
+    share = pd.crosstab(m.link, m.occ, normalize='index').reindex(index=list(LINK_COLORS), columns=OCC_ORDER, fill_value=0)
+    imputed = m.groupby('link').profile_imputed.mean().reindex(share.index)
+    n = m.groupby('link').size().reindex(share.index)
+    fig, ax = plt.subplots(figsize=(8.4, 3.0))
+    y = np.arange(len(share))[::-1]
+    left = np.zeros(len(share))
+    for occ in OCC_ORDER:
+        ax.barh(y, share[occ], left=left, height=0.5, color=OCC_COLORS[occ], edgecolor=SURFACE,
+                linewidth=1.5, label=OCC_SHORT[occ])
+        for yi, l, w in zip(y, left, share[occ]):
+            if w >= 0.08:
+                txt = 'white' if occ not in ['Other/unknown'] else INK
+                ax.text(l + w / 2, yi, f'{w:.0%}', ha='center', va='center', fontsize=8, color=txt)
+        left += share[occ].to_numpy()
+    for yi, link in zip(y, share.index):
+        ax.text(1.01, yi, f'{imputed[link]:.0%} imputed\n(n={n[link]:,})', va='center', fontsize=8, color=INK2)
+    ax.set_yticks(y, share.index)
+    ax.set_xlim(0, 1)
+    pct_axis(ax, 'x')
+    ax.grid(visible=False)
+    ax.legend(ncol=3, loc='upper center', bbox_to_anchor=(0.5, -0.18))
+    save(fig, 'A4_occupations_by_link', 'Kin occupations mirror core occupations because they are imputed',
+         'Occupation of linked migrants by link type (last US occupation for roster migrants). Questionnaire-'
+         'only links (most close kin, all distant links) copy a whole profile from a roster donor, so their '
+         'occupational mix is borrowed. Differences in occupational exposure across households are therefore '
+         'partly imputation noise; correlated job loss is treated as a sensitivity dimension only.')
+
+
+# %% B. Inputs
+def b1_employment():
+    r = pd.read_csv(abm.CPS_RATES)
+    r['date'] = pd.to_datetime(dict(year=r.year, month=r.month, day=1))
+    r = r.loc[r.year.between(2019, 2022)]
+    fig, ax = plt.subplots(figsize=(8.4, 3.9))
+    ax.axvspan(pd.Timestamp('2019-01-01'), pd.Timestamp('2019-12-31'), color=GRID, alpha=0.6, lw=0, zorder=0)
+    ax.text(pd.Timestamp('2019-07-01'), 0.655, '2019: calibration year', ha='center', fontsize=8, color=INK2)
+    for occ in OCC_ORDER[:4]:
+        d = r.loc[r.job.eq(occ)]
+        ax.plot(d.date, d.rate_model, color=OCC_COLORS[occ], lw=2, label=OCC_SHORT[occ])
+    sales = r.loc[r.job.eq('Sales/personal services')].set_index('date').rate_model
+    ax.annotate(f'April 2020: {sales.min():.0%} employed\n(sales/personal services)', (sales.idxmin(), sales.min()),
+                xytext=(40, -6), textcoords='offset points', fontsize=8, color=INK2,
+                arrowprops=dict(arrowstyle='-', color=MUTED, lw=0.8))
+    pct_axis(ax)
+    ax.set_ylim(0.64, 1.0)
+    ax.set_ylabel('Employed / labour force')
+    ax.legend(ncol=2, loc='lower right')
+    pop = json.loads(abm.CPS_SETTINGS.read_text())['population']
+    save(fig, 'B1_cps_employment', 'COVID hit migrant employment hard and unevenly across occupations',
+         f'Monthly employment rate (employed / employed + unemployed) by occupation of current or last job, '
+         f'CPS, ages 18–64, {pop}. Raw monthly rates, smoothed (3-month centred) only where cells are small '
+         '(some agriculture months). Agriculture is seasonal in every year. These rates drive migrants\' '
+         'monthly ability to send.')
+
+
+def b2_amounts():
+    m = ra.load_mmp()
+    _, pos, _ = ra.amount_sample(m)
+    a = json.loads(abm.AMOUNTS.read_text())
+    fig, ax = plt.subplots(figsize=(8.4, 3.9))
+    bins = np.logspace(np.log10(20), np.log10(pos.usd_2019.max() * 1.05), 36)
+    counts, edges, _ = ax.hist(pos.usd_2019, bins=bins, color=GRAY_LIGHT, edgecolor=SURFACE, linewidth=1,
+                               label=f'MMP reported monthly amounts (n={len(pos):,}, 2019 USD)')
+    x = np.logspace(np.log10(20), np.log10(edges[-1]), 400)
+    dens = np.exp(-(np.log(x) - a['mu']) ** 2 / (2 * a['sigma'] ** 2)) / (x * a['sigma'] * np.sqrt(2 * np.pi))
+    width = np.diff(np.log(edges)).mean()
+    ax.plot(x, dens * x * width * len(pos), color=BLUE, lw=2,
+            label=f'Model routine amounts: lognormal, mean ${a["mean_usd_2019"]:.0f}, σ {a["sigma"]:.2f}')
+    top = counts.max()
+    # (value, label, side): labels sit above the bars, Banxico left of its line, MMP right.
+    refs = [(a['enigh_2018_validation']['recipient_monthly_usd_median'], 'ENIGH recipient median', 'right', 1.32),
+            (a['mean_usd_2019'], 'Banxico mean per transaction', 'left', 1.13),
+            (a['mmp_median_usd_2019'], 'MMP median', 'right', 1.32)]
+    for v, label, side, height in refs:
+        ax.axvline(v, color=INK2, lw=1, ls=(0, (3, 3)), zorder=1)
+        x = v * (1.04 if side == 'right' else 0.96)
+        ax.text(x, top * height, f'{label}\n${v:.0f}', fontsize=7.5, color=INK2, va='top',
+                ha='left' if side == 'right' else 'right')
+    ax.set_ylim(0, top * 1.35)
+    ax.set_xscale('log')
+    ax.set_xticks([25, 50, 100, 250, 500, 1000, 2500, 5000], ['$25', '$50', '$100', '$250', '$500', '$1k', '$2.5k', '$5k'])
+    ax.minorticks_off()
+    ax.set_xlabel('USD per sending month (log scale)')
+    ax.set_ylabel('Migrants')
+    ax.grid(axis='x', visible=False)
+    ax.legend(loc='upper left', bbox_to_anchor=(0, -0.2), ncol=1)
+    save(fig, 'B2_amounts', 'Each migrant sends a fixed routine amount drawn from a lognormal',
+         'Gray: MMP self-reported average monthly remittances on the last US trip (heads and other migrants, '
+         'trips 2000–19, deflated to 2019 USD, top 1% trimmed). Blue: the model\'s routine-amount distribution, '
+         'with its spread (σ) from MMP within 5-year periods and its level set to the Banxico 2019 mean per '
+         'transaction. MMP reports sit higher than Banxico (recall, proxy reports, trip-start deflation); '
+         'ENIGH averages over months and under-reports.')
+
+
+# %% C. Calibration
+def e0_cells():
+    fit = pd.read_csv(E0 / 'fit_network_type.csv').query('kappa == 0')
+    comp = pd.read_csv(E0 / 'validation_composition.csv').query('kappa == 0')
+    rows = [fit.assign(panel='Network type (targeted)', label=fit.network_type)]
+    names = {'links': 'Link type', 'survey_period': 'Survey period', 'workers': 'Resident workers',
+             'children': 'Resident children', 'older': 'Older residents'}
+    for panel, title in names.items():
+        d = comp.loc[comp.panel.eq(panel)]
+        label = d.category if panel in ['links', 'survey_period'] else d.network_type + ' · ' + d.category
+        rows.append(d.assign(panel=title, label=label))
+    return pd.concat(rows, ignore_index=True)
+
+
+def c1_ladder(cells):
+    cells = cells.reset_index(drop=True)
+    n = len(cells) + cells.panel.nunique()
+    height = 0.26 * n + 1.2
+    fig, ax = plt.subplots(figsize=(9.0, height))
+    fig.subplots_adjust(left=0.36, right=0.98, top=1 - 0.75 / height)
+    y, ticks, labels, ypos = n, [], [], []
+    for panel, d in cells.groupby('panel', sort=False):
+        y -= 1
+        ax.text(-0.01, y, panel, transform=ax.get_yaxis_transform(), ha='right', va='center',
+                fontsize=9, fontweight='semibold', color=INK)
+        for _, r in d.iterrows():
+            y -= 1
+            ypos.append(y)
+            ticks.append(y)
+            labels.append(f'{r.label}  (n={int(r.source_n):,})')
+    cells['y'] = ypos
+    lo, hi = wilson(cells.mmp_receipt, cells.source_n)
+    weak = ~cells.reliable.astype(bool)
+    for i, r in cells.iterrows():
+        alpha = 0.35 if weak[i] else 1
+        ax.plot([lo[i], hi[i]], [r.y, r.y], color=INK2, lw=1.2, alpha=alpha, zorder=2)
+        ax.plot([r.mmp_receipt, r.model_receipt], [r.y, r.y], color=GRID, lw=3, zorder=1)
+        ring_dot(ax, r.mmp_receipt, r.y, INK, size=34, alpha=alpha)
+        ring_dot(ax, r.model_receipt, r.y, BLUE, size=34, alpha=alpha, zorder=5)
+    ax.set_yticks(ticks, labels)
+    ax.tick_params(axis='y', length=0, labelsize=8)
+    ax.set_ylim(-0.5, n - 0.5)
+    ax.set_xlim(0, 1)
+    pct_axis(ax, 'x')
+    ax.grid(axis='y', visible=False)
+    ax.set_xlabel('Share of households receiving US remittances (per month, model; MMP "receives")')
+    ax.legend(handles=[Line2D([], [], marker='o', ls='', color=INK, label='MMP, with 95% interval'),
+                       Line2D([], [], marker='o', ls='', color=BLUE, label='Model (κ = 0)')],
+              loc='lower right', bbox_to_anchor=(1, 1.0), ncol=2)
+    save(fig, 'C1_calibration_ladder', 'The 2019 baseline matches network types, link types and survey periods',
+         title_y=1 - 0.15 / height, caption=
+         'Baseline receipt by group of households: MMP observed share with 95% Wilson interval (black) and '
+         'model expected monthly receipt probability under 2019 employment (blue), κ = 0. Only the three '
+         'network-type rows are targeted (α_core, α_kin); all others are untargeted checks. The model has '
+         'no household-composition terms, so composition differences (older residents, children) are not '
+         'reproduced. Faded rows: fewer than 30 households.')
+
+
+def c2_size(size):
+    size = size.query('kappa == 0')
+    fig, axes = plt.subplots(1, 3, figsize=(10.8, 3.8), sharey=True)
+    for ax, net in zip(axes, ['Core only', 'Core + kin', 'Kin only']):
+        d = size.loc[size.network_type.eq(net)].reset_index(drop=True)
+        x = np.arange(len(d))
+        lo, hi = wilson(d.mmp_receipt, d.source_n)
+        weak = ~d.reliable.astype(bool)
+        ax.plot(x, d.model_receipt, color=BLUE, lw=2, zorder=3)
+        for i in x:
+            a = 0.35 if weak[i] else 1
+            ax.plot([i, i], [lo[i], hi[i]], color=INK2, lw=1.2, alpha=a, zorder=2)
+            ring_dot(ax, i, d.mmp_receipt[i], INK, size=34, alpha=a)
+            ring_dot(ax, i, d.model_receipt[i], BLUE, size=26, alpha=a, zorder=5)
+        ax.set_xticks(x, [f'{s}\nn={n:,}' for s, n in zip(d.size_bin, d.source_n)], fontsize=7.5)
+        ax.set_title(net, fontsize=10)
+        ax.set_xlabel('Links per household')
+        ax.grid(axis='x', visible=False)
+    axes[0].set_ylim(0, 1)
+    pct_axis(axes[0])
+    axes[0].set_ylabel('Households receiving')
+    axes[2].legend(handles=[Line2D([], [], marker='o', ls='', color=INK, label='MMP, 95% interval'),
+                            Line2D([], [], marker='o', color=BLUE, label='Model (κ = 0)')], loc='upper left')
+    fig.text(0.01, -0.1, 'Old population (first E0 run, all kin as separate links): kin-only 10–19 links '
+             '8.1% model vs 8.7% MMP, 20+ links 18.5% vs 8.8%; core + kin 20+ links 77% vs 56%.',
+             fontsize=8, color=INK2, ha='left')
+    save(fig, 'C2_receipt_by_size', 'Receipt rises with network size as in the data; core networks hold the remaining misfits',
+         'Receipt by network size and type: MMP share with 95% Wilson interval (black) and model (blue), κ = 0. '
+         'Kin-only households match within about one point at every size. Core networks show the remaining '
+         'misfits (core + kin with 2 links −12 pp, with 5–9 links +11 pp). Faded points: fewer than 30 '
+         'households. Old population for comparison (first E0 run, distant relatives as individual links): '
+         'kin-only 10–19 links 8.1% model vs 8.7% MMP, 20+ links 18.5% vs 8.8%; core + kin 20+ links 77% vs 56%.')
+
+
+def c3_errors(cells, size):
+    s = size.query('kappa == 0').assign(panel='Network size', label=lambda d: d.network_type + ' · ' + d.size_bin.astype(str))
+    d = pd.concat([cells, s], ignore_index=True)
+    d = d.loc[d.reliable.astype(bool)].sort_values('error_pp').reset_index(drop=True)
+    height = 0.24 * len(d) + 1.2
+    fig, ax = plt.subplots(figsize=(9.0, height))
+    fig.subplots_adjust(left=0.4, right=0.98, top=1 - 0.6 / height)
+    y = np.arange(len(d))
+    colors = np.where(d.error_pp < 0, BLUE, RED)
+    ax.barh(y, d.error_pp, height=0.6, color=colors, zorder=2)
+    ax.axvline(0, color=AXIS, lw=1)
+    for yi, e in zip(y, d.error_pp):
+        ax.text(e + (0.4 if e >= 0 else -0.4), yi, f'{e:+.1f}', va='center', ha='left' if e >= 0 else 'right',
+                fontsize=7.5, color=INK2)
+    ax.set_yticks(y, d.panel + ': ' + d.label.astype(str))
+    ax.tick_params(axis='y', length=0, labelsize=7.5)
+    ax.grid(axis='y', visible=False)
+    lim = np.ceil(d.error_pp.abs().max() / 5) * 5 + 3
+    ax.set_xlim(-lim, lim)
+    ax.set_xlabel('Model − MMP (percentage points)')
+    ax.legend(handles=[Patch(color=BLUE, label='Model below MMP'), Patch(color=RED, label='Model above MMP')],
+              loc='lower right')
+    save(fig, 'C3_errors', 'Largest baseline errors: household composition and some core-network sizes',
+         title_y=1 - 0.15 / height, caption=
+         'Model minus MMP receipt (percentage points) for every group with at least 30 households, κ = 0, '
+         'sorted. Targeted rows (network type) are within ±1 pp by construction.')
+
+
+def c4_kappa():
+    prof = pd.read_csv(E0 / 'kappa_profile.csv')
+    k19 = pd.read_csv(E0 / 'kappa_2019.csv')
+    fig, axes = plt.subplots(2, 2, figsize=(8.4, 5.4), sharex=True)
+    panels = [(axes[0, 0], prof.kappa, prof.weighted_rmse_pp, 'Weighted fit error (pp)', '{:.2f}'),
+              (axes[0, 1], k19.kappa, k19.kin_transfers_triggered, 'Kin transfers triggered per month', '{:.1f}'),
+              (axes[1, 0], prof.kappa, prof.alpha_core, 'Fitted α_core', '{:.2f}'),
+              (axes[1, 1], prof.kappa, prof.alpha_kin, 'Fitted α_kin', '{:.2f}')]
+    for ax, x, y, title, fmt in panels:
+        ax.plot(x, y, color=BLUE, lw=2)
+        ring_dot(ax, x.iloc[-1], y.iloc[-1], BLUE, size=30)
+        ax.annotate(fmt.format(y.iloc[-1]), (x.iloc[-1], y.iloc[-1]), xytext=(-6, 8), textcoords='offset points',
+                    ha='right', fontsize=8, color=INK2)
+        ax.annotate(fmt.format(y.iloc[0]), (x.iloc[0], y.iloc[0]), xytext=(4, 8), textcoords='offset points',
+                    fontsize=8, color=INK2)
+        ax.set_title(title, fontsize=10)
+        ax.margins(y=0.25)
+    axes[0, 0].set_ylim(0, 1)
+    axes[0, 1].set_ylim(bottom=0)
+    # Same ±0.5 logit window for both α so small movements are not exaggerated.
+    for ax, col in [(axes[1, 0], 'alpha_core'), (axes[1, 1], 'alpha_kin')]:
+        mid = prof[col].mean()
+        ax.set_ylim(mid - 0.5, mid + 0.5)
+    for ax in axes[1]:
+        ax.set_xlabel('κ')
+    save(fig, 'C4_kappa_2019', 'The 2019 data barely constrain κ; the COVID period must',
+         'κ: kin stepping-in when the household\'s core migrants cannot send. For each κ, α_core and α_kin are '
+         'refitted to 2019 receipt by network type (α panels on the same ±0.5 logit window). Fit error changes by less '
+         'than half a percentage point across κ = 0–8, and the fitted α barely move, because few households '
+         'lose all core senders in a normal year. Top right: kin transfers in households whose core migrants '
+         'cannot send (stochastic 2019 runs, 5 seeds, out of ~1,100 transfers a month).')
+
+
+def c5_tiles():
+    en = pd.read_csv(E0 / 'enigh_style_check.csv').query('kappa == 0').iloc[0]
+    st = json.loads((E0 / 'run_settings.json').read_text())
+    k19 = pd.read_csv(E0 / 'kappa_2019.csv').query('kappa == 0').iloc[0]
+    tiles = [('Receive at least once in 6 months', f'{en.share_receiving_6m:.0%}', 'connected households, model'),
+             ('Median monthly USD among receivers', f'${en.median_usd_month:.0f}',
+              f'ENIGH 2018: ${st["enigh_2018_recipient_monthly_usd"]["median"]:.0f}'),
+             ('Mean monthly USD among receivers', f'${en.mean_usd_month:.0f}',
+              f'ENIGH 2018: ${st["enigh_2018_recipient_monthly_usd"]["mean"]:.0f}'),
+             ('National transactions per model transfer', f'{k19.banxico_scale:,.0f}', 'Banxico 2019 scale factor')]
+    import textwrap
+    fig, axes = plt.subplots(1, 4, figsize=(9.6, 2.0))
+    fig.subplots_adjust(left=0.01, right=0.99, wspace=0.06, top=0.82, bottom=0.02)
+    for ax, (label, value, sub) in zip(axes, tiles):
+        ax.axis('off')
+        ax.add_patch(plt.Rectangle((0.0, 0.0), 1, 1, transform=ax.transAxes, facecolor=SURFACE,
+                                   edgecolor=GRID, lw=1))
+        ax.text(0.08, 0.88, textwrap.fill(label, 24), transform=ax.transAxes, fontsize=8.5, color=INK2, va='top')
+        ax.text(0.08, 0.30, value, transform=ax.transAxes, fontsize=20, fontweight='semibold', color=INK)
+        ax.text(0.08, 0.10, sub, transform=ax.transAxes, fontsize=8, color=INK2)
+    save(fig, 'C5_household_amounts', 'Household amounts are in a plausible range',
+         'Model 2019 baseline, κ = 0, six-month window (stochastic runs, 5 seeds), against ENIGH 2018 '
+         'recipient households (monthly USD from quarterly MXN). ENIGH captures only ~8% of the Banxico '
+         'total, so model amounts above ENIGH are expected.')
+
+
+def main():
+    FIG.mkdir(parents=True, exist_ok=True)
+    style()
+    h = pd.read_parquet(abm.POPULATION / 'households.parquet')
+    m = pd.read_parquet(abm.POPULATION / 'migrants.parquet')
+    summary = pd.read_csv(BASE / 'data-prep/outputs/population_summary.csv')
+    a1_network_sizes(h)
+    a2_old_vs_new(h)
+    a3_close_vs_distant(summary)
+    a4_occupations(m)
+    b1_employment()
+    b2_amounts()
+    cells = e0_cells()
+    size = pd.read_csv(E0 / 'validation_network_size.csv')
+    c1_ladder(cells.copy())
+    c2_size(size)
+    c3_errors(cells.copy(), size)
+    c4_kappa()
+    c5_tiles()
+    lines = ['# Figure captions', '', 'Generated by `model/make_figures.py`. Plan: `figures-plan.md`.', '']
+    for name, (title, cap) in CAPTIONS.items():
+        lines += [f'## {name}.png: {title}', '', cap, '']
+    (FIG / 'captions.md').write_text('\n'.join(lines), encoding='utf-8')
+
+
+if __name__ == '__main__':
+    main()

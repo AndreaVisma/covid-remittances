@@ -1,0 +1,34 @@
+dimension,group,n,receipt
+link type,"Close kin, no core",1316,0.08282674772036475
+link type,Distant only,1076,0.04275092936802974
+link type,Has core,1012,0.633399209486166
+link type,No link,3749,0.006935182715390771
+close kin (no core),0,4825,0.014922279792746114
+close kin (no core),1,630,0.05555555555555555
+close kin (no core),2,297,0.09764309764309764
+close kin (no core),3-4,267,0.10486891385767791
+close kin (no core),5+,122,0.13934426229508196
+distant relatives (distant only),0,3749,0.006935182715390771
+distant relatives (distant only),1-4,577,0.02772963604852686
+distant relatives (distant only),5-9,229,0.043668122270742356
+distant relatives (distant only),10-19,171,0.07602339181286549
+distant relatives (distant only),20+,99,0.0707070707070707
+network size (10 = 10+),1,1577,
+network size (10 = 10+),2,723,
+network size (10 = 10+),3,438,
+network size (10 = 10+),4,285,
+network size (10 = 10+),5,144,
+network size (10 = 10+),6,86,
+network size (10 = 10+),7,54,
+network size (10 = 10+),8,43,
+network size (10 = 10+),9,25,
+network size (10 = 10+),10,30,
+links,Close kin,3581,
+links,Core,1996,
+links,Distant kin (aggregated),2422,
+occupation,Agriculture,758,
+occupation,Not working,1417,
+occupation,Production/construction/transport,3124,
+occupation,Professional/administrative,238,
+occupation,Sales/personal services,1677,
+occupation,Unknown,785,
