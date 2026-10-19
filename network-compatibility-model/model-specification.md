@@ -64,8 +64,8 @@ Time step: one month. Period: 2019-01 to 2022-12, plus burn-in. The 2019 conditi
 2. **Employment:** draw `E_j,t` for every migrant (§4.1).
 3. **Benefits:** set `B_j,t` (§4.2); compute ability to send `A_j,t`.
 4. **Stage 1, core migrants:** every core migrant with `A_j,t = 1` decides independently whether to send, with probability `θ_core,t` (§4.3).
-5. Set the trigger `U_h,t` = 1 if the household's eligible core migrants are all unable to send.
-6. **Stage 2, kin migrants:** every kin migrant with `A_j,t = 1` decides with probability `θ_kin,h,t`, which rises by `κ` (logit scale) if the household's eligible core migrants are all unable to send this month.
+5. Compute the household's lost sending `L_h,−j,t`: the routine sending of the linked migrants who are unable to send this month, in core-sender units.
+6. **Stage 2, kin migrants:** every kin migrant with `A_j,t = 1` decides with probability `θ_kin,j,t`, which rises by `κ · L_h,−j,t` (logit scale).
 7. Transfer amounts are `m_j` for every sender (§4.4). Compute `R_h,t`, `N_h,t`.
 8. Record the observation outputs (§5).
 
@@ -98,12 +98,20 @@ Benefits change only **whether** a migrant can send. They do not change θ or th
 
 ```
 logit θ_core,t      = α_core + β · S_t
-logit θ_kin,h,t     = α_kin  + β · S_t + κ · U_h,t
-U_h,t = 1 if household h has eligible core migrants (adult, working occupation)
-          and none of them is able to send in month t
+logit θ_kin,j,t     = α_kin  + β · S_t + κ · L_h,−j,t
+L_h,−j,t = (number of eligible core migrants in h unable to send in t)
+         + w · (number of other eligible kin migrants in h unable to send in t)
+w = θ_kin⁰ / θ_core⁰ = expit(α_kin) / expit(α_core)   (≈ 0.07)
 ```
 
-*Revised 19 Oct 2026.* The first version (`− κ · N_h,t`, kin held back by core transfers) could only remove a suppression, so stepping-in was capped at kin's routine θ ≈ 0.008 and changed transfers by ≤ 2%. The trigger now responds to core **inability** (job loss without benefits), not to a routine month in which an able core migrant chooses not to send. Households whose core migrants can never send (under 18, 'Not working') are not triggered; that would be structural, not crisis substitution.
+`L` is the routine sending the household has lost to inability (job loss without benefits), in core-sender units. Kin step in for core migrants and for other kin, in proportion to what each would routinely have sent. Eligible = adult, working occupation. Migrants who can never send (under 18, 'Not working') do not count, since their absence is structural, not crisis substitution. The trigger responds to inability, not to a routine month in which an able migrant chooses not to send. Only kin raise θ; core migrants do not step in.
+
+*Revision history (19 Oct 2026).*
+1. `− κ · N_h,t` (kin held back by core transfers). It could only remove a suppression, capping stepping-in at kin's routine θ and changing transfers by ≤ 2%.
+2. `+ κ · U_h,t`, with `U_h,t` = 1 if all eligible core migrants are unable. It could reach only 929 of 3,405 households (none of the 70% that are kin-only) and ignored partial core losses. In E1a the April 2020 index saturated at 0.90 even as κ → ∞ (`model/diagnose_e1_kappa.py`).
+3. The current rule (user decision). Rule 2 is kept as `Params(rule='all_core')` for comparison (`model/run_e1_rule_comparison.py`).
+
+At κ = 4, several kin can each step in for one loss, so large networks can receive more than in the no-COVID counterfactual (over-replacement). This is a property of the rule to report.
 
 - `α_core`, `α_kin`: **baseline propensities**, calibrated to 2019 (§7).
 - `S_t`: **national salience index**, standardized so that its 2019 mean is 0 (β then has no effect in 2019):
@@ -114,10 +122,10 @@ U_h,t = 1 if household h has eligible core migrants (adult, working occupation)
   - Deaths: COVID deaths, with excess mortality as a sensitivity because reported COVID deaths were undercounted.
   - Equal weights are fixed. Splitting into two coefficients is a later test, not part of the base model.
 - `β ≥ 0`: **need responsiveness**. Axis 1 of the behavioural map.
-- `κ ≥ 0`: **stepping in**. Kin become more likely to send when the household's core migrants cannot send. Axis 2 of the behavioural map.
-  - `κ = 0`: kin ignore what happens to core migrants.
-  - Large `κ`: kin respond strongly when core migrants lose the ability to send.
-  - A COVID job-loss shock to core migrants therefore raises kin sending automatically if `κ > 0`, with no extra parameter.
+- `κ ≥ 0`: **stepping in**. Kin become more likely to send when other migrants linked to the household cannot send, in proportion to the routine sending lost. Axis 2 of the behavioural map.
+  - `κ = 0`: kin ignore what happens to other linked migrants.
+  - Large `κ`: kin respond strongly when core migrants, or other kin, lose the ability to send.
+  - A COVID job-loss shock therefore raises kin sending automatically if `κ > 0`, with no extra parameter.
 
 Monthly decisions are independent over time given the state (no sending persistence in the base model). Persistence is a sensitivity, needed only if the receipt reference periods cannot be matched without it.
 
@@ -172,7 +180,7 @@ Benchmark for E3: with `κ = 0` and `ρ = 0`, receipt probability is `1 − ∏_
 
 ### 2019 (E0)
 
-For each `κ` on the grid, fit `α_core` and `α_kin` to the 2019 receipt rates of core-only, kin-only and mixed households (MMP; ENIGH 2018 as a check), so every cell of the map starts from a baseline that fits 2019. Report the `κ` profile, i.e. the best 2019 fit at each `κ`. First result: 2019 barely constrains `κ` (weighted RMSE 0.3 pp at `κ = 0`, 0.8 pp at `κ = 8`), because few households have all core migrants unable in a normal year.
+For each `κ` on the grid, fit `α_core` and `α_kin` to the 2019 receipt rates of core-only, kin-only and mixed households (MMP; ENIGH 2018 as a check), so every cell of the map starts from a baseline that fits 2019. Report the `κ` profile, i.e. the best 2019 fit at each `κ`. Result: 2019 barely constrains `κ` (weighted RMSE 0.2 pp at `κ = 0`, about 0.7 pp at `κ = 8`), because few migrants are unable to send in a normal year.
 
 **Network size (decided 19 Oct 2026):** no dilution parameter. The saturation seen in the first E0 run came from counting every distant relative as an independent potential sender. After the population rebuild (distant kin as one aggregated link), the kin-only size gradient matches MMP within ~1 pp. The remaining size misfits are in core networks (±8–12 pp in some bins) and are reported as a limitation.
 

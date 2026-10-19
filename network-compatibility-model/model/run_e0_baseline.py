@@ -2,8 +2,8 @@
 
 Run: python network-compatibility-model/model/run_e0_baseline.py
 
-For each kappa (kin stepping-in when the household's eligible core migrants
-cannot send), fits alpha_core and alpha_kin to MMP household receipt rates by
+For each kappa (kin stepping-in in proportion to the routine sending lost to
+linked migrants who cannot send; abm.Params.rule), fits alpha_core and alpha_kin to MMP household receipt rates by
 network type (core only / kin only / core + kin), using the exact expected
 monthly receipt probability under 2019 CPS employment (rho = 0, no salience,
 no benefits). Then:
@@ -92,10 +92,10 @@ class Calibrator:
         p = self.receipt(params)[self.sim_ok]
         return self.weight * (np.array([p[mk].mean() for mk in self.masks]) - self.goal)
 
-    def fit(self, kappa, start=START):
-        f = least_squares(lambda x: self.residual(abm.Params(*x, kappa=kappa)), start,
+    def fit(self, kappa, start=START, rule=abm.Params.rule):
+        f = least_squares(lambda x: self.residual(abm.Params(*x, kappa=kappa, rule=rule)), start,
                           bounds=([-12, -14], [6, 4]), diff_step=1e-3)
-        return abm.Params(*f.x, kappa=kappa), f
+        return abm.Params(*f.x, kappa=kappa, rule=rule), f
 
 
 def main():
@@ -163,7 +163,9 @@ def main():
     enigh.to_csv(OUT / 'enigh_style_check.csv', index=False)
 
     amounts = json.loads(abm.AMOUNTS.read_text())
-    settings = dict(kappa_rule='logit theta_kin = alpha_kin + beta*S_t + kappa*1[eligible core, none able]',
+    settings = dict(stepping_in_rule=abm.Params.rule,
+                    kappa_rule='logit theta_kin,j = alpha_kin + beta*S_t + kappa*L; L = #unable eligible core '
+                               '+ w * #other unable eligible kin; w = theta_kin0/theta_core0',
                     fitted=profile.loc[profile.kappa.isin(KAPPAS)].to_dict('records'),
                     phi=abm.employment_phi(), kappas=KAPPAS, seeds=SEEDS,
                     households=pop['H'], migrants=pop['M'], core_migrants=int(pop['core'].sum()),

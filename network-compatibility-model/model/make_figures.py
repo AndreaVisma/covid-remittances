@@ -417,10 +417,11 @@ def c4_kappa():
     for ax in axes[1]:
         ax.set_xlabel('κ')
     save(fig, 'C4_kappa_2019', 'The 2019 data barely constrain κ; the COVID period must',
-         'κ: kin stepping-in when the household\'s core migrants cannot send. For each κ, α_core and α_kin are '
+         'κ: kin stepping-in, in proportion to the routine sending lost to linked migrants who cannot send. '
+         'For each κ, α_core and α_kin are '
          'refitted to 2019 receipt by network type (α panels on the same ±0.5 logit window). Fit error changes by less '
-         'than half a percentage point across κ = 0–8, and the fitted α barely move, because few households '
-         'lose all core senders in a normal year. Top right: kin transfers in households whose core migrants '
+         'than one percentage point across κ = 0–8, and the fitted α barely move, because few migrants are '
+         'unable to send in a normal year. Top right: kin transfers in households where some linked migrant '
          'cannot send (stochastic 2019 runs, 5 seeds, out of ~1,100 transfers a month).')
 
 
@@ -450,9 +451,449 @@ def c5_tiles():
          'total, so model amounts above ENIGH are expected.')
 
 
+# %% D. E1a: job loss only
+E1 = BASE / 'outputs/e1-job-loss'
+K0, K4 = '#86b6ef', '#1c5cab'                     # ordinal blue: kappa = 0 (light) -> 4 (dark); validated
+HOLDOUT_WASH = '#f0efec'
+NETWORKS = ['Core only', 'Core + kin', 'Kin only']
+
+
+def save_bare(fig, name, title, caption):
+    """E1 figures go on slides that carry the headline, so no suptitle; captions.md keeps it."""
+    fig.savefig(FIG / f'{name}.png', dpi=DPI, bbox_inches='tight')
+    plt.close(fig)
+    CAPTIONS[name] = (title, caption)
+    print('saved', name)
+
+
+def end_label(ax, x, y, text, dy=0, color=INK2):
+    ax.annotate(text, (x, y), xytext=(6, dy), textcoords='offset points', va='center', fontsize=8.5, color=color)
+
+
+def index_panel(ax, x, model0, model4, banxico, holdout_from, labels_at):
+    ax.axvspan(holdout_from - 0.5, x[-1] + 0.5, color=HOLDOUT_WASH, lw=0, zorder=0)
+    ax.axhline(1, color=MUTED, lw=1, zorder=1)
+    ax.fill_between(x, model0, model4, color=K4, alpha=0.10, lw=0, zorder=2)
+    ax.plot(x, model0, color=K0, zorder=3, label='Model, κ = 0')
+    ax.plot(x, model4, color=K4, zorder=3, label='Model, κ = 4')
+    ax.plot(x, banxico, color=INK, zorder=4, label='Banxico transactions')
+    ax.set_xlim(x[0] - 0.5, x[-1] + 0.5)
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.1f'))
+    ax.legend(loc='upper left', ncol=3)
+    ax.text(holdout_from - 0.3, 0.805, '2022 held out', fontsize=8.5, color=INK2, va='bottom')
+
+
+def d1_quarterly(q):
+    k0, k4 = q.query('kappa == 0'), q.query('kappa == 4')
+    x = np.arange(len(k0))
+    fig, ax = plt.subplots(figsize=(10, 4.6))
+    index_panel(ax, x, k0.index_model.to_numpy(), k4.index_model.to_numpy(), k0.index_banxico.to_numpy(),
+                holdout_from=int(np.where(k0.quarter.str.startswith('2022'))[0][0]), labels_at=None)
+    ax.set_xticks(x, [s.replace('Q', ' Q') if s.endswith('Q1') else s[-2:] for s in k0.quarter])
+    trough = int(np.argmin(k0.index_model))
+    ring_dot(ax, trough, k0.index_model.iloc[trough], K0)
+    ax.annotate(f'{k0.index_model.iloc[trough]:.2f}', (trough, k0.index_model.iloc[trough]), xytext=(0, -14),
+                textcoords='offset points', ha='center', fontsize=8.5, color=INK2)
+    for i in [trough, len(x) - 5, len(x) - 1]:
+        ring_dot(ax, i, k0.index_banxico.iloc[i], INK)
+        ax.annotate(f'{k0.index_banxico.iloc[i]:.2f}', (i, k0.index_banxico.iloc[i]), xytext=(0, 9),
+                    textcoords='offset points', ha='center', fontsize=8.5, color=INK2)
+    ax.set_ylim(0.8, 1.45)
+    ax.set_ylabel('Transfers, quarter / same quarter of 2019')
+    save_bare(fig, 'D1_count_index_quarterly', 'Job loss alone lowers transfer counts; Banxico counts rose',
+              'E1a (β = 0, ρ = 0, no benefits). Quarterly transfer counts relative to the same quarter of 2019: '
+              'model (exact expected counts, κ = 0 and κ = 4, E0 alphas for each) and Banxico transactions. '
+              'The no-COVID counterfactual (2019 CPS rates continued) is the line at 1. 2022 is held out.')
+
+
+def d1_monthly(m):
+    k0, k4 = m.query('kappa == 0'), m.query('kappa == 4')
+    dates = pd.to_datetime(k0.date)
+    x = np.arange(len(k0))
+    fig, ax = plt.subplots(figsize=(10, 4.6))
+    index_panel(ax, x, k0.index_model.to_numpy(), k4.index_model.to_numpy(), k0.index_banxico.to_numpy(),
+                holdout_from=int(np.where(dates.dt.year.eq(2022))[0][0]), labels_at=None)
+    ax.set_xticks(x[::6], [f'{d:%b %Y}' if d.month == 1 else f'{d:%b}' for d in dates[::6]])
+    mar = int(np.where(dates.eq('2020-03-01'))[0][0])
+    ring_dot(ax, mar, k0.index_banxico.iloc[mar], INK)
+    ax.annotate('Mar 2020 record month,\nexcluded from fit', (mar, k0.index_banxico.iloc[mar]), xytext=(-8, 6),
+                textcoords='offset points', ha='right', fontsize=8, color=INK2)
+    apr = mar + 1
+    for y, c, dy in [(k0.index_model.iloc[apr], K0, -14), (k0.index_banxico.iloc[apr], INK, -14)]:
+        ring_dot(ax, apr, y, c)
+        ax.annotate(f'{y:.2f}', (apr, y), xytext=(10, dy + 4), textcoords='offset points', fontsize=8.5, color=INK2)
+    ax.set_ylim(0.8, 1.45)
+    ax.set_ylabel('Transfers, month / same month of 2019')
+    save_bare(fig, 'D1b_count_index_monthly', 'Monthly: the model bottoms out in April 2020',
+              'As D1, monthly: each month relative to the same calendar month of 2019. The model low is April 2020 '
+              '(0.85 at κ = 0), when Banxico counts dipped to 0.96. March 2020, Banxico’s record month, is excluded '
+              'from the fit window (2020-04 to 2021-12).')
+
+
+def d2_decomposition(m):
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.2), sharey=True)
+    for ax, kappa in zip(axes, [0, 4]):
+        d = m.query('kappa == @kappa')
+        dates = pd.to_datetime(d.date)
+        ax.axhline(0, color=AXIS, lw=1)
+        ax.plot(dates, d.core_transfers_covid - d.core_transfers_cf, color=BLUE, label='Core migrants')
+        ax.plot(dates, d.kin_transfers_covid - d.kin_transfers_cf, color=ORANGE, label='Kin migrants')
+        ax.set_title(f'κ = {kappa}', fontsize=10)
+        ax.xaxis.set_major_locator(matplotlib.dates.YearLocator())
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y'))
+        apr = d.set_index(dates).loc['2020-04-01']
+        for col, c, dy in [('core', BLUE, -10), ('kin', ORANGE, -12 if kappa == 0 else 10)]:
+            y = apr[f'{col}_transfers_covid'] - apr[f'{col}_transfers_cf']
+            ring_dot(ax, pd.Timestamp('2020-04-01'), y, c)
+            ax.annotate(f'{y:+.0f}', (pd.Timestamp('2020-04-01'), y), xytext=(8, dy), textcoords='offset points',
+                        fontsize=8.5, color=INK2, va='center')
+    axes[0].set_ylabel('Transfers per month vs counterfactual\n(model units; 2019 ≈ 1,100 a month)')
+    axes[0].legend(loc='lower right')
+    save_bare(fig, 'D2_core_kin_decomposition', 'Core migrants carry the loss; at κ = 4 kin offset much of it',
+              'E1a. Expected monthly transfers minus the no-COVID counterfactual, by sender type. At κ = 0 kin '
+              'transfers also fall (kin lose jobs too); at κ = 4 kin step in for core and kin migrants who cannot '
+              'send (base lost-sending rule).')
+
+
+def d3_reach(reach, ceil):
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(10, 4.2), gridspec_kw=dict(width_ratios=[1.25, 1]))
+    labels = {'All lost transfers': ('All lost transfers', MUTED),
+              'Lost core transfers': ('… of which core', BLUE),
+              'Lost kin transfers': ('… of which kin', ORANGE),
+              'Lost core transfers in households with eligible kin': ('Core losses where kin exist', BLUE),
+              'Recovered by kin at kappa = 4': ('Recovered by kin, κ = 4', ORANGE),
+              'Recovered by kin at kappa = 50 (ceiling)': ('Recovered by kin, κ → ∞', ORANGE)}
+    r = reach.iloc[::-1]
+    ax.set_axisbelow(True)
+    y = np.arange(len(r))
+    for yi, (_, row) in zip(y, r.iterrows()):
+        name, c = labels[row.quantity]
+        ax.barh(yi, row.transfers_per_month, height=0.55, color=c)
+        ax.annotate(f'{row.transfers_per_month:.0f}', (row.transfers_per_month, yi), xytext=(4, 0),
+                    textcoords='offset points', va='center', fontsize=8.5, color=INK2)
+    ax.set_yticks(y, [labels[q][0] for q in r.quantity])
+    ax.grid(axis='y', visible=False)
+    ax.set_xlabel('Transfers per month, April 2020 vs counterfactual (model units)')
+    ax.set_title('Where the April 2020 losses are', fontsize=10)
+    ax.legend(handles=[Patch(color=BLUE, label='Core'), Patch(color=ORANGE, label='Kin'),
+                       Patch(color=MUTED, label='All')], loc='lower right')
+    ax.set_xlim(0, reach.transfers_per_month.max() * 1.15)
+    bx.axhline(1, color=MUTED, lw=1)
+    bx.plot(ceil.kappa, ceil.index_april_2020, color=K4, marker='o', ms=4, mec=SURFACE, mew=1.2)
+    bx.set_xscale('symlog', linthresh=1)
+    bx.set_xticks([0, 1, 2, 4, 8, 20, 50], ['0', '1', '2', '4', '8', '20', '50'])
+    top = ceil.index_april_2020.max()
+    bx.annotate(f'ceiling {top:.2f}', (50, top), xytext=(0, 9), textcoords='offset points', ha='right',
+                fontsize=8.5, color=INK2)
+    bx.annotate(f'{ceil.index_april_2020.iloc[0]:.2f}', (0, ceil.index_april_2020.iloc[0]), xytext=(6, -8),
+                textcoords='offset points', fontsize=8.5, color=INK2)
+    bx.text(0.02, 1.004, 'No-COVID counterfactual = 1', fontsize=8, color=MUTED, va='bottom')
+    bx.set_ylim(0.84, 1.02)
+    bx.set_xlabel('κ (log scale)')
+    bx.set_ylabel('April 2020 transfers / April 2019')
+    bx.set_title('More κ saturates quickly', fontsize=10)
+    save_bare(fig, 'D3_kappa_reach', 'Under the former rule, stepping-in could reach only a third of the losses',
+              'Former stepping-in rule (all eligible core unable), E1a, April 2020, exact expected counts (ρ = 0). '
+              'Left: lost transfers against the counterfactual. Only '
+              'core losses in households that also have eligible kin can be replaced, and only when all of the '
+              'household’s eligible core migrants are unable. Right: April 2020 count index against κ (alphas '
+              'refitted under the former rule; beyond κ = 8 the κ = 8 fit). This diagnosis led to the base rule.')
+
+
+def d4_variants(v):
+    fig, ax = plt.subplots(figsize=(10, 3.4))
+    order = ['current', 'any_core', 'any_link']
+    names = {'current': 'All eligible core unable (former rule)', 'any_core': 'Any eligible core unable',
+             'any_link': 'Any other linked migrant unable'}
+    ax.axvline(1, color=MUTED, lw=1)
+    for i, rule in enumerate(order[::-1]):
+        d = v.query('rule == @rule').set_index('kappa').index_april_2020
+        ax.plot([d[0], d[4]], [i, i], color=GRID, lw=3, solid_capstyle='round', zorder=1)
+        ring_dot(ax, d[0], i, K0, size=60)
+        ring_dot(ax, d[4], i, K4, size=60)
+        ax.annotate(f'{d[4]:.2f}', (d[4], i), xytext=(8, 0), textcoords='offset points', va='center',
+                    fontsize=8.5, color=INK2)
+    ax.set_yticks(range(3), [names[r] + ('' if r == 'current' else '\n(α not refitted)') for r in order[::-1]])
+    ax.grid(axis='y', visible=False)
+    ax.set_ylim(-0.6, 2.6)
+    ax.set_xlabel('April 2020 transfers / April 2019')
+    ax.text(1.003, 2.45, 'No-COVID = 1', fontsize=8, color=MUTED)
+    ax.legend(handles=[Line2D([], [], color=K0, marker='o', ls='', ms=7, label='κ = 0'),
+                       Line2D([], [], color=K4, marker='o', ls='', ms=7, label='κ = 4')], loc='upper right')
+    save_bare(fig, 'D4_trigger_variants', 'Who triggers stepping-in matters more than how strongly',
+              'Diagnostic only. April 2020 count index under three triggers for kin stepping-in, κ = 0 and 4, '
+              '200 paired stochastic draws. Only the former rule is calibrated; the variants keep its alphas, so '
+              'their 2019 baselines are too high (any linked migrant: 1,344 transfers a month vs 1,091). The base '
+              'model now uses a proportional network-wide trigger (lost sending; R figures).')
+
+
+def d5_receipt_paths(paths):
+    fig, axes = plt.subplots(1, 3, figsize=(10, 3.6), sharey=True)
+    for ax, net in zip(axes, NETWORKS):
+        d = {k: paths[paths.group.eq('network_type') & paths.level.eq(net) & paths.kappa.eq(k)] for k in [0, 4]}
+        same = np.allclose(d[0].receipt_ratio, d[4].receipt_ratio, atol=3e-3)
+        for kappa, c in [(0, K0), (4, K4)]:
+            ax.plot(pd.to_datetime(d[kappa].date), d[kappa].receipt_ratio, color=c, label=f'κ = {kappa}')
+            lo = d[kappa].loc[d[kappa].receipt_ratio.idxmin()]
+            if kappa == 0 or not same:
+                ring_dot(ax, pd.to_datetime(lo.date), lo.receipt_ratio, c, size=30)
+                ax.annotate(f'{lo.receipt_ratio:.2f}', (pd.to_datetime(lo.date), lo.receipt_ratio),
+                            xytext=(7, -2) if kappa == 0 else (8, 4), textcoords='offset points', fontsize=8.5,
+                            color=INK2)
+        ax.axhline(1, color=MUTED, lw=1)
+        if same:
+            ax.text(0.97, 0.30, 'κ = 0 and κ = 4 coincide:\nno kin to step in', transform=ax.transAxes, ha='right',
+                    fontsize=8, color=MUTED)
+        ax.set_title(net, fontsize=10)
+        ax.set_xlim(pd.Timestamp('2019-07-01'), pd.Timestamp('2022-06-01'))
+        ax.xaxis.set_major_locator(matplotlib.dates.YearLocator())
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y'))
+    axes[0].set_ylabel('Receipt probability / counterfactual')
+    axes[1].legend(loc='lower right')
+    save_bare(fig, 'D5_receipt_by_network_type', 'Without stepping-in, the April dip lasts until autumn 2021',
+              'E1a. Mean monthly receipt probability (exact) relative to the no-COVID counterfactual, by network type. '
+              'At κ = 4 (base lost-sending rule) core + kin households barely dip and kin-only households recover '
+              'faster; core-only households have nobody to step in.')
+
+
+def d6_size(out):
+    sizes = ['1', '2', '3-4', '5-9', '10+']
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.8))
+    panels = [('interruption_rate', 'Interrupted months\n(share of counterfactual receipt months)'),
+              ('usd_drop', 'Drop in USD received, Apr 2020 – Dec 2021')]
+    for ax, (col, title) in zip(axes, panels):
+        for kappa, c, dx in [(0, K0, -0.08), (4, K4, 0.08)]:
+            d = out.query('group == "size_bin" and kappa == @kappa').set_index('level').loc[sizes]
+            ax.plot(np.arange(5) + dx, d[col], color=c, lw=0, marker='o', ms=7, mec=SURFACE, mew=1.5,
+                    label=f'κ = {kappa}')
+        ax.set_xticks(range(5), sizes)
+        ax.set_xlabel('Network size (linked migrants)')
+        ax.set_title(title, fontsize=10)
+        ax.axhline(0, color=AXIS, lw=1)
+        ax.set_ylim(min(0, out.query('group == "size_bin"')[col].min()) * 1.15, None)
+        pct_axis(ax)
+    n = out.query('group == "size_bin" and kappa == 0').set_index('level').loc[sizes].households
+    axes[0].text(4, 0.003, f'n = {n.iloc[-1]}', ha='center', fontsize=8, color=MUTED)
+    axes[1].text(0.02, 0.03, 'below 0: more USD than in the counterfactual', transform=axes[1].transAxes,
+                 fontsize=8, color=MUTED)
+    axes[0].legend(loc='upper right')
+    save_bare(fig, 'D6_outcomes_by_size', 'Bigger networks are interrupted less; with stepping-in they lose fewer dollars',
+              'E1a, 50 paired stochastic runs (common random numbers), Apr 2020 – Dec 2021. Left: months in which the '
+              'counterfactual household receives but the COVID household does not. Right: 1 − USD received / '
+              'counterfactual USD (negative: more than without COVID). κ = 4 under the base lost-sending rule. '
+              'Size 10+ has only 30 households.')
+
+
+# %% R. E1a: base stepping-in rule ('lost_sending') vs former rule ('all_core')
+E1A = BASE / 'outputs/e1-all-core-rule'                         # former rule, run_e1_rule_comparison.py
+RULE_COLORS = {'lost_sending': BLUE, 'all_core': ORANGE}       # validated pair (adjacent CVD ΔE 24.7)
+RULE_NAMES = {'lost_sending': 'Lost sending (base)', 'all_core': 'All core unable (former)'}
+K0_GRAY = MUTED
+
+
+def rule_lines(ax, x, frames, col, k0_label='κ = 0 (both rules)'):
+    """κ = 0 (identical under both rules) in gray, κ = 4 per rule in its color."""
+    base = frames['all_core']
+    ax.plot(x, base.query('kappa == 0')[col].to_numpy(), color=K0_GRAY, lw=1.5, label=k0_label)
+    for rule, d in frames.items():
+        ax.plot(x, d.query('kappa == 4')[col].to_numpy(), color=RULE_COLORS[rule], label=f'{RULE_NAMES[rule]}, κ = 4')
+
+
+def r1_index(qs):
+    k0 = qs['all_core'].query('kappa == 0')
+    x = np.arange(len(k0))
+    fig, ax = plt.subplots(figsize=(10, 4.6))
+    hold = int(np.where(k0.quarter.str.startswith('2022'))[0][0])
+    ax.axvspan(hold - 0.5, x[-1] + 0.5, color=HOLDOUT_WASH, lw=0, zorder=0)
+    ax.axhline(1, color=AXIS, lw=1)
+    rule_lines(ax, x, qs, 'index_model')
+    ax.plot(x, k0.index_banxico.to_numpy(), color=INK, label='Banxico transactions')
+    q2 = int(np.where(k0.quarter.eq('2020Q2'))[0][0])
+    for rule, d in qs.items():
+        y = d.query('kappa == 4').index_model.iloc[q2]
+        ring_dot(ax, q2, y, RULE_COLORS[rule])
+        ax.annotate(f'{y:.2f}', (q2, y), xytext=(10, 0), textcoords='offset points', va='center', fontsize=8.5,
+                    color=INK2)
+    y = k0.index_model.iloc[q2]
+    ring_dot(ax, q2, y, K0_GRAY)
+    ax.annotate(f'{y:.2f}', (q2, y), xytext=(0, -14), textcoords='offset points', ha='center', fontsize=8.5,
+                color=INK2)
+    ax.set_xticks(x, [s.replace('Q', ' Q') if s.endswith('Q1') else s[-2:] for s in k0.quarter])
+    ax.set_xlim(x[0] - 0.5, x[-1] + 0.5)
+    ax.set_ylim(0.8, 1.45)
+    ax.text(hold - 0.3, 0.805, '2022 held out', fontsize=8.5, color=INK2, va='bottom')
+    ax.set_ylabel('Transfers, quarter / same quarter of 2019')
+    ax.legend(loc='upper left', ncol=2)
+    save_bare(fig, 'R1_count_index_rules', 'Kin-for-kin stepping-in fills most of the 2020 dip, but produces no growth',
+              'E1a (β = 0, ρ = 0, no benefits), quarterly counts relative to the same quarter of 2019. κ = 0 is the '
+              'same under both rules. κ = 4 under the base lost-sending rule (kin respond to the routine sending '
+              'lost to any unable linked migrant, core = 1, kin = θ_kin/θ_core) and the former rule (kin step in '
+              'only when all eligible core migrants are unable); alphas refitted to 2019 for each rule and κ.')
+
+
+def r2_profiles(base_profile, new_profile, ceil, banxico_april):
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(10, 3.9))
+    for rule, prof in [('all_core', base_profile.query('kappa <= 8')), ('lost_sending', new_profile)]:
+        ax.plot(prof.kappa, prof.weighted_rmse_pp, color=RULE_COLORS[rule], marker='o', ms=4, mec=SURFACE,
+                mew=1.2, label=RULE_NAMES[rule])
+        end = prof.iloc[-1]
+        ax.annotate(f'{end.weighted_rmse_pp:.2f}', (end.kappa, end.weighted_rmse_pp), xytext=(6, 0),
+                    textcoords='offset points', va='center', fontsize=8.5, color=INK2)
+        c = ceil.query('rule == @rule')
+        bx.plot(c.kappa, c.index_april_2020, color=RULE_COLORS[rule], marker='o', ms=4, mec=SURFACE, mew=1.2)
+        end = c.iloc[-1]
+        bx.annotate(f'{end.index_april_2020:.2f}', (end.kappa, end.index_april_2020), xytext=(6, 0),
+                    textcoords='offset points', va='center', fontsize=8.5, color=INK2)
+    ax.set_ylim(bottom=0)
+    ax.set_xlabel('κ')
+    ax.set_title('2019 fit error by network type (pp)', fontsize=10)
+    ax.legend(loc='upper left')
+    bx.axhline(1, color=AXIS, lw=1)
+    bx.axhline(banxico_april, color=INK, lw=1)
+    bx.annotate(f'Banxico April 2020: {banxico_april:.2f}', (0, banxico_april), xytext=(0, 5),
+                textcoords='offset points', fontsize=8.5, color=INK2)
+    bx.set_xlabel('κ')
+    bx.set_title('April 2020 transfers / April 2019', fontsize=10)
+    save_bare(fig, 'R2_kappa_profiles_rules', '2019 still barely constrains κ; the new rule can exceed full replacement',
+              'Left: weighted error of the 2019 fit to MMP receipt by network type after refitting α_core and α_kin '
+              'at each κ. Right: April 2020 count index against κ (exact, ρ = 0), each point with its own refitted '
+              'alphas.')
+
+
+def r3_size_fit(val):
+    sizes = ['1', '2', '3-4', '5-9', '10+']
+    fig, axes = plt.subplots(1, 3, figsize=(10, 3.7), sharey=True)
+    for ax, net in zip(axes, NETWORKS):
+        d = val.query('panel == "size" and network_type == @net')
+        src = d.query('rule == "all_core" and kappa == 0').set_index('category').reindex(sizes).dropna(subset=['source_n'])
+        x = np.array([sizes.index(c) for c in src.index])
+        lo, hi = wilson(src.mmp_receipt, src.source_n)
+        ok = src.reliable.astype(bool).to_numpy()
+        ax.vlines(x, lo, hi, color=INK, lw=1)
+        ax.scatter(x[ok], src.mmp_receipt[ok], s=36, color=INK, zorder=4, label='MMP (95% interval)')
+        ax.scatter(x[~ok], src.mmp_receipt[~ok], s=36, facecolor=SURFACE, edgecolor=INK, zorder=4)
+        k0 = d.query('rule == "all_core" and kappa == 0').set_index('category').loc[src.index]
+        ax.plot(x, k0.model_receipt, color=K0_GRAY, lw=1.5, label='Model, κ = 0 (both rules)')
+        for rule in ['all_core', 'lost_sending']:
+            m = d.query('rule == @rule and kappa == 4').set_index('category').loc[src.index]
+            ax.plot(x, m.model_receipt, color=RULE_COLORS[rule], label=f'{RULE_NAMES[rule]}, κ = 4')
+        ax.set_xticks(range(len(sizes)), sizes)
+        ax.set_title(net, fontsize=10)
+        ax.set_xlabel('Network size')
+        pct_axis(ax)
+    axes[0].set_ylabel('Monthly receipt probability, 2019')
+    axes[0].set_ylim(0, 1)
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower center', ncol=4, bbox_to_anchor=(0.5, -0.06))
+    save_bare(fig, 'R3_2019_size_fit_rules', 'Both rules keep the 2019 network-size fit',
+              'MMP receipt by network size (dots, 95% Wilson intervals; open dots: fewer than 30 households) and '
+              'model receipt after refitting to network-type targets: κ = 0 and κ = 4 under each rule.')
+
+
+def r4_paths(paths):
+    fig, axes = plt.subplots(1, 3, figsize=(10, 3.6), sharey=True)
+    for ax, net in zip(axes, NETWORKS):
+        sel = {r: p[p.group.eq('network_type') & p.level.eq(net)] for r, p in paths.items()}
+        dates = pd.to_datetime(sel['all_core'].query('kappa == 0').date)
+        ax.axhline(1, color=AXIS, lw=1)
+        rule_lines(ax, dates, sel, 'receipt_ratio')
+        k4 = {r: d.query('kappa == 4').receipt_ratio.to_numpy() for r, d in sel.items()}
+        k0 = sel['all_core'].query('kappa == 0').receipt_ratio.to_numpy()
+        # Paths within 0.3% count as the same line (alphas differ slightly across rules and κ).
+        same_rules = np.allclose(k4['all_core'], k4['lost_sending'], atol=3e-3)
+        base_is_k0 = np.allclose(k4['all_core'], k0, atol=3e-3)
+        notes = (['all lines coincide:', 'no kin to step in'] if same_rules and base_is_k0
+                 else ['former rule at κ = 4 = κ = 0'] if base_is_k0 else [])
+        for rule in (['lost_sending'] if same_rules else ['all_core', 'lost_sending']):
+            lo = k4[rule].min()
+            ax.annotate(f'{lo:.2f}', (pd.Timestamp('2020-04-01'), lo), xytext=(8, -4 if rule == 'all_core' else 6),
+                        textcoords='offset points', fontsize=8.5, color=INK2)
+        if notes:
+            ax.text(0.97, 0.30, '\n'.join(notes), transform=ax.transAxes, ha='right', fontsize=8, color=MUTED)
+        ax.set_title(net, fontsize=10)
+        ax.set_xlim(pd.Timestamp('2019-07-01'), pd.Timestamp('2022-06-01'))
+        ax.xaxis.set_major_locator(matplotlib.dates.YearLocator())
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y'))
+    axes[0].set_ylabel('Receipt probability / counterfactual')
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower center', ncol=3, bbox_to_anchor=(0.5, -0.08))
+    save_bare(fig, 'R4_receipt_by_network_type_rules', 'Under the base rule, kin-only households also gain from stepping-in',
+              'E1a, mean monthly receipt probability (exact) relative to the no-COVID counterfactual, by network type. '
+              'Values: April 2020 low at κ = 4 under each rule.')
+
+
+def r5_size(outs):
+    sizes = ['1', '2', '3-4', '5-9', '10+']
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.8))
+    panels = [('interruption_rate', 'Interrupted months\n(share of counterfactual receipt months)'),
+              ('usd_drop', 'Drop in USD received, Apr 2020 – Dec 2021')]
+    series = [('κ = 0 (both rules)', outs['all_core'], 0, K0_GRAY, -0.16)] + [
+        (f'{RULE_NAMES[r]}, κ = 4', outs[r], 4, RULE_COLORS[r], dx) for r, dx in [('all_core', 0), ('lost_sending', 0.16)]]
+    for ax, (col, title) in zip(axes, panels):
+        for label, out, kappa, c, dx in series:
+            d = out.query('group == "size_bin" and kappa == @kappa').set_index('level').loc[sizes]
+            ax.plot(np.arange(5) + dx, d[col], lw=0, marker='o', ms=7, color=c, mec=SURFACE, mew=1.5, label=label)
+        ax.set_xticks(range(5), sizes)
+        ax.set_xlabel('Network size (linked migrants)')
+        ax.set_title(title, fontsize=10)
+        ax.axhline(0, color=AXIS, lw=1)
+        lo = min(0, min(o.query('group == "size_bin"')[col].min() for _, o, *_ in series))
+        ax.set_ylim(lo * 1.15, None)
+        pct_axis(ax)
+    axes[1].text(0.02, 0.03, 'below 0: more USD than in the counterfactual', transform=axes[1].transAxes,
+                 fontsize=8, color=MUTED)
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower center', ncol=3, bbox_to_anchor=(0.5, -0.1))
+    save_bare(fig, 'R5_outcomes_by_size_rules', 'Under the base rule, large networks are protected, even over-protected at κ = 4',
+              'E1a, 50 paired stochastic runs, Apr 2020 – Dec 2021, by network size: interrupted months and drop in '
+              'USD received relative to the counterfactual (negative: households receive more than without COVID). '
+              'Size 10+ has only 30 households.')
+
+
+def r6_kin(ms):
+    fig, ax = plt.subplots(figsize=(10, 3.8))
+    ax.axhline(0, color=AXIS, lw=1)
+    d0 = ms['all_core'].query('kappa == 0')
+    dates = pd.to_datetime(d0.date)
+    ax.plot(dates, d0.kin_transfers_covid - d0.kin_transfers_cf, color=K0_GRAY, lw=1.5, label='κ = 0 (both rules)')
+    for rule, m in ms.items():
+        d = m.query('kappa == 4')
+        y = d.kin_transfers_covid - d.kin_transfers_cf
+        ax.plot(dates, y, color=RULE_COLORS[rule], label=f'{RULE_NAMES[rule]}, κ = 4')
+        i = int(np.argmax(y.to_numpy()))
+        ring_dot(ax, dates.iloc[i], y.iloc[i], RULE_COLORS[rule])
+        ax.annotate(f'{y.iloc[i]:+.0f}', (dates.iloc[i], y.iloc[i]), xytext=(8, 0), textcoords='offset points',
+                    va='center', fontsize=8.5, color=INK2)
+    ax.xaxis.set_major_locator(matplotlib.dates.YearLocator())
+    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y'))
+    ax.set_ylabel('Kin transfers per month vs counterfactual\n(model units)')
+    ax.legend(loc='upper right')
+    save_bare(fig, 'R6_kin_transfers_rules', 'How many extra kin transfers each rule produces',
+              'E1a, expected kin transfers minus the no-COVID counterfactual. The April 2020 loss of core transfers is '
+              'about 130 a month under both rules.')
+
+
+def rule_figures():
+    both = lambda name: {'lost_sending': pd.read_csv(E1 / name), 'all_core': pd.read_csv(E1A / name)}
+    q, m = both('aggregate_quarterly.csv'), both('aggregate_monthly.csv')
+    r1_index(q)
+    bm = m['all_core'].query('kappa == 0').set_index('date')
+    r2_profiles(pd.read_csv(E1A / 'e0_kappa_profile.csv'), pd.read_csv(E0 / 'kappa_profile.csv'),
+                pd.read_csv(E1A / 'kappa_ceiling_rules.csv'), bm.loc['2020-04-01', 'index_banxico'])
+    r3_size_fit(pd.read_csv(E1A / 'e0_validation.csv', dtype={'category': str}))
+    r4_paths(both('receipt_ratio_paths.csv'))
+    r5_size(both('household_outcomes.csv'))
+    r6_kin(m)
+    write_captions()
+
+
 def main():
     FIG.mkdir(parents=True, exist_ok=True)
     style()
+    if '--e1' in sys.argv:
+        return e1_figures()
+    if '--e1-rules' in sys.argv:
+        return rule_figures()
     h = pd.read_parquet(abm.POPULATION / 'households.parquet')
     m = pd.read_parquet(abm.POPULATION / 'migrants.parquet')
     summary = pd.read_csv(BASE / 'data-prep/outputs/population_summary.csv')
@@ -469,10 +910,35 @@ def main():
     c3_errors(cells.copy(), size)
     c4_kappa()
     c5_tiles()
-    lines = ['# Figure captions', '', 'Generated by `model/make_figures.py`. Plan: `figures-plan.md`.', '']
-    for name, (title, cap) in CAPTIONS.items():
+    e1_figures()
+
+
+def e1_figures():
+    d1_quarterly(pd.read_csv(E1 / 'aggregate_quarterly.csv'))
+    m = pd.read_csv(E1 / 'aggregate_monthly.csv')
+    d1_monthly(m)
+    d2_decomposition(m)
+    d3_reach(pd.read_csv(E1A / 'kappa_reach.csv'), pd.read_csv(E1A / 'kappa_ceiling.csv'))
+    d4_variants(pd.read_csv(E1A / 'kappa_rule_variants.csv'))
+    d5_receipt_paths(pd.read_csv(E1 / 'receipt_ratio_paths.csv'))
+    d6_size(pd.read_csv(E1 / 'household_outcomes.csv'))
+    write_captions()
+
+
+def write_captions():
+    """Rewrites captions.md from the figures made in this run; keep earlier entries."""
+    path = FIG / 'captions.md'
+    old = {}
+    if path.exists():
+        for block in path.read_text(encoding='utf-8').split('\n## ')[1:]:
+            head, _, body = block.partition('\n\n')
+            name, _, title = head.partition('.png: ')
+            old[name] = (title, body.strip())
+    old.update(CAPTIONS)
+    lines =['# Figure captions', '', 'Generated by `model/make_figures.py`. Plan: `figures-plan.md`.', '']
+    for name, (title, cap) in old.items():
         lines += [f'## {name}.png: {title}', '', cap, '']
-    (FIG / 'captions.md').write_text('\n'.join(lines), encoding='utf-8')
+    path.write_text('\n'.join(lines), encoding='utf-8')
 
 
 if __name__ == '__main__':

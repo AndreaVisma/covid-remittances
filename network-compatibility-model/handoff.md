@@ -9,7 +9,7 @@ Pre-COVID forecasts predicted remittances would collapse; flows to Mexico rose i
 ## Decisions already made (do not reopen without the user)
 
 - **Few parameters.** Calibrated: `α_core`, `α_kin` (2019). Map axes: `β`, `κ`. Network-map axis: `ρ`. Scenario: `π`. Everything else external.
-- **Sending is a Bernoulli draw with probability θ**, two stages: core migrants (RELHEAD 1/2/3) first, then kin, with `logit θ_kin = α_kin + β S_t − κ N_h,t`.
+- **Sending is a Bernoulli draw with probability θ**, two stages: core migrants (RELHEAD 1/2/3) first, then kin, with `logit θ_kin,j = α_kin + β S_t + κ L_h,−j,t`. `L` is the routine sending lost to linked migrants unable to send, in core-sender units: 1 per eligible core migrant, `w = θ_kin⁰/θ_core⁰ ≈ 0.07` per other eligible kin ("lost sending", base model since 19 Oct 2026; spec §4.3).
 - **Salience `S_t` is national only:** ½ Mexican employment loss (employed population, not unemployment rate) + ½ deaths (excess deaths as sensitivity), standardized to mean 0 in 2019.
 - **Amount separated from sending.** Each migrant has a fixed routine amount `m_j` (lognormal, mean = Banxico 2019 mean transaction). The model targets the transfer **count**; the change in mean amount is reported as a data margin.
 - **Income is a yes/no condition only:** a migrant can send if employed or receiving a benefit payment that month. The old $20,000 allowance / 20%-of-surplus rule is dropped.
@@ -32,9 +32,15 @@ network-compatibility-model/
   model/
     abm.py                   model library (tasks 5)
     run_e0_baseline.py       E0 calibration (task 6)
-  outputs/e0-baseline/       aggregate E0 tables
-  model/make_figures.py      PNG figures (plan: figures-plan.md)
-  figures/                   A1-A4 population, B1-B2 inputs, C1-C5 calibration; captions.md
+    run_e1_job_loss.py       E1a (β = 0, no benefits), base rule
+    run_e1_rule_comparison.py   E0 refit + E1a under the former 'all_core' rule
+    diagnose_e1_kappa.py     why κ did little under the former rule (April 2020)
+  outputs/e0-baseline/       aggregate E0 tables (base rule)
+  outputs/e1-job-loss/       E1a tables (base rule)
+  outputs/e1-all-core-rule/  former rule: E0 refit, E1a, κ diagnostics, rule comparison
+  model/make_figures.py      PNG figures (plan: figures-plan.md); --e1 / --e1-rules for E1 only
+  figures/                   A1-A4 population, B1-B2 inputs, C1-C5 calibration, D1-D6 E1a,
+                             R1-R6 rule comparison; captions.md
     outputs/                 aggregate CPS inputs (safe to commit)
 ```
 
@@ -51,7 +57,7 @@ Older work lives in `oct-26/` (earlier ABM `oct-26/simulations/abms/remittance-m
 | 4b | Real earnings index `w_t` | Not started |
 | 5 | ABM refactor (two-stage decision, ability gate, fixed `m_j`, latent-factor employment) | **Done** (`model/abm.py`) |
 | 6 | E0 calibration; diagnose singleton / kin-only misfits | **Done, first pass** (`model/run_e0_baseline.py`); two open decisions below |
-| 7 | Fix `τ_C`; run E1, then E2 | Not started |
+| 7 | Fix `τ_C`; run E1, then E2 | **E1a done** (`π = 0`, base lost-sending rule; former rule kept for comparison); E1b (with benefits) waits for task 3; `τ_C` not fixed |
 
 ### Recommended order from here
 
@@ -150,14 +156,62 @@ Results:
 - MMP check (`population_summary.csv`): among households without core migrants, receipt rises with close kin (0: 1.5%, 1: 5.6%, 2: 9.8%, 3–4: 10.5%, 5+: 13.9%). Households with only distant kin receive 2.8–7.6%.
 
 E0 on the new population (`outputs/e0-baseline/`, same 3,252 target households as before, now simulated one-to-one):
-- κ = 0: `α_core = 0.31` (θ = 0.58), `α_kin = −3.18` (θ = 0.040); weighted RMSE 0.20 pp, 0.48 at κ = 4, 0.56 at κ = 8. So 2019 still barely constrains κ.
+- κ = 0: `α_core = 0.31` (θ = 0.58), `α_kin = −3.18` (θ = 0.040); weighted RMSE 0.20 pp, 0.60 at κ = 4, 0.71 at κ = 8 (base lost-sending rule; former rule 0.48 / 0.56). So 2019 still barely constrains κ.
 - **Saturation largely fixed** for kin-only households: size 1 / 2 / 3–4 / 5–9 give 3.2 / 6.5 / 10.3 / 16.5% model vs 3.8 / 6.1 / 9.7 / 15.9% MMP. All link types are within ~1 pp.
 - Remaining size misfits come from core networks: core-only 3–4: +8 pp; core+kin 2: −12 pp; core+kin 5–9: +11 pp. Core-only singletons: −5 pp (49% vs 55%).
 - Survey period (untargeted): 2010–13 17.2% vs 18.0%; 2014–16 23.9% vs 22.2%; 2017–19 29.2% vs 32.3%. Much of the rise in receipt over time is reproduced by network composition alone.
 - Composition misfits persist (no household-need terms): kin-only with older residents 5.5% vs 13.6%; core+kin with children 59% vs 71%.
-- 2019: ~1,096 transfers/month, 29 triggered households/month; triggered kin transfers 0.9 (κ = 0) to 15.4 (κ = 4). Banxico scale ≈ 8,690. ENIGH-style six-month window: 48% receive; median $110, mean $215 per month.
+- 2019 (base rule): ~1,096 transfers/month (1,113 at κ = 4); 304 households a month have some linked migrant unable (L > 0); kin transfers in those households 17.8 (κ = 0) to 70.6 (κ = 4). Banxico scale ≈ 8,690 at κ = 0. ENIGH-style six-month window: 48% receive; median $110, mean $215 per month.
 
 Still open from the audit: kin occupations are imputed (ρ / occupational concentration are sensitivity dimensions only); optional 2015–19 calibration sensitivity.
+
+### E1a results (job loss only, base lost-sending rule, 19 Oct 2026)
+
+Code: `model/run_e1_job_loss.py` (~90 s); outputs in `outputs/e1-job-loss/`. `β = 0`, `ρ = 0`, `π = 0` (no benefits, user decision: E1b adds them after task 3). E0 alphas for each κ in {0, …, 4}. Runs 2019-01 to 2022-12; the counterfactual uses the 2019 CPS rates for the same calendar month, with common random numbers.
+- **Comparison indices (user decision):** monthly = month / same month of 2019; quarterly = quarter total / same quarter of 2019 (smooths monthly noise). Fit windows 2020-04..2021-12 and 2020Q2..2021Q4; 2022 held out. `τ_C` is not fixed, so RMSE is reported only.
+- Aggregate results use the exact expected counts (`abm.expected_flows`, exact for `ρ = 0`, benefits included). Household outcomes come from 50 paired stochastic runs. Simulated and exact counts agree within 0.7% (mean over the 50 runs).
+- **Count index:** at κ = 0 the trough is 0.853 (Apr 2020); quarterly 2020Q2 0.876, 2020Q4 0.958, 2021Q4 0.994. Banxico: 1.033, 1.102, 1.276. Annual mean 2020: 0.943 vs 1.072; 2021: 0.978 vs 1.215. Log RMSE ≈ 0.19 at every κ.
+- **κ = 4:** April 2020 index 0.966 (Banxico 0.96). Quarterly 2020Q2 0.975, Q3 0.994, then ~1.0. Annual mean 0.991 (2020) and 0.998 (2021). Log RMSE 0.160. In April 2020, kin transfers *fall* by 0.2 per lost core transfer at κ = 0 (kin lose jobs too) and rise by 0.71 at κ = 4. The index reaches 1.0 at κ ≈ 6 and 1.012 at κ = 8.
+- **Read:** job loss on real networks only lowers counts. Stepping-in can fill the 2020 dip but produces no growth, because CPS employment recovers by late 2021. 2020 is missed by 8–13 points and 2021 by ~22–24. The growth must come from `β`, benefits (E1b), or factors outside the model.
+- **Households (κ = 0):** USD received drops ~4.3% over 2020-04..2021-12, nearly flat across network types and sizes. Group receipt bottoms out in Apr 2020 (kin-only 0.86, households with core 0.90 of counterfactual) and stays below 99% of the counterfactual until Oct 2021. Larger networks are less often interrupted (size 1: 4.5% of counterfactual receipt months; 10+: 1.6%).
+- **Households (κ = 4):**
+  - Core + kin households barely dip (trough 0.998).
+  - Kin-only: trough 0.92.
+  - Core-only, single-link and distant-kin-only households are unchanged: nobody can step in.
+  - USD drop by size: 1 → 4.2%, 2 → 3.0%, 3–4 → 1.1%, 5–9 → −1.3%, 10+ → −8.2% (n = 30). Large networks receive *more* than without COVID: several kin each step in for one loss (over-replacement), a property to report.
+
+### Why κ did little under the former rule (19 Oct 2026, `model/diagnose_e1_kappa.py`)
+
+The former rule was `κ U_h,t`, with `U` = 1 if all eligible core migrants are unable. There was no implementation bug: exact and simulated results agree, and an independent re-implementation gives the same April 2020 index (0.889 vs 0.888 at κ = 4). The rule was narrow by design:
+- **Who can trigger stepping-in:** only the 929 households with an eligible core migrant (adult, not 'Not working'). 2,393 households (70%) are kin-only and never trigger. 83 more have only core migrants who never send (338 core coded 'Not working', mostly spouses and daughters, plus 6 under 18). Only 484 households have eligible core and eligible kin.
+- **All-or-nothing trigger:** it fires only when *all* eligible core migrants are unable. That is rare in the 387 households with two or more (about 3% for two in April 2020 at ρ = 0). Partial losses get no response.
+- **Ceiling:** April 2020 loses 161 transfers (134 core, 27 kin); only 75 of the core losses are in households with kin. At κ → ∞, kin recover at most 50, so the April index saturates at 0.904 (0.888 at κ = 4).
+- **Simulating only households with core links changes nothing:** they already make 86% of transfers. At κ = 0 every subset falls to 0.853, because kin occupations are copied from core donors. The κ = 4 index is 0.893 vs 0.888. Dropping kin-only households would cost the identification of α_kin and the kin-only size gradient.
+
+### Lost-sending rule adopted as the base model (user decision, 19 Oct 2026)
+
+`abm.Params.rule` now defaults to `'lost_sending'`; `rule='all_core'` keeps the former rule for comparison. E0, E1a and all figures were rerun under the new rule. Kin step in for core *and* for other kin, in proportion to the routine sending lost:
+```
+logit θ_kin,j = α_kin + β S_t + κ L_h,−j,t
+L = (# eligible core unable) + w · (# other eligible kin unable),   w = θ_kin⁰ / θ_core⁰ ≈ 0.07
+```
+A single-core household losing its core migrant has L = 1, as under the base rule. Only kin raise θ; core migrants do not step in. The rule has an exact receipt and flow calculation for ρ = 0 (`abm.lost_sending_exact`, Poisson-binomial over the numbers of unable core and kin). Exact and simulated results agree: 2019 receipt 0.2311 vs 0.2312; April 2020 transfers 1,107.5 vs 1,106.4.
+
+Order to rerun everything: `run_e0_baseline.py` (~4 min), `run_e1_job_loss.py` (~2 min), `run_e1_rule_comparison.py` (~3 min), `diagnose_e1_kappa.py`, then `make_figures.py` and `make_figures.py --e1-rules`. On Windows a PNG write occasionally fails with `OSError: [Errno 22]` (file held by another program); just rerun.
+
+New rule vs former rule (κ = 4; κ = 0 is identical under both):
+
+| | Lost sending (base) | All core unable (former) |
+|---|---|---|
+| 2019 fit error (pp), κ = 4 / 8 | 0.60 / 0.71 | 0.48 / 0.56 |
+| Households with L > 0 (or U = 1) per month, 2019 | 304 | 29 |
+| April 2020 index (Banxico 0.96) | 0.966 | 0.888 |
+| April 2020 index as κ → large | > 1 (1.012 at κ = 8) | ceiling 0.904 |
+| Kin transfers added per lost core transfer, Apr 2020 | 0.71 | 0.07 |
+| Annual mean index 2020 / 2021 (Banxico 1.072 / 1.215) | 0.991 / 0.998 | 0.957 / 0.984 |
+| Kin-only households, April trough | 0.92 | 0.86 (as κ = 0) |
+
+The network-size and link-type fit for 2019 is the same under both rules within ~1 pp (except cells with n < 20). Under the new rule κ moves the 2020 aggregate, so E2's β × κ map will not be flat along κ.
 
 ## Things to keep in mind
 

@@ -1,0 +1,43 @@
+{
+  "experiment": "E1a: job loss only",
+  "beta": 0.0,
+  "rho": 0.0,
+  "pi": 0.0,
+  "stepping_in_rule": "lost_sending",
+  "kappas": [
+    0.0,
+    1.0,
+    2.0,
+    3.0,
+    4.0
+  ],
+  "alphas_from": "outputs\\e0-baseline\\run_settings.json",
+  "dates": [
+    "2019-01-01",
+    "2022-12-01"
+  ],
+  "counterfactual": "2019 CPS rates of the same calendar month, common random numbers",
+  "index": "monthly: month / same month 2019; quarterly: quarter total / same quarter 2019",
+  "fit_window": [
+    "2020-04-01",
+    "2021-12-01"
+  ],
+  "fit_window_quarterly": [
+    "2020Q2",
+    "2021Q4"
+  ],
+  "holdout": [
+    "2022-01-01",
+    "2022-12-01"
+  ],
+  "tau_C": "not fixed; RMSE reported only",
+  "seeds": [
+    101,
+    150
+  ],
+  "amount_seed": 7,
+  "recovery_gap": 0.01,
+  "phi": 0.9129674282239176,
+  "cps_rate_column": "rate_model",
+  "cps_population": "Mexican origin (fallback: extract has no BPL)"
+}

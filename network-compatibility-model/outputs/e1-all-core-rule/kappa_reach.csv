@@ -1,0 +1,7 @@
+quantity,transfers_per_month,share_of_all_lost
+All lost transfers,161.49508695762228,1.0
+Lost core transfers,134.01937584126676,0.8298665821111612
+Lost kin transfers,27.47571111635551,0.1701334178888388
+Lost core transfers in households with eligible kin,74.50164330949323,0.46132451898702725
+Recovered by kin at kappa = 4,31.115983872427137,0.19267449220044844
+Recovered by kin at kappa = 50 (ceiling),50.30992675038988,0.3115260513379682

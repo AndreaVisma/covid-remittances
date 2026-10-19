@@ -38,6 +38,33 @@ Optional: A5, map of origin states (households by state). It shows how much MMP 
 | C4 | Does 2019 tell us anything about κ? | Three small panels sharing the x-axis (κ 0–8): fit error (pp), fitted α_core / α_kin, triggered kin transfers per month. Separate panels, not a dual axis | `kappa_profile.csv`, `kappa_2019.csv` |
 | C5 | Are household amounts plausible? | KPI row (stat tiles), not a chart: model vs ENIGH six-month median and mean, share receiving in six months, Banxico scale | `enigh_style_check.csv`, `run_settings.json` |
 
+## D. E1a: job loss only (β = 0, ρ = 0, no benefits)
+
+Run `python model/make_figures.py --e1` (E1 figures only). No suptitle on the PNG; titles and captions are in `figures/captions.md`. κ uses an ordinal blue ramp (κ = 0 light, κ = 4 dark); Banxico is primary ink; core blue, kin orange.
+
+| # | Question | Form | Data |
+|---|---|---|---|
+| D1 | Does job loss alone reproduce the count growth? | Quarterly index (quarter / same quarter 2019): model κ = 0 and 4 with band, Banxico; 2022 shaded as held out | `outputs/e1-job-loss/aggregate_quarterly.csv` |
+| D1b | Same, monthly | Monthly index (month / same month 2019); March 2020 annotated as excluded | `aggregate_monthly.csv` |
+| D2 | Who carries the loss? | Two panels (κ = 0, 4): core and kin transfers minus counterfactual | `aggregate_monthly.csv` |
+| D3 | Why did κ change so little under the former rule? | Bars: where April 2020 losses sit and how much kin recover; line: April index vs κ (ceiling) | `e1-all-core-rule/kappa_reach.csv`, `kappa_ceiling.csv` (`model/diagnose_e1_kappa.py`) |
+| D4 | Does the trigger definition matter? | Dumbbell: April index at κ = 0 vs 4 for three triggers (variants not refitted, diagnostic only) | `e1-all-core-rule/kappa_rule_variants.csv` |
+| D5 | How long are households below the counterfactual? | Three small multiples by network type: receipt / counterfactual, κ = 0 and 4 | `receipt_ratio_paths.csv` |
+| D6 | Does network size protect? | Dot plots by size: interruption rate and USD drop, κ = 0 and 4 | `household_outcomes.csv` |
+
+## R. E1a: base 'lost sending' rule vs former 'all core unable' rule
+
+Run `python model/make_figures.py --e1-rules` after `model/run_e1_rule_comparison.py`. Colours: κ = 0 (same under both rules) gray, base (lost sending) κ = 4 blue, former rule κ = 4 orange, data in primary ink.
+
+| # | Question | Form | Data |
+|---|---|---|---|
+| R1 | Does kin-for-kin stepping-in close the count gap? | Quarterly index, κ = 0 and κ = 4 per rule, Banxico | `aggregate_quarterly.csv` (both runs) |
+| R2 | Does 2019 constrain κ, and how far can κ move April 2020? | Two panels: 2019 fit error vs κ; April 2020 index vs κ with Banxico reference | `e0-baseline/kappa_profile.csv`, `e1-all-core-rule/e0_kappa_profile.csv`, `kappa_ceiling_rules.csv` |
+| R3 | Do the two rules fit 2019 network sizes equally well? | Small multiples by network type: MMP dots + Wilson intervals, model lines | `e1-all-core-rule/e0_validation.csv` |
+| R4 | Which households does the new rule protect? | Small multiples by network type: receipt / counterfactual | `receipt_ratio_paths.csv` (both runs) |
+| R5 | Does network size protect under each rule? | Dot plots by size: interruption rate, USD drop (negative = more than counterfactual) | `household_outcomes.csv` (both runs) |
+| R6 | How many extra kin transfers does each rule produce? | Kin transfers minus counterfactual over time | `aggregate_monthly.csv` (both runs) |
+
 ## Notes before drawing
 
 - **95% intervals for MMP cells** (Wilson) need cell counts and receipt; both are already in the E0 tables.

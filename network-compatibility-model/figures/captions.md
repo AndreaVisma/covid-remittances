@@ -40,8 +40,60 @@ Model minus MMP receipt (percentage points) for every group with at least 30 hou
 
 ## C4_kappa_2019.png: The 2019 data barely constrain κ; the COVID period must
 
-κ: kin stepping-in when the household's core migrants cannot send. For each κ, α_core and α_kin are refitted to 2019 receipt by network type (α panels on the same ±0.5 logit window). Fit error changes by less than half a percentage point across κ = 0–8, and the fitted α barely move, because few households lose all core senders in a normal year. Top right: kin transfers in households whose core migrants cannot send (stochastic 2019 runs, 5 seeds, out of ~1,100 transfers a month).
+κ: kin stepping-in, in proportion to the routine sending lost to linked migrants who cannot send. For each κ, α_core and α_kin are refitted to 2019 receipt by network type (α panels on the same ±0.5 logit window). Fit error changes by less than one percentage point across κ = 0–8, and the fitted α barely move, because few migrants are unable to send in a normal year. Top right: kin transfers in households where some linked migrant cannot send (stochastic 2019 runs, 5 seeds, out of ~1,100 transfers a month).
 
 ## C5_household_amounts.png: Household amounts are in a plausible range
 
 Model 2019 baseline, κ = 0, six-month window (stochastic runs, 5 seeds), against ENIGH 2018 recipient households (monthly USD from quarterly MXN). ENIGH captures only ~8% of the Banxico total, so model amounts above ENIGH are expected.
+
+## D1_count_index_quarterly.png: Job loss alone lowers transfer counts; Banxico counts rose
+
+E1a (β = 0, ρ = 0, no benefits). Quarterly transfer counts relative to the same quarter of 2019: model (exact expected counts, κ = 0 and κ = 4, E0 alphas for each) and Banxico transactions. The no-COVID counterfactual (2019 CPS rates continued) is the line at 1. 2022 is held out.
+
+## D1b_count_index_monthly.png: Monthly: the model bottoms out in April 2020
+
+As D1, monthly: each month relative to the same calendar month of 2019. The model low is April 2020 (0.85 at κ = 0), when Banxico counts dipped to 0.96. March 2020, Banxico’s record month, is excluded from the fit window (2020-04 to 2021-12).
+
+## D2_core_kin_decomposition.png: Core migrants carry the loss; at κ = 4 kin offset much of it
+
+E1a. Expected monthly transfers minus the no-COVID counterfactual, by sender type. At κ = 0 kin transfers also fall (kin lose jobs too); at κ = 4 kin step in for core and kin migrants who cannot send (base lost-sending rule).
+
+## D3_kappa_reach.png: Under the former rule, stepping-in could reach only a third of the losses
+
+Former stepping-in rule (all eligible core unable), E1a, April 2020, exact expected counts (ρ = 0). Left: lost transfers against the counterfactual. Only core losses in households that also have eligible kin can be replaced, and only when all of the household’s eligible core migrants are unable. Right: April 2020 count index against κ (alphas refitted under the former rule; beyond κ = 8 the κ = 8 fit). This diagnosis led to the base rule.
+
+## D4_trigger_variants.png: Who triggers stepping-in matters more than how strongly
+
+Diagnostic only. April 2020 count index under three triggers for kin stepping-in, κ = 0 and 4, 200 paired stochastic draws. Only the former rule is calibrated; the variants keep its alphas, so their 2019 baselines are too high (any linked migrant: 1,344 transfers a month vs 1,091). The base model now uses a proportional network-wide trigger (lost sending; R figures).
+
+## D5_receipt_by_network_type.png: Without stepping-in, the April dip lasts until autumn 2021
+
+E1a. Mean monthly receipt probability (exact) relative to the no-COVID counterfactual, by network type. At κ = 4 (base lost-sending rule) core + kin households barely dip and kin-only households recover faster; core-only households have nobody to step in.
+
+## D6_outcomes_by_size.png: Bigger networks are interrupted less; with stepping-in they lose fewer dollars
+
+E1a, 50 paired stochastic runs (common random numbers), Apr 2020 – Dec 2021. Left: months in which the counterfactual household receives but the COVID household does not. Right: 1 − USD received / counterfactual USD (negative: more than without COVID). κ = 4 under the base lost-sending rule. Size 10+ has only 30 households.
+
+## R1_count_index_rules.png: Kin-for-kin stepping-in fills most of the 2020 dip, but produces no growth
+
+E1a (β = 0, ρ = 0, no benefits), quarterly counts relative to the same quarter of 2019. κ = 0 is the same under both rules. κ = 4 under the base lost-sending rule (kin respond to the routine sending lost to any unable linked migrant, core = 1, kin = θ_kin/θ_core) and the former rule (kin step in only when all eligible core migrants are unable); alphas refitted to 2019 for each rule and κ.
+
+## R2_kappa_profiles_rules.png: 2019 still barely constrains κ; the new rule can exceed full replacement
+
+Left: weighted error of the 2019 fit to MMP receipt by network type after refitting α_core and α_kin at each κ. Right: April 2020 count index against κ (exact, ρ = 0), each point with its own refitted alphas.
+
+## R3_2019_size_fit_rules.png: Both rules keep the 2019 network-size fit
+
+MMP receipt by network size (dots, 95% Wilson intervals; open dots: fewer than 30 households) and model receipt after refitting to network-type targets: κ = 0 and κ = 4 under each rule.
+
+## R4_receipt_by_network_type_rules.png: Under the base rule, kin-only households also gain from stepping-in
+
+E1a, mean monthly receipt probability (exact) relative to the no-COVID counterfactual, by network type. Values: April 2020 low at κ = 4 under each rule.
+
+## R5_outcomes_by_size_rules.png: Under the base rule, large networks are protected, even over-protected at κ = 4
+
+E1a, 50 paired stochastic runs, Apr 2020 – Dec 2021, by network size: interrupted months and drop in USD received relative to the counterfactual (negative: households receive more than without COVID). Size 10+ has only 30 households.
+
+## R6_kin_transfers_rules.png: How many extra kin transfers each rule produces
+
+E1a, expected kin transfers minus the no-COVID counterfactual. The April 2020 loss of core transfers is about 130 a month under both rules.

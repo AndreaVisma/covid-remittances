@@ -8,11 +8,14 @@ Monthly order of events (spec §3):
   2. employment E_j,t from a latent Gaussian AR(1) with within-network factor (rho)
   3. ability A_j,t = eligible_j AND (E_j,t OR B_j,t)
   4. core migrants send with logit theta = alpha_core + beta*S_t
-  5. U_h,t = household has eligible core migrants (adult, working occupation)
-     and none of them is able to send this month
-  6. kin send with logit theta = alpha_kin + beta*S_t + kappa*U_h,t
-     (stepping in: triggered by core inability, i.e. job loss, not by a
-     routine month in which an able core migrant chooses not to send)
+  5. L_h,-j,t = routine sending lost to linked migrants who are unable to send
+     (job loss without benefits), in core-sender units: 1 per eligible core
+     migrant unable, theta_kin0/theta_core0 per other eligible kin migrant unable
+  6. kin send with logit theta = alpha_kin + beta*S_t + kappa*L_h,-j,t
+     (stepping in for core and for other kin; triggered by inability, not by a
+     routine month in which an able migrant chooses not to send)
+     Former rule, Params.rule = 'all_core': kappa*U_h,t with U_h,t = 1 if all the
+     household's eligible core migrants are unable (kept for comparison)
   7. every sender transfers its fixed routine amount m_j
 """
 from dataclasses import dataclass, field
@@ -49,6 +52,19 @@ class Params:
     rho: float = 0.0           # within-network job-loss correlation (network map)
     pi: float = 0.0            # share of migrants eligible for US benefits (scenario)
     kin_amount_factor: float = 1.0
+    # Stepping-in trigger for kin (kappa):
+    #   'lost_sending' L_h,-j,t = routine sending lost to unable linked migrants, in core-sender
+    #                  units: 1 per unable core migrant, theta_kin0/theta_core0 per unable kin (base model)
+    #   'all_core'     U_h,t = 1 if the household's eligible core migrants are all unable (former rule)
+    rule: str = 'lost_sending'
+
+
+RULES = ('all_core', 'lost_sending')
+
+
+def kin_loss_weight(params):
+    """Weight of one unable kin migrant in L, relative to one core migrant (routine 2019 propensities)."""
+    return expit(params.alpha_kin) / expit(params.alpha_core)
 
 
 @dataclass
@@ -138,7 +154,7 @@ def employment_phi():
 
 # %% Analytic receipt probability (rho = 0)
 def expected_receipt(pop, inputs, params):
-    """P(household receives anything in month t), exact for rho = 0, no benefits.
+    """P(household receives anything in month t), exact for rho = 0.
 
     With U = all core migrants unable (only for households with core):
       P(nothing) = P(U) * Q_kin(kappa) + [P(no core sends) - P(U)] * Q_kin(0)
@@ -146,8 +162,11 @@ def expected_receipt(pop, inputs, params):
     ability when rho = 0. Q_kin(x) = prod over kin of (1 - e_j theta_kin(x)).
     Returns an (T, H) array.
     """
+    assert params.rule in RULES, params.rule
+    if params.rule == 'lost_sending':
+        return lost_sending_exact(pop, inputs, params)[0]
     hid, H, core = pop['hid'], pop['H'], pop['core']
-    e = inputs.rates[:, pop['job_index']] * pop['eligible'][None, :]
+    e = able_probability(pop, inputs, params)
     s = inputs.salience[:, None]
     theta_core = expit(params.alpha_core + params.beta * s)
     theta_kin0 = expit(params.alpha_kin + params.beta * s)
@@ -162,6 +181,135 @@ def expected_receipt(pop, inputs, params):
         q1 = np.exp(hsum(np.where(core, 0, clip(e[t] * theta_kin1[t]))))
         out[t] = 1 - (p_unable * q1 + (p_no_core_send - p_unable) * q0)
     return out
+
+
+def able_probability(pop, inputs, params):
+    """P(A_j,t = 1), (T, M). In a benefit month (UI supplement or stimulus) an
+    eligible migrant is able if employed or benefit-eligible: e + (1 - e) * pi.
+    Exact monthly marginal for any rho (eligibility is drawn once, independently)."""
+    e = inputs.rates[:, pop['job_index']] * pop['eligible'][None, :]
+    benefit_month = (inputs.ui_months | inputs.stimulus_months)[:, None]
+    return np.where(benefit_month, e + (1 - e) * params.pi * pop['eligible'][None, :], e)
+
+
+def expected_flows(pop, inputs, params, amounts=None):
+    """Exact expected monthly transfers for rho = 0 (benefits allowed).
+
+    Kin ability is independent of the core trigger when rho = 0, so
+      E[kin sends] = a_j * [P(U_h) theta_kin(kappa) + (1 - P(U_h)) theta_kin(0)],
+      P(U_h) = has eligible core * prod over core of (1 - a_j).
+    Returns a DataFrame indexed by date (amounts given: expected USD as well).
+    """
+    assert params.rho == 0, 'expected_flows is exact only for rho = 0'
+    assert params.rule in RULES, params.rule
+    if params.rule == 'lost_sending':
+        return lost_sending_exact(pop, inputs, params, amounts)[1]
+    hid, H, core = pop['hid'], pop['H'], pop['core']
+    a = able_probability(pop, inputs, params)
+    s = inputs.salience[:, None]
+    theta_core = expit(params.alpha_core + params.beta * s)
+    theta_kin0 = expit(params.alpha_kin + params.beta * s)
+    theta_kin1 = expit(params.alpha_kin + params.beta * s + params.kappa)
+    rows = []
+    for t in range(len(inputs.dates)):
+        log_unable = np.bincount(hid, weights=np.where(core, np.log1p(-np.clip(a[t], 0, 1 - 1e-12)), 0), minlength=H)
+        p_u = np.where(pop['has_eligible_core'], np.exp(log_unable), 0)[hid]
+        p_core = np.where(core, a[t] * theta_core[t], 0)
+        p_kin_trig = np.where(core, 0, a[t] * p_u * theta_kin1[t])
+        p_kin = p_kin_trig + np.where(core, 0, a[t] * (1 - p_u) * theta_kin0[t])
+        row = dict(date=inputs.dates[t], transfers=p_core.sum() + p_kin.sum(), core_transfers=p_core.sum(),
+                   kin_transfers=p_kin.sum(), kin_transfers_triggered=p_kin_trig.sum(),
+                   triggered_households=np.where(pop['has_eligible_core'], np.exp(log_unable), 0).sum(),
+                   able_share=a[t][pop['eligible']].mean())
+        if amounts is not None:
+            row['usd'] = float(((p_core + p_kin) * amounts).sum())
+        rows.append(row)
+    return pd.DataFrame(rows).set_index('date')
+
+
+# %% Exact results for the 'lost_sending' rule (rho = 0)
+def padded_slots(pop):
+    """(H, n) migrant indices of each household's eligible core and kin migrants, -1 = empty slot."""
+    if '_slots' not in pop:
+        slots = {}
+        for name, mask in [('core', pop['core'] & pop['eligible']), ('kin', ~pop['core'] & pop['eligible'])]:
+            idx = np.flatnonzero(mask)
+            h = pop['hid'][idx]
+            order = np.argsort(h, kind='stable')
+            idx, h = idx[order], h[order]
+            n = np.bincount(h, minlength=pop['H'])
+            pos = np.arange(len(idx)) - (np.cumsum(n) - n)[h]
+            mat = np.full((pop['H'], max(n.max(), 1)), -1)
+            mat[h, pos] = idx
+            slots[name], slots['n_' + name] = mat, n
+        pop['_slots'] = slots
+    return pop['_slots']
+
+
+def unable_count_distribution(unable):
+    """Poisson-binomial distribution of the number unable, per household. unable: (H, n), 0 in empty slots."""
+    d = np.zeros((unable.shape[0], unable.shape[1] + 1))
+    d[:, 0] = 1
+    for i in range(unable.shape[1]):
+        u = unable[:, i:i + 1]
+        d[:, 1:] = d[:, 1:] * (1 - u) + d[:, :-1] * u
+        d[:, :1] *= 1 - u
+    return d
+
+
+def lost_sending_exact(pop, inputs, params, amounts=None):
+    """Exact monthly receipt probability (T, H) and expected flows for rule 'lost_sending', rho = 0.
+
+    An able kin migrant's loss term is L = C + w K, with C (K) the number of eligible core (kin)
+    migrants unable to send and w = kin_loss_weight; C and K are independent across households'
+    migrants when rho = 0, so everything follows from their two Poisson-binomial distributions.
+    Given (C, K), every able kin migrant has the same theta, which gives receipt and expected kin
+    transfers directly; per-migrant expected sends (for USD) use the leave-one-out distribution of K.
+    """
+    assert params.rho == 0
+    s = padded_slots(pop)
+    hid, core = pop['hid'], pop['core']
+    w = kin_loss_weight(params)
+    a_all = able_probability(pop, inputs, params)
+    nc, nk = s['n_core'], s['n_kin']
+    C, K = np.arange(s['core'].shape[1] + 1), np.arange(s['kin'].shape[1] + 1)
+    able_core = np.clip(nc[:, None] - C[None, :], 0, None)                 # (H, C)
+    able_kin = np.clip(nk[:, None] - K[None, :], 0, None)                  # (H, K)
+    unable_of = lambda a, mat: np.where(mat >= 0, 1 - a[np.maximum(mat, 0)], 0.0)
+    receipt, rows = np.zeros((len(inputs.dates), pop['H'])), []
+    for t in range(len(inputs.dates)):
+        a = a_all[t]
+        st = inputs.salience[t]
+        theta_core = expit(params.alpha_core + params.beta * st)
+        theta_kin0 = expit(params.alpha_kin + params.beta * st)
+        theta_kin = expit(params.alpha_kin + params.beta * st + params.kappa * (C[:, None] + w * K[None, :]))
+        u_core, u_kin = unable_of(a, s['core']), unable_of(a, s['kin'])
+        dc, dk = unable_count_distribution(u_core), unable_count_distribution(u_kin)
+        joint = dc[:, :, None] * dk[:, None, :]                             # (H, C, K)
+        none = (1 - theta_core) ** able_core[:, :, None] * (1 - theta_kin[None]) ** able_kin[:, None, :]
+        receipt[t] = 1 - (joint * none).sum(axis=(1, 2))
+        kin_tr = (joint * able_kin[:, None, :] * theta_kin[None]).sum(axis=(1, 2))
+        kin_step = (joint * able_kin[:, None, :] * (theta_kin - theta_kin0)[None]).sum(axis=(1, 2))
+        p_core = np.where(core, a * theta_core, 0)
+        row = dict(date=inputs.dates[t], transfers=p_core.sum() + kin_tr.sum(), core_transfers=p_core.sum(),
+                   kin_transfers=kin_tr.sum(), kin_transfers_triggered=kin_step.sum(),
+                   triggered_households=(1 - dc[:, 0] * dk[:, 0]).sum(),
+                   able_share=a[pop['eligible']].mean())
+        if amounts is not None:
+            # Leave-one-out K for each kin slot i: P(kin i sends) = a_i * E[theta_kin(C + w K_-i)].
+            p_kin = np.zeros(pop['M'])
+            for i in range(s['kin'].shape[1]):
+                live = s['kin'][:, i] >= 0
+                others = u_kin.copy()
+                others[:, i] = 0
+                dk_i = unable_count_distribution(others)
+                e_theta = np.einsum('hc,hk,ck->h', dc, dk_i, theta_kin)
+                j = s['kin'][live, i]
+                p_kin[j] = a[j] * e_theta[live]
+            assert np.isclose(p_kin.sum(), kin_tr.sum()), (p_kin.sum(), kin_tr.sum())
+            row['usd'] = float((p_core * amounts).sum() + (p_kin * amounts).sum())
+        rows.append(row)
+    return receipt, pd.DataFrame(rows).set_index('date')
 
 
 # %% Simulation
@@ -188,9 +336,17 @@ def simulate(pop, inputs, params, seed, amount_seed=None, keep_households=False)
         u = streams[4].random(M)
         s_t = inputs.salience[t]
         send_core = able & core & (u < expit(params.alpha_core + params.beta * s_t))
-        core_able = np.bincount(hid, weights=able & core, minlength=H) > 0
-        trigger = pop['has_eligible_core'] & ~core_able
-        theta_kin = expit(params.alpha_kin + params.beta * s_t + params.kappa * trigger[hid])
+        if params.rule == 'lost_sending':
+            # An able kin migrant is not unable, so the household total already excludes it.
+            unable = pop['eligible'] & ~able
+            loss = (np.bincount(hid, weights=core & unable, minlength=H)
+                    + kin_loss_weight(params) * np.bincount(hid, weights=~core & unable, minlength=H))
+            trigger = loss > 0
+        else:
+            core_able = np.bincount(hid, weights=able & core, minlength=H) > 0
+            trigger = pop['has_eligible_core'] & ~core_able
+            loss = trigger.astype(float)
+        theta_kin = expit(params.alpha_kin + params.beta * s_t + params.kappa * loss[hid])
         send_kin = able & ~core & (u < theta_kin)
         sent = send_core | send_kin
         usd = np.bincount(hid, weights=amounts * sent, minlength=H)
@@ -204,8 +360,8 @@ def simulate(pop, inputs, params, seed, amount_seed=None, keep_households=False)
                          able_share=float(able[pop['eligible']].mean()),
                          benefit_only_share=float((benefit & ~employed)[pop['eligible']].mean())))
         if keep_households:
-            household.append(np.column_stack([n, usd]))
+            household.append(np.column_stack([n, usd, np.bincount(hid, weights=send_core, minlength=H)]))
     out = dict(summary=pd.DataFrame(rows))
     if keep_households:
-        out['household'] = np.stack(household)            # (T, H, [transfers, usd])
+        out['household'] = np.stack(household)            # (T, H, [transfers, usd, core transfers])
     return out
