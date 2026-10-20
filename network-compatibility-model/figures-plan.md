@@ -27,6 +27,7 @@ Optional: A5, map of origin states (households by state). It shows how much MMP 
 |---|---|---|---|
 | B1 | How hard and how unevenly did COVID hit migrant employment? | Line chart 2019–2022, four occupation groups, direct-labelled; 2019 shaded as the calibration window; April 2020 annotated | `data-prep/outputs/cps_employment_rates_monthly.csv` (`rate_model`) |
 | B2 | How much does a migrant send? | Histogram of MMP amounts (2019 USD) with the fitted lognormal (mean $326, σ 0.81); reference rules for the Banxico mean, MMP median and ENIGH recipient median, each labelled | `remittance_amounts*.{json,csv}` + MMP |
+| B3 | What does the national need signal look like? | Line chart: S_t (reported COVID deaths, 10,000s/month) and excess deaths (variant); peaks labelled; 2022 shaded | `data-prep/outputs/salience_index_monthly.csv` |
 
 ## C. Calibration (E0)
 
@@ -64,6 +65,15 @@ Run `python model/make_figures.py --e1-rules` after `model/run_e1_rule_compariso
 | R4 | Which households does the new rule protect? | Small multiples by network type: receipt / counterfactual | `receipt_ratio_paths.csv` (both runs) |
 | R5 | Does network size protect under each rule? | Dot plots by size: interruption rate, USD drop (negative = more than counterfactual) | `household_outcomes.csv` (both runs) |
 | R6 | How many extra kin transfers does each rule produce? | Kin transfers minus counterfactual over time | `aggregate_monthly.csv` (both runs) |
+
+## M. E2 compatibility map (first pass)
+
+Run `python model/make_figures.py --e2` after `model/run_e2_map.py`.
+
+| # | Question | Form | Data |
+|---|---|---|---|
+| M1 | Which (β, κ) fit the 2020–21 counts? | Heatmap of quarterly log RMSE (single-hue blue ramp), compatible cells outlined, best cell marked, τ_C on the colour bar | `outputs/e2-map/map.csv` |
+| M2 | What do the best cells miss? | Quarterly index: best cell, other compatible cells, β = 0 at κ = 4, Banxico vs trend; 2022 shaded | `outputs/e2-map/quarterly_paths.csv` |
 
 ## Notes before drawing
 

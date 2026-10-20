@@ -232,6 +232,30 @@ def b1_employment():
          'monthly ability to send.')
 
 
+def b3_salience():
+    """Salience S_t = reported COVID deaths in Mexico (10,000 a month), primary ink; excess deaths blue."""
+    idx = pd.read_csv(BASE / 'data-prep/outputs/salience_index_monthly.csv', index_col='date', parse_dates=True)
+    fig, ax = plt.subplots(figsize=(10, 3.8))
+    ax.axvspan(pd.Timestamp('2022-01-01'), pd.Timestamp('2022-12-31'), color='#f0efec', lw=0, zorder=0)
+    ax.axhline(0, color=AXIS, lw=1)
+    ax.plot(idx.index, idx.S, color=INK, label='S_t: reported COVID deaths (base)')
+    ax.plot(idx.index, idx.S_excess_deaths, color=BLUE, lw=1.5, label='Excess all-cause deaths (variant)')
+    for when in ['2020-07-01', '2021-01-01', '2021-08-01', '2022-02-01']:
+        y = idx.loc[when, 'S']
+        ring_dot(ax, pd.Timestamp(when), y, INK, size=30)
+        ax.annotate(f'{y:.1f}', (pd.Timestamp(when), y), xytext=(7, 2), textcoords='offset points', fontsize=8.5,
+                    color=INK2)
+    ax.text(pd.Timestamp('2022-03-20'), idx.S_excess_deaths.max() * 0.95, 'held out', fontsize=8, color=MUTED)
+    ax.xaxis.set_major_locator(matplotlib.dates.YearLocator())
+    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y'))
+    ax.set_ylabel('Deaths per month (10,000s)')
+    ax.legend(loc='upper left')
+    save(fig, 'B3_salience', 'National salience S_t: reported COVID deaths in Mexico',
+         'S_t = reported COVID-19 deaths in Mexico per month (OWID), in units of 10,000; 0 in 2019. Variant: '
+         'excess all-cause deaths (World Mortality Dataset; 2015–19 same-week mean with a linear trend; negative '
+         'values set to 0). Reported deaths are about 45% of excess deaths. 2022 is held out.')
+
+
 def b2_amounts():
     m = ra.load_mmp()
     _, pos, _ = ra.amount_sample(m)
@@ -476,11 +500,11 @@ def index_panel(ax, x, model0, model4, banxico, holdout_from, labels_at):
     ax.fill_between(x, model0, model4, color=K4, alpha=0.10, lw=0, zorder=2)
     ax.plot(x, model0, color=K0, zorder=3, label='Model, κ = 0')
     ax.plot(x, model4, color=K4, zorder=3, label='Model, κ = 4')
-    ax.plot(x, banxico, color=INK, zorder=4, label='Banxico transactions')
+    ax.plot(x, banxico, color=INK, zorder=4, label='Banxico vs its 2017–19 trend')
     ax.set_xlim(x[0] - 0.5, x[-1] + 0.5)
-    ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.1f'))
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.2f'))
     ax.legend(loc='upper left', ncol=3)
-    ax.text(holdout_from - 0.3, 0.805, '2022 held out', fontsize=8.5, color=INK2, va='bottom')
+    ax.text(holdout_from - 0.3, 0.825, '2022 held out', fontsize=8.5, color=INK2, va='bottom')
 
 
 def d1_quarterly(q):
@@ -498,12 +522,13 @@ def d1_quarterly(q):
         ring_dot(ax, i, k0.index_banxico.iloc[i], INK)
         ax.annotate(f'{k0.index_banxico.iloc[i]:.2f}', (i, k0.index_banxico.iloc[i]), xytext=(0, 9),
                     textcoords='offset points', ha='center', fontsize=8.5, color=INK2)
-    ax.set_ylim(0.8, 1.45)
-    ax.set_ylabel('Transfers, quarter / same quarter of 2019')
-    save_bare(fig, 'D1_count_index_quarterly', 'Job loss alone lowers transfer counts; Banxico counts rose',
-              'E1a (β = 0, ρ = 0, no benefits). Quarterly transfer counts relative to the same quarter of 2019: '
-              'model (exact expected counts, κ = 0 and κ = 4, E0 alphas for each) and Banxico transactions. '
-              'The no-COVID counterfactual (2019 CPS rates continued) is the line at 1. 2022 is held out.')
+    ax.set_ylim(0.82, 1.2)
+    ax.set_ylabel('Transfers relative to no-COVID path\n(quarterly)')
+    save_bare(fig, 'D1_count_index_quarterly', 'Job loss with stepping-in matches 2020; the 2021 rise above trend is missed',
+              'E1a (β = 0, ρ = 0, no benefits). Model: quarterly transfer counts relative to the no-COVID run (2019 CPS '
+              'rates continued; exact expected counts, κ = 0 and κ = 4, E0 alphas for each). Banxico: transactions '
+              'relative to their 2017–19 trend (log-linear, +6.3% a year, with month effects). 1 = no-COVID path. '
+              '2022 is held out.')
 
 
 def d1_monthly(m):
@@ -522,12 +547,12 @@ def d1_monthly(m):
     for y, c, dy in [(k0.index_model.iloc[apr], K0, -14), (k0.index_banxico.iloc[apr], INK, -14)]:
         ring_dot(ax, apr, y, c)
         ax.annotate(f'{y:.2f}', (apr, y), xytext=(10, dy + 4), textcoords='offset points', fontsize=8.5, color=INK2)
-    ax.set_ylim(0.8, 1.45)
-    ax.set_ylabel('Transfers, month / same month of 2019')
+    ax.set_ylim(0.82, 1.2)
+    ax.set_ylabel('Transfers relative to no-COVID path\n(monthly)')
     save_bare(fig, 'D1b_count_index_monthly', 'Monthly: the model bottoms out in April 2020',
-              'As D1, monthly: each month relative to the same calendar month of 2019. The model low is April 2020 '
-              '(0.85 at κ = 0), when Banxico counts dipped to 0.96. March 2020, Banxico’s record month, is excluded '
-              'from the fit window (2020-04 to 2021-12).')
+              'As D1, monthly. The model low is April 2020 (0.85 at κ = 0), when Banxico fell to 0.91 of its trend. '
+              'March 2020, Banxico’s record month (1.09 of trend), is excluded from the fit window (2020-04 to '
+              '2021-12).')
 
 
 def d2_decomposition(m):
@@ -707,7 +732,7 @@ def r1_index(qs):
     ax.axvspan(hold - 0.5, x[-1] + 0.5, color=HOLDOUT_WASH, lw=0, zorder=0)
     ax.axhline(1, color=AXIS, lw=1)
     rule_lines(ax, x, qs, 'index_model')
-    ax.plot(x, k0.index_banxico.to_numpy(), color=INK, label='Banxico transactions')
+    ax.plot(x, k0.index_banxico.to_numpy(), color=INK, label='Banxico vs its 2017–19 trend')
     q2 = int(np.where(k0.quarter.eq('2020Q2'))[0][0])
     for rule, d in qs.items():
         y = d.query('kappa == 4').index_model.iloc[q2]
@@ -720,12 +745,13 @@ def r1_index(qs):
                 color=INK2)
     ax.set_xticks(x, [s.replace('Q', ' Q') if s.endswith('Q1') else s[-2:] for s in k0.quarter])
     ax.set_xlim(x[0] - 0.5, x[-1] + 0.5)
-    ax.set_ylim(0.8, 1.45)
-    ax.text(hold - 0.3, 0.805, '2022 held out', fontsize=8.5, color=INK2, va='bottom')
-    ax.set_ylabel('Transfers, quarter / same quarter of 2019')
+    ax.set_ylim(0.82, 1.2)
+    ax.text(hold - 0.3, 0.825, '2022 held out', fontsize=8.5, color=INK2, va='bottom')
+    ax.set_ylabel('Transfers relative to no-COVID path\n(quarterly)')
     ax.legend(loc='upper left', ncol=2)
-    save_bare(fig, 'R1_count_index_rules', 'Kin-for-kin stepping-in fills most of the 2020 dip, but produces no growth',
-              'E1a (β = 0, ρ = 0, no benefits), quarterly counts relative to the same quarter of 2019. κ = 0 is the '
+    save_bare(fig, 'R1_count_index_rules', 'Kin-for-kin stepping-in fills the 2020 dip, but not the 2021 rise',
+              'E1a (β = 0, ρ = 0, no benefits), quarterly counts relative to the no-COVID path (Banxico: relative to '
+              'its 2017–19 trend). κ = 0 is the '
               'same under both rules. κ = 4 under the base lost-sending rule (kin respond to the routine sending '
               'lost to any unable linked migrant, core = 1, kin = θ_kin/θ_core) and the former rule (kin step in '
               'only when all eligible core migrants are unable); alphas refitted to 2019 for each rule and κ.')
@@ -750,7 +776,7 @@ def r2_profiles(base_profile, new_profile, ceil, banxico_april):
     ax.legend(loc='upper left')
     bx.axhline(1, color=AXIS, lw=1)
     bx.axhline(banxico_april, color=INK, lw=1)
-    bx.annotate(f'Banxico April 2020: {banxico_april:.2f}', (0, banxico_april), xytext=(0, 5),
+    bx.annotate(f'Banxico April 2020 vs trend: {banxico_april:.2f}', (0, banxico_april), xytext=(0, 5),
                 textcoords='offset points', fontsize=8.5, color=INK2)
     bx.set_xlabel('κ')
     bx.set_title('April 2020 transfers / April 2019', fontsize=10)
@@ -887,9 +913,89 @@ def rule_figures():
     write_captions()
 
 
+# %% M. E2 compatibility map (first pass, count criterion only)
+E2 = BASE / 'outputs/e2-map'
+SEQ_BLUE = ['#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#256abf', '#184f95', '#0d366b']   # palette ramp, light->dark
+
+
+def m1_map(grid, settings):
+    from matplotlib.colors import LinearSegmentedColormap
+    tau = settings['tau_C']
+    piv = grid.pivot(index='beta', columns='kappa', values='rmse_log_quarterly').sort_index(ascending=False)
+    ok = grid.pivot(index='beta', columns='kappa', values='count_compatible').sort_index(ascending=False)
+    fig, ax = plt.subplots(figsize=(10, 5.2))
+    cmap = LinearSegmentedColormap.from_list('seq', SEQ_BLUE)
+    im = ax.imshow(piv.values, cmap=cmap, aspect='auto', vmin=0, vmax=min(0.15, piv.values.max()))
+    ax.grid(False)
+    rows, cols = np.where(ok.values.astype(bool))
+    for r, c in zip(rows, cols):
+        ax.add_patch(plt.Rectangle((c - 0.5, r - 0.5), 1, 1, fill=False, edgecolor=INK, lw=1.5))
+    b = np.unravel_index(np.argmin(piv.values), piv.shape)
+    ax.scatter(b[1], b[0], s=50, color=SURFACE, edgecolor=INK, lw=1.5, zorder=5)
+    ax.annotate(f'best {piv.values[b]:.3f}', (b[1], b[0]), xytext=(8, 0), textcoords='offset points', va='center',
+                fontsize=8.5, color=INK, bbox=dict(boxstyle='round,pad=0.2', fc=SURFACE, ec='none', alpha=0.85))
+    ax.set_xticks(range(piv.shape[1]), [f'{k:g}' for k in piv.columns])
+    ax.set_yticks(range(0, piv.shape[0], 2), [f'{v:.2f}' for v in piv.index[::2]])
+    ax.set_xlabel('κ (kin stepping-in)')
+    ax.set_ylabel('β (need response per 10,000 COVID deaths)')
+    cb = fig.colorbar(im, ax=ax, pad=0.02)
+    cb.set_label('Quarterly log RMSE, 2020 Q2 – 2021 Q4', color=INK2)
+    cb.outline.set_visible(False)
+    cb.ax.axhline(tau, color=INK, lw=1.5)
+    n = int(ok.values.sum())
+    save_bare(fig, 'M1_compatibility_map', f'{n} of {ok.size} (β, κ) cells fit within τ_C = {tau}',
+              f'E2 first pass (π = 0, ρ = 0, base lost-sending rule, S_t = reported COVID deaths / 10,000). Fit error '
+              f'of the quarterly transfer index (model: COVID run / no-COVID run) against Banxico relative to its '
+              f'2017–19 trend. Outlined: count-compatible cells (RMSE ≤ τ_C = {tau}; the ENIGH household criterion is not '
+              f'applied yet). Dot: best cell. α refitted to 2019 for each κ. Line on the colour bar: τ_C.')
+
+
+def m2_paths(paths, grid, settings):
+    tau = settings['tau_C']
+    quarters = sorted(paths.quarter.unique())
+    x = np.arange(len(quarters))
+    fig, ax = plt.subplots(figsize=(10, 4.4))
+    hold = quarters.index('2022Q1')
+    ax.axvspan(hold - 0.5, x[-1] + 0.5, color=HOLDOUT_WASH, lw=0, zorder=0)
+    ax.axhline(1, color=AXIS, lw=1)
+    ok = grid[grid.count_compatible]
+    for _, c in ok.iterrows():
+        d = paths[(paths.kappa == c.kappa) & (paths.beta == c.beta)].set_index('quarter').loc[quarters]
+        ax.plot(x, d.index_model, color=K0, lw=1, alpha=0.7, zorder=2)
+    best = grid.loc[grid.rmse_log_quarterly.idxmin()]
+    d = paths[(paths.kappa == best.kappa) & (paths.beta == best.beta)].set_index('quarter').loc[quarters]
+    ax.plot(x, d.index_model, color=K4, zorder=3, label=f'Best cell: κ = {best.kappa:g}, β = {best.beta:.2f}')
+    z = paths[(paths.kappa == 4.0) & (paths.beta == 0.0)].set_index('quarter').loc[quarters]
+    ax.plot(x, z.index_model, color=MUTED, lw=1.5, zorder=2, label='β = 0, κ = 4 (E1a)')
+    ax.plot(x, d.index_banxico, color=INK, zorder=4, label='Banxico vs its 2017–19 trend')
+    if len(ok):
+        ax.plot([], [], color=K0, lw=1, label=f'Other count-compatible cells ({len(ok) - 1})')
+    ax.set_xticks(x, [q.replace('Q', ' Q') if q.endswith('Q1') else q[-2:] for q in quarters])
+    ax.set_xlim(x[0] - 0.5, x[-1] + 0.5)
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.2f'))
+    ax.set_ylabel('Transfers relative to no-COVID path\n(quarterly)')
+    ax.text(hold - 0.3, ax.get_ylim()[0] + 0.003, '2022 held out', fontsize=8.5, color=INK2, va='bottom')
+    ax.legend(loc='upper left')
+    save_bare(fig, 'M2_compatible_paths', 'The best cell follows the COVID-death waves; Banxico rises steadily',
+              f'E2 first pass. Quarterly transfer index of the best cell and the other count-compatible cells '
+              f'(RMSE ≤ τ_C = {tau}; {int(grid.count_compatible.sum())} cells), the β = 0 path at κ = 4, and Banxico '
+              'relative to its 2017–19 trend. '
+              '2022 is held out.')
+
+
+def e2_figures():
+    settings = json.loads((E2 / 'run_settings.json').read_text())
+    grid = pd.read_csv(E2 / 'map.csv')
+    m1_map(grid, settings)
+    m2_paths(pd.read_csv(E2 / 'quarterly_paths.csv'), grid, settings)
+    write_captions()
+
+
 def main():
     FIG.mkdir(parents=True, exist_ok=True)
     style()
+    if '--e2' in sys.argv:
+        return e2_figures()
     if '--e1' in sys.argv:
         return e1_figures()
     if '--e1-rules' in sys.argv:
@@ -903,6 +1009,7 @@ def main():
     a4_occupations(m)
     b1_employment()
     b2_amounts()
+    b3_salience()
     cells = e0_cells()
     size = pd.read_csv(E0 / 'validation_network_size.csv')
     c1_ladder(cells.copy())
@@ -911,6 +1018,7 @@ def main():
     c4_kappa()
     c5_tiles()
     e1_figures()
+    e2_figures()
 
 
 def e1_figures():

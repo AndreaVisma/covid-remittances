@@ -17,7 +17,15 @@
     "2022-12-01"
   ],
   "counterfactual": "2019 CPS rates of the same calendar month, common random numbers",
-  "index": "monthly: month / same month 2019; quarterly: quarter total / same quarter 2019",
+  "index": "model: month (quarter) / same month (quarter) 2019 = COVID run / no-COVID run; Banxico: transactions / 2017-19 log-linear trend with month effects (index_banxico); index_banxico_raw: same period of 2019",
+  "banxico_trend": {
+    "trend_window": [
+      "2017-01-01",
+      "2019-12-01"
+    ],
+    "trend_growth_per_year": 0.06318574356523146,
+    "residual_sd_monthly": 0.01947960600115106
+  },
   "fit_window": [
     "2020-04-01",
     "2021-12-01"

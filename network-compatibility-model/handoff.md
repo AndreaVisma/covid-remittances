@@ -10,13 +10,13 @@ Pre-COVID forecasts predicted remittances would collapse; flows to Mexico rose i
 
 - **Few parameters.** Calibrated: `α_core`, `α_kin` (2019). Map axes: `β`, `κ`. Network-map axis: `ρ`. Scenario: `π`. Everything else external.
 - **Sending is a Bernoulli draw with probability θ**, two stages: core migrants (RELHEAD 1/2/3) first, then kin, with `logit θ_kin,j = α_kin + β S_t + κ L_h,−j,t`. `L` is the routine sending lost to linked migrants unable to send, in core-sender units: 1 per eligible core migrant, `w = θ_kin⁰/θ_core⁰ ≈ 0.07` per other eligible kin ("lost sending", base model since 19 Oct 2026; spec §4.3).
-- **Salience `S_t` is national only:** ½ Mexican employment loss (employed population, not unemployment rate) + ½ deaths (excess deaths as sensitivity), standardized to mean 0 in 2019.
+- **Salience `S_t` is national only and simple:** reported COVID deaths in Mexico per month (OWID), in 10,000s; 0 in 2019 (user decisions, 20 Oct 2026). Excess deaths are the sensitivity. Components such as employment can be added later.
 - **Amount separated from sending.** Each migrant has a fixed routine amount `m_j` (lognormal, mean = Banxico 2019 mean transaction). The model targets the transfer **count**; the change in mean amount is reported as a data margin.
 - **Income is a yes/no condition only:** a migrant can send if employed or receiving a benefit payment that month. The old $20,000 allowance / 20%-of-surplus rule is dropped.
 - **Benefits (UI supplements, stimulus checks) only act through that condition.** Eligibility `π` is a scenario.
 - **Wages:** not in the base model. Wage-indexed amounts are a robustness check only.
 - **Scope: 2020–21.** 2022 is held out; the model is expected to undershoot it (migrant-stock growth, wages, formalization).
-- **Results are maps, not a single best fit.** Fix the acceptance tolerance `τ_C` before running E2.
+- **Results are maps, not a single best fit.** Acceptance tolerance `τ_C` = 0.04, quarterly log RMSE over 2020Q2–2021Q4 against Banxico relative to its 2017–19 trend (user decision, 20 Oct 2026).
 
 ## Folder layout
 
@@ -35,9 +35,11 @@ network-compatibility-model/
     run_e1_job_loss.py       E1a (β = 0, no benefits), base rule
     run_e1_rule_comparison.py   E0 refit + E1a under the former 'all_core' rule
     diagnose_e1_kappa.py     why κ did little under the former rule (April 2020)
+    run_e2_map.py            E2 first pass: β × κ map, count criterion only
   outputs/e0-baseline/       aggregate E0 tables (base rule)
   outputs/e1-job-loss/       E1a tables (base rule)
   outputs/e1-all-core-rule/  former rule: E0 refit, E1a, κ diagnostics, rule comparison
+  outputs/e2-map/            E2 first pass (map.csv, quarterly_paths.csv)
   model/make_figures.py      PNG figures (plan: figures-plan.md); --e1 / --e1-rules for E1 only
   figures/                   A1-A4 population, B1-B2 inputs, C1-C5 calibration, D1-D6 E1a,
                              R1-R6 rule comparison; captions.md
@@ -51,13 +53,13 @@ Older work lives in `oct-26/` (earlier ABM `oct-26/simulations/abms/remittance-m
 | # | Task | Status |
 |---|---|---|
 | 1 | CPS occupation-month employment rates + persistence `φ` | **Done, with Mexican-origin fallback** (see below) |
-| 2 | Salience index `S_t` (ENOE/ETOE employed population + national/excess deaths) | Not started |
+| 2 | Salience index `S_t` (reported COVID deaths in Mexico) | **Done** (`data-prep/salience_inputs.py`, see below); loaded by `abm.salience_series` |
 | 3 | Benefit schedule table; external range for `π` | Not started |
 | 4 | Amount dispersion `σ` (MMP/ENIGH); Banxico 2019 mean transaction | **Done** (see below) |
 | 4b | Real earnings index `w_t` | Not started |
 | 5 | ABM refactor (two-stage decision, ability gate, fixed `m_j`, latent-factor employment) | **Done** (`model/abm.py`) |
 | 6 | E0 calibration; diagnose singleton / kin-only misfits | **Done, first pass** (`model/run_e0_baseline.py`); two open decisions below |
-| 7 | Fix `τ_C`; run E1, then E2 | **E1a done** (`π = 0`, base lost-sending rule; former rule kept for comparison); E1b (with benefits) waits for task 3; `τ_C` not fixed |
+| 7 | Fix `τ_C`; run E1, then E2 | `τ_C` = 0.04. **E1a done** (`π = 0`, base lost-sending rule; former rule kept for comparison). **E2 first pass done** (`π = 0`, count criterion only): no compatible cell. E1b/E2 with benefits wait for task 3; the ENIGH criterion is not built |
 
 ### Recommended order from here
 
@@ -84,6 +86,36 @@ Key numbers (Mexican origin, all occupations):
 ### Open issue from task 1: Mexican-born population
 
 `cps_00001` has **no birthplace variable** (no `BPL`, `NATIVITY` or `CITIZEN`), so outputs are for **Mexican origin**, which includes US-born people. To fix: the user downloads a new IPUMS CPS extract (same samples and variables, plus `BPL`, optionally `NATIVITY`/`CITIZEN`), saves the codebook, and updates `DATA` / `CODEBOOK` at the top of the script. The script then switches to `BPL == 20000` automatically and labels outputs "Mexican-born". Expect smaller cells (roughly half), so more Agriculture months will fall back to smoothing.
+
+### Task 2: salience inputs and `S_t` (19–20 Oct 2026)
+
+Run: `python network-compatibility-model/data-prep/salience_inputs.py` (seconds). Output: `data-prep/outputs/salience_inputs_monthly.csv` (2019–2022; public aggregates). Raw files are in `data/` (git-ignored); the script docstring has the download URLs.
+- **Employed population 15+ (monthly, not seasonally adjusted):** OECD infra-annual labour statistics (monthly ENOE/ENOEN, employed = labour force − unemployed). There is no open monthly INEGI file without an API token; FRED has Mexico only quarterly. ILOSTAT's monthly series starts in Jul 2020.
+  - **Apr–Jun 2020 are missing everywhere** (ENOE suspended). They are patched from INEGI's ETOE telephone-survey releases: April 43.4 M, May 43.6 M, June 48.3 M. ETOE is calibrated to ENOE Q1 2020 but is not strictly comparable.
+  - Employment loss vs the same month of 2019: 19.4% (Apr 2020), 20.1% (May), 12.5% (Jun), 9.3% (Jul), ~4–6% (Oct–Dec 2020), 1–3% (Q1 2021), ≤ 0 from Apr 2021. It is negative in 2022 because the comparison has no trend.
+  - INEGI switched to a new population frame from Apr 2021, so part of the Apr 2021 jump may be rebasing.
+- **Excess deaths:** World Mortality Dataset weekly all-cause deaths (Karlinsky & Kobak), converted to calendar months.
+  - **Use the trend baseline:** the 2015–19 same-week mean leaves ~+3,000 "excess" a month in 2019, because mortality was rising. With a linear trend, 2019 is ≈ 0.
+  - Peaks: Jan 2021 (~104k excess, trend baseline), Jul 2020 (~57k), Aug 2021 (~58k), Dec 2020 (~53k).
+- **Reported COVID deaths (OWID):** about 37–41% of excess deaths (trend baseline) at the peaks. **Decision (user, 20 Oct 2026): excess deaths (trend baseline) are the base component; reported COVID deaths are the sensitivity** (spec §4.3 updated).
+- **`S_t` simplified (user decisions, 20 Oct 2026):** `S_t` = reported COVID deaths (OWID) / 10,000, and 0 in 2019. A first version averaged standardized employment loss and excess deaths; it was dropped as over-engineered. An excess-deaths-only version was then replaced by reported COVID deaths (user choice). Output: `data-prep/outputs/salience_index_monthly.csv` (`S`; variant `S_excess_deaths`); figure B3.
+- **`S_t`:** peaks 2.4 (Jul 2020), 3.9 (Jan 2021), 2.2 (Aug 2021), 1.1 (Feb 2022). Annual means 1.23 (2020), 1.30 (2021), 0.23 (2022, held out). The excess-deaths variant is about 2.2 times larger (means 2.76 / 2.85 / 0.55).
+- **For E2:** β is in logit units per 10,000 COVID deaths a month.
+- **Preview: β needed to match Banxico vs trend, quarter by quarter** (exact counts, E0 alphas; a quick calculation, not yet a script):
+
+  | Quarter | Mean `S_t` | Banxico vs trend | Extra transfers needed (κ = 4) | β needed (κ = 4) | β needed (κ = 0) |
+  |---|---|---|---|---|---|
+  | 2020Q2 | 1.33 | 0.974 | 0% | 0 | 0.16 |
+  | 2020Q3 | 1.88 | 1.025 | +3% | 0.03 | 0.09 |
+  | 2020Q4 | 1.71 | 1.017 | +2% | 0.03 | 0.07 |
+  | 2021Q1 | 2.57 | 1.049 | +5% | 0.04 | 0.06 |
+  | 2021Q2 | 0.51 | 1.058 | +6% | 0.23 | 0.35 |
+  | 2021Q3 | 1.58 | 1.083 | +8% | 0.10 | 0.13 |
+  | 2021Q4 | 0.56 | 1.108 | +11% | 0.37 | 0.39 |
+
+  The needed β is not constant: it is 10× larger in the low-death quarters 2021Q2 and Q4. The best single β is 0.05 at κ = 4 (quarterly log RMSE 0.044 vs 0.059 at β = 0) and 0.10 at κ = 0 (0.047 vs 0.090). Both are above the proposed `τ_C` = 0.03. Deaths alone overshoot early 2021 and undershoot late 2021. As a probability: β = 0.05 with `S_t` = 2.6 raises the core sending probability from 0.56 to about 0.59.
+- The employment series (OECD + ETOE patch) stays in `salience_inputs_monthly.csv` in case a labour-market component is added later.
+- Optional: an INEGI API token (free, register with an email on the API page) would let us pull the ENOE series from INEGI directly. The OECD series is the same INEGI data.
 
 ### Task 4 results
 
@@ -168,11 +200,12 @@ Still open from the audit: kin occupations are imputed (ρ / occupational concen
 ### E1a results (job loss only, base lost-sending rule, 19 Oct 2026)
 
 Code: `model/run_e1_job_loss.py` (~90 s); outputs in `outputs/e1-job-loss/`. `β = 0`, `ρ = 0`, `π = 0` (no benefits, user decision: E1b adds them after task 3). E0 alphas for each κ in {0, …, 4}. Runs 2019-01 to 2022-12; the counterfactual uses the 2019 CPS rates for the same calendar month, with common random numbers.
-- **Comparison indices (user decision):** monthly = month / same month of 2019; quarterly = quarter total / same quarter of 2019 (smooths monthly noise). Fit windows 2020-04..2021-12 and 2020Q2..2021Q4; 2022 held out. `τ_C` is not fixed, so RMSE is reported only.
+- **Comparison (user decisions, 19–20 Oct 2026):** monthly and quarterly (quarters smooth monthly noise). Model = COVID run / no-COVID run. **Banxico = transactions / their 2017–19 trend** (log-linear with month effects, +6.3% a year; residual SD 0.019 monthly, 0.014 quarterly). The raw index (same period of 2019) is kept as `index_banxico_raw`. Fit windows 2020-04..2021-12 and 2020Q2..2021Q4; 2022 held out. `τ_C` is not fixed, so RMSE is reported only.
 - Aggregate results use the exact expected counts (`abm.expected_flows`, exact for `ρ = 0`, benefits included). Household outcomes come from 50 paired stochastic runs. Simulated and exact counts agree within 0.7% (mean over the 50 runs).
-- **Count index:** at κ = 0 the trough is 0.853 (Apr 2020); quarterly 2020Q2 0.876, 2020Q4 0.958, 2021Q4 0.994. Banxico: 1.033, 1.102, 1.276. Annual mean 2020: 0.943 vs 1.072; 2021: 0.978 vs 1.215. Log RMSE ≈ 0.19 at every κ.
-- **κ = 4:** April 2020 index 0.966 (Banxico 0.96). Quarterly 2020Q2 0.975, Q3 0.994, then ~1.0. Annual mean 0.991 (2020) and 0.998 (2021). Log RMSE 0.160. In April 2020, kin transfers *fall* by 0.2 per lost core transfer at κ = 0 (kin lose jobs too) and rise by 0.71 at κ = 4. The index reaches 1.0 at κ ≈ 6 and 1.012 at κ = 8.
-- **Read:** job loss on real networks only lowers counts. Stepping-in can fill the 2020 dip but produces no growth, because CPS employment recovers by late 2021. 2020 is missed by 8–13 points and 2021 by ~22–24. The growth must come from `β`, benefits (E1b), or factors outside the model.
+- **Banxico vs trend:** 0.91 in Apr 2020 (1.09 in the March record month); quarterly 2020Q2 0.974, Q3 1.025, Q4 1.017, 2021Q1 1.049, Q2 1.058, Q3 1.083, Q4 1.108 (2022: 1.07–1.13). Annual mean 1.008 (2020), 1.074 (2021). Relative to trend, **2020 is roughly flat; the excess is a 2021 phenomenon.**
+- **κ = 0:** trough 0.853 (Apr 2020); quarterly 2020Q2 0.876, 2020Q4 0.958, 2021Q4 0.994. Annual mean 0.943 (2020), 0.978 (2021). Quarterly log RMSE vs trend 0.090 (0.189 vs the raw index).
+- **κ = 4:** April 2020 index 0.966 (Banxico vs trend 0.91; raw 0.96). Quarterly 2020Q2 0.975, Q3 0.994, then ~1.0. Annual mean 0.991 (2020) and 0.998 (2021). Quarterly log RMSE vs trend 0.059 (0.159 vs raw). **2020Q2 matches Banxico (0.975 vs 0.974).** In April 2020, kin transfers *fall* by 0.2 per lost core transfer at κ = 0 (kin lose jobs too) and rise by 0.71 at κ = 4. The index reaches 1.0 at κ ≈ 6 and 1.012 at κ = 8.
+- **Read:** job loss on real networks only lowers counts. With strong stepping-in (κ ≈ 4) the model matches the 2020 path relative to trend. It produces no 2021 excess (model ~1.00 vs Banxico 1.05–1.11), because CPS employment recovers. The 2021 rise must come from `β`, benefits (E1b), or factors outside the model.
 - **Households (κ = 0):** USD received drops ~4.3% over 2020-04..2021-12, nearly flat across network types and sizes. Group receipt bottoms out in Apr 2020 (kin-only 0.86, households with core 0.90 of counterfactual) and stays below 99% of the counterfactual until Oct 2021. Larger networks are less often interrupted (size 1: 4.5% of counterfactual receipt months; 10+: 1.6%).
 - **Households (κ = 4):**
   - Core + kin households barely dip (trough 0.998).
@@ -205,13 +238,24 @@ New rule vs former rule (κ = 4; κ = 0 is identical under both):
 |---|---|---|
 | 2019 fit error (pp), κ = 4 / 8 | 0.60 / 0.71 | 0.48 / 0.56 |
 | Households with L > 0 (or U = 1) per month, 2019 | 304 | 29 |
-| April 2020 index (Banxico 0.96) | 0.966 | 0.888 |
+| April 2020 index (Banxico vs trend 0.91) | 0.966 | 0.888 |
 | April 2020 index as κ → large | > 1 (1.012 at κ = 8) | ceiling 0.904 |
 | Kin transfers added per lost core transfer, Apr 2020 | 0.71 | 0.07 |
-| Annual mean index 2020 / 2021 (Banxico 1.072 / 1.215) | 0.991 / 0.998 | 0.957 / 0.984 |
+| Annual mean index 2020 / 2021 (Banxico vs trend 1.008 / 1.074) | 0.991 / 0.998 | 0.957 / 0.984 |
 | Kin-only households, April trough | 0.92 | 0.86 (as κ = 0) |
 
 The network-size and link-type fit for 2019 is the same under both rules within ~1 pp (except cells with n < 20). Under the new rule κ moves the 2020 aggregate, so E2's β × κ map will not be flat along κ.
+
+### E2 first pass (20 Oct 2026, `model/run_e2_map.py`, ~5 min)
+
+`π = 0`, `ρ = 0`, base lost-sending rule, `S_t` = reported COVID deaths / 10,000. Grid: β 0–0.40 (step 0.02) × κ {0, 0.5, 1, 1.5, 2, 3, 4, 5, 6, 8}, with the E0 alphas for each κ; 210 cells, exact expected counts. Criterion: quarterly log RMSE, 2020Q2–2021Q4, model (COVID / no-COVID run) vs Banxico / 2017–19 trend, `τ_C` = 0.04. The ENIGH household criterion is not implemented, so these are count-only results. Figures M1 (map) and M2 (paths).
+- **No cell is count-compatible at `τ_C` = 0.04.** Best: κ = 3, β = 0.06, RMSE 0.043. A valley of near-fits runs from (κ = 0, β = 0.10) to (κ = 8, β = 0.04), with RMSE 0.043–0.049: β and κ trade off, since both raise 2020 sending.
+- At β = 0 the RMSE is 0.090 (κ = 0) to 0.055 (κ ≥ 6). From β = 0.16 up, every κ fits worse than β = 0 at κ = 4 (0.059).
+- **Why it fails** (best cell vs Banxico vs trend):
+  - The model overshoots 2020Q3–2021Q1 (1.04 / 1.04 / 1.07 vs 1.03 / 1.02 / 1.05).
+  - It undershoots 2021Q2–Q4 (1.00 / 1.04 / 1.02 vs 1.06 / 1.08 / 1.11).
+  - COVID deaths come in waves (low in 2021Q2 and Q4), while the excess rises steadily. 2022 (held out) is missed by 7–13 points.
+- **Read:** with deaths as the only need signal and no benefits, the network model reproduces the 2020 dip (job loss and stepping-in) but not the steady 2021 rise. The need response it implies is small: β ≈ 0.06 raises a core migrant's monthly sending probability from about 0.56 to 0.62 at the Jan 2021 peak. Candidates for the steady component: benefits (E1b, task 3), migrant-stock growth, wages, formalization. Possible next tests: benefits; a smoother or cumulative need signal; ENIGH criterion.
 
 ## Things to keep in mind
 

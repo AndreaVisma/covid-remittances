@@ -1,0 +1,22 @@
+{
+  "months": [
+    "2019-01-01",
+    "2022-12-01"
+  ],
+  "employment": "employed 15+ = OECD LF - UNE_M (monthly ENOE, NSA), ETOE patch Apr-Jun 2020",
+  "etoe_employed_thousands": {
+    "2020-04-01": 43400.0,
+    "2020-05-01": 43600.0,
+    "2020-06-01": 48300.0
+  },
+  "employment_loss": "1 - employed / employed in the same month of 2019",
+  "excess_baseline": "2015-2019 mean deaths by ISO week, scaled by a linear trend in annual deaths",
+  "covid_deaths": "OWID new_deaths, monthly sum",
+  "salience": "S = reported COVID deaths / 10000; S = 0 in 2019; variant: max(excess deaths, 0)",
+  "variants": {
+    "S": "covid_deaths",
+    "S_excess_deaths": "excess_deaths_trend"
+  },
+  "base_variant": "S",
+  "employment_role": "kept as input only, not in S"
+}

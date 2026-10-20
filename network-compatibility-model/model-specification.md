@@ -114,13 +114,14 @@ w = θ_kin⁰ / θ_core⁰ = expit(α_kin) / expit(α_core)   (≈ 0.07)
 At κ = 4, several kin can each step in for one loss, so large networks can receive more than in the no-COVID counterfactual (over-replacement). This is a property of the rule to report.
 
 - `α_core`, `α_kin`: **baseline propensities**, calibrated to 2019 (§7).
-- `S_t`: **national salience index**, standardized so that its 2019 mean is 0 (β then has no effect in 2019):
+- `S_t`: **national salience index**, the reported COVID-19 deaths in Mexico in month `t`, in units of 10,000 deaths (user decisions, 20 Oct 2026: keep it simple; reported COVID deaths, not excess deaths):
   ```
-  S_t = ½ · z(employment loss in Mexico_t) + ½ · z(deaths in Mexico_t)
+  S_t = reported COVID deaths in Mexico_t / 10,000,   S_t = 0 in 2019
   ```
-  - Employment loss: fall of the employed population relative to 2019 (ENOE/ETOE). Not the unemployment rate, which barely moved because people left the labour force.
-  - Deaths: COVID deaths, with excess mortality as a sensitivity because reported COVID deaths were undercounted.
-  - Equal weights are fixed. Splitting into two coefficients is a later test, not part of the base model.
+  - Source: OWID (`data/covid_cases.csv`), monthly sums. Peaks 2.4 (Jul 2020), 3.9 (Jan 2021), 2.2 (Aug 2021), 1.1 (Feb 2022). Annual means 1.23 (2020), 1.30 (2021), 0.23 (2022).
+  - β is in logit units per 10,000 COVID deaths a month. `S_t` = 0 in 2019, so β has no effect in the calibration year.
+  - Sensitivity: excess all-cause deaths (World Mortality Dataset, 2015–19 baseline with a linear trend, negative values set to 0), about 2.2 times reported deaths.
+  - A labour-market component (the fall in the employed population, ENOE/ETOE) was considered and set aside for simplicity; the series is kept in `data-prep/outputs/salience_inputs_monthly.csv` in case it is added later.
 - `β ≥ 0`: **need responsiveness**. Axis 1 of the behavioural map.
 - `κ ≥ 0`: **stepping in**. Kin become more likely to send when other migrants linked to the household cannot send, in proportion to the routine sending lost. Axis 2 of the behavioural map.
   - `κ = 0`: kin ignore what happens to other linked migrants.
@@ -190,10 +191,10 @@ Known problem to resolve first: the current model underpredicts receipt in singl
 
 A cell `(β, κ, π)` is **compatible** if both hold:
 
-1. **Transfer count:** RMSE of the log count index over 2020-04 to 2021-12 ≤ `τ_C`.
+1. **Transfer count:** RMSE of the log count index over 2020-04 to 2021-12 (quarterly: 2020Q2–2021Q4) ≤ `τ_C`. Model index = COVID run / no-COVID run. Data index = Banxico transactions / their 2017–19 trend (log-linear with month effects, +6.3% a year; user decision 20 Oct 2026), so pre-COVID growth is not attributed to the crisis.
 2. **Household receipt:** the simulated change in receipt between ENIGH 2018 and ENIGH 2020 lies within the survey confidence interval.
 
-**Fix `τ_C` before running E2.** Held out from fitting: 2022 counts, the mean-amount series, and March 2020 (expected to be unexplained, since salience had not moved yet).
+**`τ_C` = 0.04** (user decision, 20 Oct 2026, fixed before running E2): quarterly log RMSE over 2020Q2–2021Q4. That is about three times the SD of Banxico's quarterly deviations from its 2017–19 trend (0.014). Held out from fitting: 2022 counts, the mean-amount series, and March 2020 (expected to be unexplained, since salience had not moved yet).
 
 **Expected 2022 undershoot.** The salience index falls back after 2021 and the network population is fixed, so the model will likely underpredict 2022 counts. Report this as the boundary of the crisis mechanism. Three named candidate causes, none modelled:
 1. growth of the Mexican-born migrant population in 2021–22 (new arrivals not in the fixed MMP network);
@@ -209,7 +210,7 @@ A cell `(β, κ, π)` is **compatible** if both hold:
 | `κ` | coordination | map axis |
 | `ρ` | job-loss correlation within networks | network-map axis |
 | `π` | benefit access | scenario |
-| `φ`, `σ`, scale, salience weights | employment persistence, amount dispersion, national scaling, index | external / fixed |
+| `φ`, `σ`, scale, salience definition | employment persistence, amount dispersion, national scaling, index | external / fixed |
 
 ## 8. Known limitations (state upfront)
 
@@ -224,7 +225,7 @@ A cell `(β, κ, π)` is **compatible** if both hold:
 ## 9. Implementation tasks
 
 1. CPS: rebuild occupation-month employment rates for Mexican-born workers; estimate `φ` from month-to-month transitions. *Done for Mexican origin (the extract has no birthplace variable); `φ ≈ 0.91`. See `handoff.md`.*
-2. Mexico: build `S_t` from ENOE/ETOE employed population and national (excess) deaths.
+2. Mexico: build `S_t` from national COVID deaths. *Done (`data-prep/salience_inputs.py`).*
 3. Benefit schedule table; external range for `π`.
 4. Amount distribution `σ` from MMP/ENIGH; Banxico 2019 mean transaction amount. *Done: mean $326 (Banxico), `σ ≈ 0.81` (MMP, within-period). Kin use the core distribution. See `handoff.md`.*
 4b. Real earnings index `w_t` (from `data/weekly-earnings-median-race.xlsx` or CPS earnings, Mexican-born where possible), deflated with US CPI.

@@ -10,10 +10,11 @@ the benefit schedule, task 3, exists). For each kappa on the E0 grid, with the
 E0 alphas for that kappa:
   * exact expected monthly transfers 2019-2022 under observed CPS employment
     and under the no-COVID counterfactual (2019 rates continued);
-  * count index vs Banxico transactions, monthly (month / same month 2019) and
-    quarterly (quarter total / same quarter 2019), plus excess over the
-    counterfactual; log-index RMSE over 2020-04..2021-12 (2020Q2..2021Q4),
-    reported only, since tau_C is not fixed yet; 2022 is held out;
+  * count index, monthly and quarterly: model = COVID run / no-COVID run (equal to the
+    same period of 2019), Banxico = transactions / their 2017-19 trend (log-linear with
+    month effects, +6.3% a year); the raw Banxico index (same period of 2019) is kept as
+    index_banxico_raw. Log-index RMSE over 2020-04..2021-12 (2020Q2..2021Q4), reported
+    only, since tau_C is not fixed yet; 2022 is held out;
   * household outcomes by network type, size and link type from paired
     stochastic runs (common random numbers): interruptions, drop in USD
     received, replacement by kin, and recovery month of group receipt.
@@ -34,6 +35,7 @@ DATES = pd.date_range('2019-01-01', '2022-12-01', freq='MS')
 FIT = ('2020-04-01', '2021-12-01')           # March 2020 excluded (salience had not moved)
 FIT_Q = ('2020Q2', '2021Q4')
 HOLDOUT = ('2022-01-01', '2022-12-01')
+TREND_WINDOW = ('2017-01-01', '2019-12-01')
 SEEDS = range(101, 151)
 AMOUNT_SEED = 7
 RECOVERY_GAP = 0.01                          # group receipt within 1% of counterfactual
@@ -46,9 +48,20 @@ def counterfactual_dates():
 
 
 def banxico():
+    """Banxico transactions and their pre-COVID path: log-linear trend plus calendar-month effects
+    fitted on 2017-2019, projected forward (user decision 20 Oct 2026: compare against the trend)."""
     bx = pd.read_parquet(abm.BANXICO)
     bx['date'] = pd.to_datetime(bx.date)
-    return bx.set_index('date').loc[DATES, 'transactions']
+    t = bx.set_index('date').transactions
+    design = lambda idx: np.column_stack([(idx.year - 2019) * 12 + idx.month]
+                                         + [(idx.month == m).astype(float) for m in range(1, 13)])
+    pre = t.loc[TREND_WINDOW[0]:TREND_WINDOW[1]]
+    coef, *_ = np.linalg.lstsq(design(pre.index), np.log(pre.to_numpy()), rcond=None)
+    trend = pd.Series(np.exp(design(DATES) @ coef), index=DATES)
+    resid = np.log(pre.to_numpy()) - design(pre.index) @ coef
+    info = dict(trend_window=list(TREND_WINDOW), trend_growth_per_year=float(np.expm1(12 * coef[0])),
+                residual_sd_monthly=float(resid.std(ddof=13)))
+    return t.loc[DATES], trend, info
 
 
 def same_period_2019(series, freq):
@@ -66,25 +79,29 @@ def log_rmse(model, data, window):
     return float(np.sqrt(np.mean(np.log(model[w] / data[w]) ** 2)))
 
 
-def aggregate(pop, covid, cf, params, amounts, bx):
+def aggregate(pop, covid, cf, params, amounts, bx, trend):
     f = abm.expected_flows(pop, covid, params, amounts)
     g = abm.expected_flows(pop, cf, params, amounts).set_axis(f.index)
     monthly = f.add_suffix('_covid').join(g.add_suffix('_cf'))
     monthly['banxico_transactions'] = bx
-    for k, s in [('model', f.transfers), ('cf', g.transfers), ('banxico', bx)]:
+    monthly['banxico_trend'] = trend
+    for k, s in [('model', f.transfers), ('cf', g.transfers), ('banxico_raw', bx)]:
         monthly[f'index_{k}'] = same_period_2019(s, 'M')
+    monthly['index_banxico'] = bx / trend                      # target: Banxico relative to its 2017-19 trend
     monthly['excess_over_cf'] = f.transfers / g.transfers
     monthly['mean_transfer_usd'] = f.usd / f.transfers
     q = lambda s: s.groupby(s.index.to_period('Q')).sum()
     quarterly = pd.DataFrame({'transfers_covid': q(f.transfers), 'transfers_cf': q(g.transfers),
                               'kin_transfers_covid': q(f.kin_transfers), 'kin_transfers_cf': q(g.kin_transfers),
-                              'banxico_transactions': q(bx)})
-    for k, s in [('model', f.transfers), ('cf', g.transfers), ('banxico', bx)]:
+                              'banxico_transactions': q(bx), 'banxico_trend': q(trend)})
+    for k, s in [('model', f.transfers), ('cf', g.transfers), ('banxico_raw', bx)]:
         quarterly[f'index_{k}'] = same_period_2019(s, 'Q')
+    quarterly['index_banxico'] = quarterly.banxico_transactions / quarterly.banxico_trend
     quarterly['excess_over_cf'] = quarterly.transfers_covid / quarterly.transfers_cf
     fit = dict(rmse_log_monthly=log_rmse(monthly.index_model, monthly.index_banxico, FIT),
                rmse_log_quarterly=log_rmse(quarterly.index_model, quarterly.index_banxico, FIT_Q),
                rmse_log_monthly_holdout_2022=log_rmse(monthly.index_model, monthly.index_banxico, HOLDOUT),
+               rmse_log_quarterly_raw=log_rmse(quarterly.index_model, quarterly.index_banxico_raw, FIT_Q),
                min_index_model=float(monthly.index_model.min()),
                min_index_month=str(monthly.index_model.idxmin().date()),
                mean_index_model_2020=float(monthly.index_model['2020'].mean()),
@@ -168,12 +185,12 @@ def run_experiment(fitted, out, rule, settings_extra=None):
     cells = household_cells(pop['h'])
     covid = abm.make_inputs(DATES, pop['rate_columns'])
     cf = abm.make_inputs(counterfactual_dates(), pop['rate_columns'])
-    bx = banxico()
+    bx, bx_trend, bx_info = banxico()
     monthly, quarterly, fits, recovery, paths, outcomes, checks = [], [], [], [], [], [], []
     for row in fitted:
         params = abm.Params(row['alpha_core'], row['alpha_kin'], kappa=row['kappa'], rule=rule)
         amounts = abm.routine_amounts(pop, params, AMOUNT_SEED)
-        m, q, fit = aggregate(pop, covid, cf, params, amounts, bx)
+        m, q, fit = aggregate(pop, covid, cf, params, amounts, bx, bx_trend)
         r, p = recovery_months(pop, covid, cf, params, cells)
         o, sim_transfers = household_outcomes(pop, covid, cf, params, cells)
         kappa = dict(kappa=params.kappa)
@@ -198,7 +215,10 @@ def run_experiment(fitted, out, rule, settings_extra=None):
                     kappas=[r['kappa'] for r in fitted], **(settings_extra or {}),
                     dates=[str(DATES[0].date()), str(DATES[-1].date())],
                     counterfactual='2019 CPS rates of the same calendar month, common random numbers',
-                    index='monthly: month / same month 2019; quarterly: quarter total / same quarter 2019',
+                    index='model: month (quarter) / same month (quarter) 2019 = COVID run / no-COVID run; '
+                          'Banxico: transactions / 2017-19 log-linear trend with month effects (index_banxico); '
+                          'index_banxico_raw: same period of 2019',
+                    banxico_trend=bx_info,
                     fit_window=list(FIT), fit_window_quarterly=list(FIT_Q), holdout=list(HOLDOUT),
                     tau_C='not fixed; RMSE reported only', seeds=[SEEDS.start, SEEDS.stop - 1],
                     amount_seed=AMOUNT_SEED, recovery_gap=RECOVERY_GAP, phi=abm.employment_phi(),

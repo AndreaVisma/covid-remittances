@@ -32,6 +32,7 @@ POPULATION = HERE / 'data-prep/population'          # built by data-prep/build_p
 CPS_RATES = HERE / 'data-prep/outputs/cps_employment_rates_monthly.csv'
 CPS_SETTINGS = HERE / 'data-prep/outputs/cps_employment_run_settings.json'
 AMOUNTS = HERE / 'data-prep/outputs/remittance_amounts.json'
+SALIENCE = HERE / 'data-prep/outputs/salience_index_monthly.csv'
 BANXICO = ROOT / 'oct-26/data-prep/outputs/mexico-rem-monthly-total.parquet'
 
 CPS_JOBS = ['Agriculture', 'Production/construction/transport',
@@ -140,6 +141,15 @@ def make_inputs(dates, rate_columns, salience=None, ui_months=None, stimulus_mon
                   ui_months=zeros if ui_months is None else np.asarray(ui_months, bool),
                   stimulus_months=zeros if stimulus_months is None else np.asarray(stimulus_months, bool),
                   rate_columns=list(rate_columns))
+
+
+def salience_series(dates, variant='S'):
+    """S_t for the given months (data-prep/salience_inputs.py); 0 before 2019 and in 2019."""
+    s = pd.read_csv(SALIENCE, index_col='date', parse_dates=True)[variant]
+    dates = pd.DatetimeIndex(dates)
+    missing = dates[(dates.year >= 2019)].difference(s.index)
+    assert missing.empty, f'No salience for {list(missing)}'
+    return s.reindex(dates).fillna(0.0).to_numpy(float)
 
 
 def baseline_2019_dates(repeats=1):

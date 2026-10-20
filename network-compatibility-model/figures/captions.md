@@ -46,13 +46,13 @@ Model minus MMP receipt (percentage points) for every group with at least 30 hou
 
 Model 2019 baseline, κ = 0, six-month window (stochastic runs, 5 seeds), against ENIGH 2018 recipient households (monthly USD from quarterly MXN). ENIGH captures only ~8% of the Banxico total, so model amounts above ENIGH are expected.
 
-## D1_count_index_quarterly.png: Job loss alone lowers transfer counts; Banxico counts rose
+## D1_count_index_quarterly.png: Job loss with stepping-in matches 2020; the 2021 rise above trend is missed
 
-E1a (β = 0, ρ = 0, no benefits). Quarterly transfer counts relative to the same quarter of 2019: model (exact expected counts, κ = 0 and κ = 4, E0 alphas for each) and Banxico transactions. The no-COVID counterfactual (2019 CPS rates continued) is the line at 1. 2022 is held out.
+E1a (β = 0, ρ = 0, no benefits). Model: quarterly transfer counts relative to the no-COVID run (2019 CPS rates continued; exact expected counts, κ = 0 and κ = 4, E0 alphas for each). Banxico: transactions relative to their 2017–19 trend (log-linear, +6.3% a year, with month effects). 1 = no-COVID path. 2022 is held out.
 
 ## D1b_count_index_monthly.png: Monthly: the model bottoms out in April 2020
 
-As D1, monthly: each month relative to the same calendar month of 2019. The model low is April 2020 (0.85 at κ = 0), when Banxico counts dipped to 0.96. March 2020, Banxico’s record month, is excluded from the fit window (2020-04 to 2021-12).
+As D1, monthly. The model low is April 2020 (0.85 at κ = 0), when Banxico fell to 0.91 of its trend. March 2020, Banxico’s record month (1.09 of trend), is excluded from the fit window (2020-04 to 2021-12).
 
 ## D2_core_kin_decomposition.png: Core migrants carry the loss; at κ = 4 kin offset much of it
 
@@ -74,9 +74,9 @@ E1a. Mean monthly receipt probability (exact) relative to the no-COVID counterfa
 
 E1a, 50 paired stochastic runs (common random numbers), Apr 2020 – Dec 2021. Left: months in which the counterfactual household receives but the COVID household does not. Right: 1 − USD received / counterfactual USD (negative: more than without COVID). κ = 4 under the base lost-sending rule. Size 10+ has only 30 households.
 
-## R1_count_index_rules.png: Kin-for-kin stepping-in fills most of the 2020 dip, but produces no growth
+## R1_count_index_rules.png: Kin-for-kin stepping-in fills the 2020 dip, but not the 2021 rise
 
-E1a (β = 0, ρ = 0, no benefits), quarterly counts relative to the same quarter of 2019. κ = 0 is the same under both rules. κ = 4 under the base lost-sending rule (kin respond to the routine sending lost to any unable linked migrant, core = 1, kin = θ_kin/θ_core) and the former rule (kin step in only when all eligible core migrants are unable); alphas refitted to 2019 for each rule and κ.
+E1a (β = 0, ρ = 0, no benefits), quarterly counts relative to the no-COVID path (Banxico: relative to its 2017–19 trend). κ = 0 is the same under both rules. κ = 4 under the base lost-sending rule (kin respond to the routine sending lost to any unable linked migrant, core = 1, kin = θ_kin/θ_core) and the former rule (kin step in only when all eligible core migrants are unable); alphas refitted to 2019 for each rule and κ.
 
 ## R2_kappa_profiles_rules.png: 2019 still barely constrains κ; the new rule can exceed full replacement
 
@@ -97,3 +97,15 @@ E1a, 50 paired stochastic runs, Apr 2020 – Dec 2021, by network size: interrup
 ## R6_kin_transfers_rules.png: How many extra kin transfers each rule produces
 
 E1a, expected kin transfers minus the no-COVID counterfactual. The April 2020 loss of core transfers is about 130 a month under both rules.
+
+## B3_salience.png: National salience S_t: reported COVID deaths in Mexico
+
+S_t = reported COVID-19 deaths in Mexico per month (OWID), in units of 10,000; 0 in 2019. Variant: excess all-cause deaths (World Mortality Dataset; 2015–19 same-week mean with a linear trend; negative values set to 0). Reported deaths are about 45% of excess deaths. 2022 is held out.
+
+## M1_compatibility_map.png: 0 of 210 (β, κ) cells fit within τ_C = 0.04
+
+E2 first pass (π = 0, ρ = 0, base lost-sending rule, S_t = reported COVID deaths / 10,000). Fit error of the quarterly transfer index (model: COVID run / no-COVID run) against Banxico relative to its 2017–19 trend. Outlined: count-compatible cells (RMSE ≤ τ_C = 0.04; the ENIGH household criterion is not applied yet). Dot: best cell. α refitted to 2019 for each κ. Line on the colour bar: τ_C.
+
+## M2_compatible_paths.png: The best cell follows the COVID-death waves; Banxico rises steadily
+
+E2 first pass. Quarterly transfer index of the best cell and the other count-compatible cells (RMSE ≤ τ_C = 0.04; 0 cells), the β = 0 path at κ = 4, and Banxico relative to its 2017–19 trend. 2022 is held out.
