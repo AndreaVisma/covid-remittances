@@ -109,3 +109,15 @@ E2 first pass (π = 0, ρ = 0, base lost-sending rule, S_t = reported COVID deat
 ## M2_compatible_paths.png: The best cell follows the COVID-death waves; Banxico rises steadily
 
 E2 first pass. Quarterly transfer index of the best cell and the other count-compatible cells (RMSE ≤ τ_C = 0.04; 0 cells), the β = 0 path at κ = 4, and Banxico relative to its 2017–19 trend. 2022 is held out.
+
+## H1_realized_losses.png: In a typical COVID path, one in five households loses; 1.5% lose everything
+
+β = 0, ρ = 0, no benefits (E1a). Each receiving household is compared with its own no-COVID twin (common random numbers), Apr 2020 – Dec 2021: change in USD received, pooled over 200 simulated paths. About 2,449 of 3,130 households receive anything in a path. Stepping-in (κ) reduces moderate losses and creates some gains, but not the total losses: those households have nobody who can step in. Gains come from occupations whose employment rose above 2019.
+
+## H2_expected_change.png: Ex ante, almost every household faces a similar small loss
+
+β = 0. Expected change per household (average over 200 paired paths), 2.5-point bins; thin lines: aggregate change (−4.4% at κ = 0, −0.6% at κ = 4). With ρ = 0 and kin occupations copied from core donors, households differ ex ante only through their migrants’ occupations and, with κ > 0, their network: the inequality in H1 is realized, not expected.
+
+## H3_who_loses.png: Who loses: sales and service workers’ households, and those with nobody to step in
+
+β = 0, ρ = 0, no benefits; 200 paired paths, Apr 2020 – Dec 2021. Left: expected change in USD received by group (USD-weighted). Right: share of paths in which a household loses more than 25%, averaged over the group. Main occupation: the most common job group among the household’s eligible migrants. Network size 10+ has only 30 households.

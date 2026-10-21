@@ -75,6 +75,16 @@ Run `python model/make_figures.py --e2` after `model/run_e2_map.py`.
 | M1 | Which (β, κ) fit the 2020–21 counts? | Heatmap of quarterly log RMSE (single-hue blue ramp), compatible cells outlined, best cell marked, τ_C on the colour bar | `outputs/e2-map/map.csv` |
 | M2 | What do the best cells miss? | Quarterly index: best cell, other compatible cells, β = 0 at κ = 4, Banxico vs trend; 2022 shaded | `outputs/e2-map/quarterly_paths.csv` |
 
+## H. Who lost out (household distribution, β = 0)
+
+Run `python model/make_figures.py --dist` after `model/run_e1_distribution.py`. Diverging red (loss) / blue (gain) ramps and the κ blue ramp, all validated as ordinal.
+
+| # | Question | Form | Data |
+|---|---|---|---|
+| H1 | How are realized losses distributed? | Diverging stacked bar per κ: share of receiving households by realized change bin (lost everything … gained > 25%), unchanged share labelled | `outputs/e1-distribution/realized_bins.csv` |
+| H2 | Do households differ ex ante? | Step histogram of expected household change, κ = 0 vs 4, aggregate change marked | `change_histogram.csv`, `inequality.csv` |
+| H3 | Who loses? | Two dot-plot panels by group (network type, size, strongest tie, main occupation): expected change; risk of losing > 25% | `groups.csv` |
+
 ## Notes before drawing
 
 - **95% intervals for MMP cells** (Wilson) need cell counts and receipt; both are already in the E0 tables.

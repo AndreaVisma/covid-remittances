@@ -991,9 +991,141 @@ def e2_figures():
     write_captions()
 
 
+# %% H. Household distribution, beta = 0 (run_e1_distribution.py)
+EH = BASE / 'outputs/e1-distribution'
+LOSS_RAMP = ['#8a2322', '#c03837', '#dc5e5d', '#eb9594']     # dark -> light, validated ordinal (red)
+GAIN_RAMP = ['#86b6ef', '#3987e5', '#184f95']                # light -> dark, validated ordinal (blue)
+K2 = '#3987e5'                                               # kappa = 2 between K0 and K4 (validated ramp)
+KAPPA_COLORS = {0.0: K0, 2.0: K2, 4.0: K4}
+GROUP_ROWS = [('network_type', 'Network type', ['Core only', 'Core + kin', 'Kin only']),
+              ('size_bin', 'Network size', ['1', '2', '3-4', '5-9', '10+']),
+              ('strongest_tie', 'Strongest tie', ['Core', 'Close kin', 'Distant kin only']),
+              ('occupation', 'Main migrant occupation', ['Agriculture', 'Production/construction/transport',
+                                                         'Sales/personal services', 'Professional/administrative',
+                                                         'Other/none'])]
+
+
+def h1_realized(rb, ri):
+    losses = ['Lost everything', 'Lost 50–99%', 'Lost 25–50%', 'Lost 10–25%']
+    small = ['Lost 0–10%']
+    gains = ['Gained 0–10%', 'Gained 10–25%', 'Gained > 25%']
+    kappas = [0.0, 2.0, 4.0]
+    fig, ax = plt.subplots(figsize=(10, 3.6))
+    ax.axvline(0, color=AXIS, lw=1)
+    for i, k in enumerate(kappas):
+        d = rb[rb.kappa == k].set_index('bin').share * 100
+        y = len(kappas) - 1 - i
+        left = 0.0
+        # mildest loss next to zero, total loss at the far end
+        for b, c in list(zip(losses + small, LOSS_RAMP + ['#f3c2c1']))[::-1]:
+            w = d[b]
+            ax.barh(y, -w, left=-left, height=0.5, color=c, edgecolor=SURFACE, lw=1.5)
+            left += w
+        lost_any = left
+        right = 0.0
+        for b, c in zip(gains, GAIN_RAMP):
+            ax.barh(y, d[b], left=right, height=0.5, color=c, edgecolor=SURFACE, lw=1.5)
+            right += d[b]
+        ax.annotate(f'lost: {lost_any:.0f}%', (-lost_any, y), xytext=(-6, 0), textcoords='offset points',
+                    ha='right', va='center', fontsize=8.5, color=INK2)
+        ax.annotate(f'gained: {right:.1f}% · unchanged: {d["No change"]:.0f}%', (right, y), xytext=(6, 0),
+                    textcoords='offset points', ha='left', va='center', fontsize=8.5, color=INK2)
+    ax.set_yticks(range(len(kappas)), [f'κ = {k:g}' for k in kappas[::-1]])
+    ax.grid(axis='y', visible=False)
+    ax.set_xlim(-30, 22)
+    ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{abs(v):.0f}%'))
+    ax.set_xlabel('Share of receiving households in a typical COVID path  (← lost · gained →)')
+    handles = [Patch(color=c, label=b) for b, c in zip(losses + small, LOSS_RAMP + ['#f3c2c1'])] + \
+              [Patch(color=c, label=b) for b, c in zip(gains, GAIN_RAMP)]
+    ax.legend(handles=handles, loc='upper center', bbox_to_anchor=(0.5, -0.22), ncol=4, fontsize=8)
+    k0 = ri[ri.kappa == 0].iloc[0]
+    save_bare(fig, 'H1_realized_losses', 'In a typical COVID path, one in five households loses; 1.5% lose everything',
+              'β = 0, ρ = 0, no benefits (E1a). Each receiving household is compared with its own no-COVID twin '
+              '(common random numbers), Apr 2020 – Dec 2021: change in USD received, pooled over 200 simulated paths. '
+              f'About {k0.receiving_households:,.0f} of 3,130 households receive anything in a path. Stepping-in (κ) '
+              'reduces moderate losses and creates some gains, but not the total losses: those households have '
+              'nobody who can step in. Gains come from occupations whose employment rose above 2019.')
+
+
+def h2_expected(hist, ineq):
+    fig, ax = plt.subplots(figsize=(10, 3.6))
+    for k in [0.0, 4.0]:
+        d = hist[hist.kappa == k]
+        x = np.r_[d.bin_left.values, d.bin_right.values[-1]] * 100
+        y = np.r_[d.share_households.values, d.share_households.values[-1]] * 100
+        ax.step(x, y, where='post', color=KAPPA_COLORS[k], label=f'κ = {k:g}')
+    ax.axvline(0, color=AXIS, lw=1)
+    for k in [0.0, 4.0]:
+        a = ineq[ineq.kappa == k].iloc[0]
+        ax.axvline(a.aggregate_change * 100, color=KAPPA_COLORS[k], lw=1, ymax=0.9)
+    ax.set_xlim(-20, 25)
+    ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{v:+.0f}%'))
+    pct_axis(ax)
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{v:.0f}%'))
+    ax.set_xlabel('Expected change in USD received, Apr 2020 – Dec 2021 (household vs its no-COVID twin)')
+    ax.set_ylabel('Share of households')
+    ax.legend(loc='upper right')
+    save_bare(fig, 'H2_expected_change', 'Ex ante, almost every household faces a similar small loss',
+              'β = 0. Expected change per household (average over 200 paired paths), 2.5-point bins; thin lines: '
+              'aggregate change (−4.4% at κ = 0, −0.6% at κ = 4). With ρ = 0 and kin occupations copied from core '
+              'donors, households differ ex ante only through their migrants’ occupations and, with κ > 0, their network: '
+              'the inequality in H1 is realized, not expected.')
+
+
+def h3_groups(g):
+    fig, axes = plt.subplots(1, 2, figsize=(10, 6.2), sharey=True)
+    labels, ys, y = [], [], 0
+    for col, title, levels in GROUP_ROWS:
+        labels.append((y, title, True))
+        y += 1
+        for lv in levels:
+            labels.append((y, lv, False))
+            ys.append((col, lv, y))
+            y += 1
+        y += 0.4
+    panels = [('change_usd_weighted', 'Expected change in USD received'),
+              ('loss_risk_25', 'Risk of losing > 25% (share of paths)')]
+    for ax, (metric, title) in zip(axes, panels):
+        if metric == 'change_usd_weighted':
+            ax.axvline(0, color=AXIS, lw=1)
+        for k, dx in [(0.0, -0.15), (4.0, 0.15)]:
+            d = g[g.kappa == k].set_index(['group', 'level'])
+            xs = [d.loc[(c, lv), metric] * 100 for c, lv, _ in ys]
+            ax.scatter(xs, [yy + dx for _, _, yy in ys], s=34, color=KAPPA_COLORS[k], edgecolor=SURFACE, lw=1.2,
+                       zorder=3, label=f'κ = {k:g}')
+        ax.set_title(title, fontsize=10)
+        ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{v:.0f}%'))
+        ax.grid(axis='y', visible=False)
+        if metric == 'loss_risk_25':
+            ax.set_xlim(0, None)
+    axes[0].set_yticks([l[0] for l in labels],
+                       [l[1] if l[2] else OCC_SHORT.get(l[1], l[1]) for l in labels])
+    for tick, l in zip(axes[0].get_yticklabels(), labels):
+        if l[2]:
+            tick.set_fontweight('semibold')
+            tick.set_color(INK)
+    axes[0].invert_yaxis()
+    n10 = g[(g.kappa == 0) & (g.group == 'size_bin') & (g.level == '10+')].households.iloc[0]
+    axes[1].legend(loc='lower right')
+    save_bare(fig, 'H3_who_loses', 'Who loses: sales and service workers’ households, and those with nobody to step in',
+              'β = 0, ρ = 0, no benefits; 200 paired paths, Apr 2020 – Dec 2021. Left: expected change in USD received '
+              'by group (USD-weighted). Right: share of paths in which a household loses more than 25%, averaged over '
+              f'the group. Main occupation: the most common job group among the household’s eligible migrants. Network '
+              f'size 10+ has only {n10} households.')
+
+
+def dist_figures():
+    h1_realized(pd.read_csv(EH / 'realized_bins.csv'), pd.read_csv(EH / 'realized_inequality.csv'))
+    h2_expected(pd.read_csv(EH / 'change_histogram.csv'), pd.read_csv(EH / 'inequality.csv'))
+    h3_groups(pd.read_csv(EH / 'groups.csv', dtype={'level': str}))
+    write_captions()
+
+
 def main():
     FIG.mkdir(parents=True, exist_ok=True)
     style()
+    if '--dist' in sys.argv:
+        return dist_figures()
     if '--e2' in sys.argv:
         return e2_figures()
     if '--e1' in sys.argv:
