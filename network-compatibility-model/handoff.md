@@ -1,22 +1,24 @@
 # Handoff: network-compatibility model
 
-Last updated 21 October 2026. Read this first in any new session (start with "Where we are"), then `model-specification.md`.
+Last updated 27 October 2026. Read this first in any new session (start with "Where we are"), then `model-specification.md`.
 
 ## The project in one paragraph
 
 Pre-COVID forecasts predicted remittances would collapse; flows to Mexico rose instead. Survey studies explain this with migrants responding to need at home and relatives stepping in for migrants who lost jobs; macro studies use aggregate drivers. This paper (one chapter of a PhD on how remittance flows and networks respond to crises; the other chapters exist already) builds a parsimonious ABM on the **actual household–migrant networks** from the MMP. It produces **compatibility maps**: which combinations of need responsiveness `β` and kin coordination `κ` reproduce the 2020–21 aggregate dynamics, and what each compatible regime implies for household resilience by network size, composition and occupational exposure. The model doubles as a policy lab (benefit access `π`, shock structure).
 
-## Where we are (21 Oct 2026)
+## Where we are (27 Oct 2026)
 
 **Built:**
 - **Inputs:** the MMP network population (3,405 households); CPS employment by occupation; amounts; the salience index `S_t` (reported COVID deaths).
 - **Model:** the ABM with the lost-sending stepping-in rule, and exact expected counts for ρ = 0.
-- **Calibration:** E0, 2019.
+- **Calibration:** E0, 2019; since 27 Oct also with household need `η` (`run_e0_need.py`, not yet used in E1/E2).
 - **Experiments:**
   - E1a: job loss only;
   - a comparison with the former stepping-in rule;
   - a first E2 map (β × κ, count criterion);
-  - a first household-distribution analysis (RQ2).
+  - a first household-distribution analysis (RQ2);
+  - the alternative 'coordination' stepping-in rule (E0 refit, E1a, E2 map, distribution; 21 Oct);
+  - household need in the sending logit (27 Oct).
 
 **What we have learned:**
 1. **Measured against its 2017–19 trend (+6.3% a year), Banxico is flat in 2020** (dip to 0.91 in Apr 2020, 0.97 in 2020Q2). **The excess is a 2021 phenomenon** (1.05 → 1.11 by 2021Q4) and continues in 2022 (1.07–1.13, held out).
@@ -28,8 +30,10 @@ Pre-COVID forecasts predicted remittances would collapse; flows to Mexico rose i
    - **Who loses everything:** households whose migrants all lost their jobs and who have nobody to step in (single links, core-only, distant-kin-only). Neither κ nor β helps them.
    - **Who loses most in expectation:** sales and personal-service households.
    - **The mechanisms:** κ helps networks with kin and over-replaces in large ones. β helps everyone with an able migrant, proportionally most where sending was rare (logit form), so the overall Gini stays flat.
+6. **Household need at home matters a little, via workers only** (27 Oct). In 2019 MMP, a household with no resident worker has ~1.5× the odds of each migrant sending (`η_w` ≈ 0.41, SE 0.17); the dependency ratio has no effect (`η_d` ≈ 0). MMP has no usable household income. Receipt depends mostly on the number of core migrants (`figures/P2_receipt_by_core_kin.png`).
 
 **Main open questions / next steps, in order:**
+0. **Household need (27 Oct):** decide whether to keep `η_d` (≈ 0; recommendation: drop, report as tested); rerun the coordination E1/E2 and the distribution with the fitted `η`; check whether ENIGH 2018→2020 receipt by composition can identify a need × salience interaction (static `η` does not change the COVID response).
 1. **Benefits (task 3):** UI supplements and stimulus payments, plus documentation status in the population (not in MMP files used so far). They are the main candidate for both the fast 2020 rebound and part of 2021, and the policy-relevant inequality dimension.
 2. **ENIGH 2018→2020 criterion:** the second acceptance test (relative change in receipt) and a distributional check by income decile. The data are in `data/`.
 3. **E2 with benefits;** then decide whether a steadier need signal (e.g. cumulative deaths) is worth testing.
@@ -38,7 +42,7 @@ Pre-COVID forecasts predicted remittances would collapse; flows to Mexico rose i
 
 ## Decisions already made (do not reopen without the user)
 
-- **Few parameters.** Calibrated: `α_core`, `α_kin` (2019). Map axes: `β`, `κ`. Network-map axis: `ρ`. Scenario: `π`. Everything else external.
+- **Few parameters.** Calibrated: `α_core`, `α_kin` (2019); household need `η_w`, `η_d` (2019, added 27 Oct; need = no resident worker and dependency ratio only, user decision). Map axes: `β`, `κ`. Network-map axis: `ρ`. Scenario: `π`. Everything else external.
 - **Sending is a Bernoulli draw with probability θ**, two stages: core migrants (RELHEAD 1/2/3) first, then kin, with `logit θ_kin,j = α_kin + β S_t + κ L_h,−j,t`. `L` is the routine sending lost to linked migrants unable to send, in core-sender units: 1 per eligible core migrant, `w = θ_kin⁰/θ_core⁰ ≈ 0.07` per other eligible kin ("lost sending", base model since 19 Oct 2026; spec §4.3).
 - **Salience `S_t` is national only and simple:** reported COVID deaths in Mexico per month (OWID), in 10,000s; 0 in 2019 (user decisions, 20 Oct 2026). Excess deaths are the sensitivity. Components such as employment can be added later.
 - **Amount separated from sending.** Each migrant has a fixed routine amount `m_j` (lognormal, mean = Banxico 2019 mean transaction). The model targets the transfer **count**; the change in mean amount is reported as a data margin.
@@ -67,14 +71,19 @@ network-compatibility-model/
     run_e1_rule_comparison.py   E0 refit + E1a under the former 'all_core' rule
     diagnose_e1_kappa.py     why κ did little under the former rule (April 2020)
     run_e2_map.py            E2 first pass: β × κ map, count criterion only
-    run_e1_distribution.py   who lost out: household distribution (RQ2 first pass); --beta, --kappas
+    run_e1_distribution.py   who lost out: household distribution (RQ2 first pass); --beta, --kappas, --rule
+    run_e1_coordination.py   E0 refit + E1a under the alternative 'coordination' rule
+    run_e0_need.py           E0 with household need η (no resident worker, dependency ratio)
   outputs/e0-baseline/       aggregate E0 tables (base rule)
   outputs/e1-job-loss/       E1a tables (base rule)
   outputs/e1-all-core-rule/  former rule: E0 refit, E1a, κ diagnostics, rule comparison
   outputs/e2-map/            E2 first pass (map.csv, quarterly_paths.csv)
   outputs/e1-distribution/   household distribution tables, β = 0 (aggregates only)
   outputs/e1-distribution-beta0.06/   the same at β = 0.06 (κ = 3 and 0)
-  model/make_figures.py      PNG figures (plan: figures-plan.md); flags --e1, --e1-rules, --e2, --dist
+  outputs/e1-coordination/  coordination rule: E0 refit, E1a, April 2020 ceiling for both rules
+  outputs/e1-distribution-coordination/   household distribution, coordination rule (κ = 0, 0.5, 1)
+  outputs/e0-need/           household need: fits.csv, validation.csv, panel_rmse.csv
+  model/make_figures.py      PNG figures (plan: figures-plan.md); flags --e1, --e1-rules, --e2, --dist, --theta, --bubbles
   figures/                   A1-A4 population, B1-B3 inputs, C1-C5 calibration, D1-D6 E1a,
                              R1-R6 rule comparison, M1-M2 E2 map, H1-H3 households; captions.md
     outputs/                 aggregate CPS inputs (safe to commit)
@@ -310,6 +319,24 @@ E1a design (β = 0, ρ = 0, π = 0), κ ∈ {0, 2, 4}. 200 paired paths (each ho
   - The overall Gini does not widen (0.727 → 0.722 at κ = 0). The same logit shift raises a rare kin sender (θ ≈ 0.04) proportionally more than a core sender (θ ≈ 0.57). So kin-only households gain most (+4.0% expected at κ = 0 vs −0.9% for core-only).
   - In short: job loss sets a floor of fully cut-off households; β pulls up everyone else, especially low receivers. The compression depends on the logit form, an assumption to state; a multiplicative response would treat kin and core alike.
 - Not yet modelled: documentation status (not in the population file; needed for benefits), within-network correlation ρ (would concentrate losses further). Validation: ENIGH 2018→2020 receipt by income decile; Banxico remittances by state.
+
+### Coordination rule, alternative to kin-only stepping in (21 Oct 2026, `model/run_e1_coordination.py`, ~12 min)
+
+Motivation: core migrants never step in under the base rule, yet 387 households have ≥ 2 eligible core migrants (1,115 of 1,657 eligible core migrants); and the base rule's 2020 fit relies partly on over-replacement in large networks (κ = 4: core + kin households +1.7% USD, 10+ networks +8.7%). Rule (spec §4.3): every able migrant scales its routine θ by `1 + κ Λ/P`, capped at 1; κ ∈ [0, 1] = replacement share. Checks: base rule reproduces saved E1a to 1e-13; exact vs 60-seed simulation within MC noise (≤ 0.8% transfers, 0.2 pp receipt).
+
+- **2019 fit:** as good as the base rule (weighted RMSE 0.20 pp at κ = 0, 0.42 at κ = 1; base 0.60 at κ = 4). Size and link-type errors unchanged (within ~1–2 pp of the base rule).
+- **April 2020 index:** 0.955 at κ = 1 (69% of the κ = 0 loss recovered: core +93, kin +50 transfers); base rule 0.966 at κ = 4 (77%). Recovery is capped by single links and the θ ≤ 1 cap; the index passes 1 only for κ > ~1.7 (over-replacement).
+- **Quarterly:** 2020Q2 0.963 at κ = 1 vs Banxico 0.974 (base κ = 4: 0.975). Quarterly log RMSE 0.063 (base κ = 4: 0.059). No 2021 excess either (~0.99–1.0).
+- **Households (`outputs/e1-distribution-coordination/`, USD change 2020-04..2021-12, κ = 1 vs base κ = 4):** core-only −2.1% (base −4.4%, unprotected there); core + kin −0.7% (base +1.7%); 10+ networks −0.1% (base +8.7%); share gaining > 10% in core + kin households 1.5% (base 13.9%; residual gains come from differences in routine amounts, since the bound is on transfer counts, not USD). Single links (−4.2%) and distant-kin-only (−4.3%) unchanged under every rule. Share losing everything 1.4% (base 1.5%). Severe-interruption risk for core-only stays 1.3–1.4%.
+- **E2 under coordination (`run_e2_map.py --rule coordination`, `outputs/e2-map-coordination/`):** 252 cells (β 0–0.40 × κ 0–1 by 0.1, plus 1.5, 2). Still 0 cells within `τ_C` = 0.04. Best cell κ = 0.7, β = 0.06, RMSE 0.043 (base rule best: κ = 3, β = 0.06, 0.043). With β > 0 the optimum is interior: a flat valley, κ 0.4–1.0 all at 0.043–0.044, with β falling from 0.08 to 0.06 as κ rises (β and κ substitute in 2020). Over-replacement (κ > 1) worsens the fit. 12 cells ≤ 0.045 (base 5), 35 ≤ 0.05 (base 24). The best paths have the same shape under both rules: slight overshoot in 2020Q2–2021Q1 (2021Q1 1.07 vs 1.05), undershoot from 2021Q2 (2021Q4 1.02 vs 1.11). The 2021 misfit is about the need signal, not the stepping-in rule.
+- **Read:** the bounded rule cannot fully reproduce the 2020 dip from job loss alone (gap ~1 pt in 2020Q2); the remainder is a natural place for benefits (E1b), which reach single links. Which rule is the base model: user decision, after benefits.
+
+### Household need in the sending logit (27 Oct 2026, `model/run_e0_need.py`, ~25 min)
+- Prompted by a colleague's proposal to model household receipt as a function of need and number of linked migrants (household-level logit `K = α + β·Kin(π_send) + δ·FarFam`, 6 parameters). Kept the migrant-level logit instead; household receipt by core × kin count is an output (`figures/P2_receipt_by_core_kin.png`, `make_figures.py --bubbles`).
+- `abm.Params` has `eta_worker`, `eta_dep`; `abm.need_shift` adds them to every logit (exact receipt, exact flows, simulation, all three rules). With η = 0 the stored E0 fit is reproduced to 1e-16; with η ≠ 0 the exact formulas match 40 simulated paths.
+- MMP has no usable household income (`hhhincom` empty 2010–19; `hldowage` is the head's last formal wage, 57% valid).
+- Result: `η_w` ≈ 0.41 (SE 0.17), `η_d` ≈ 0 (SE 0.20), stable across κ and rules; joint p ≈ 0.06. See model-specification §7.
+- Not yet done: η is not used in E1/E2 (profiles there still have η = 0). Open: keep `η_d` (≈ 0) or drop it; whether a 2020 target (ENIGH 2018→2020 by composition) can identify a need × salience interaction.
 
 ## Things to keep in mind
 

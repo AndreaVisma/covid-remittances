@@ -121,3 +121,11 @@ E2 first pass. Quarterly transfer index of the best cell and the other count-com
 ## H3_who_loses.png: Who loses: sales and service workers’ households, and those with nobody to step in
 
 β = 0, ρ = 0, no benefits; 200 paired paths, Apr 2020 – Dec 2021. Left: expected change in USD received by group (USD-weighted). Right: share of paths in which a household loses more than 25%, averaged over the group. Main occupation: the most common job group among the household’s eligible migrants. Network size 10+ has only 30 households.
+
+## P1_sending_probability.png: How β and κ move the probability of sending
+
+Monthly sending probability of an able migrant under the coordination rule, θ = min(1, θ⁰(1 + κΛ/P)) with logit θ⁰ = α + βS, at the January 2021 death peak (S = 3.86, i.e. 38,568 reported COVID-19 deaths). Grey curves: all κ in [0, 1], with α refitted to 2019 for each κ (interpolated between the 0.1 grid). Dots: κ = 0, 0.25, 0.5, 0.75, 1. Ring: best cell of the E2 map under this rule (quarterly log RMSE 0.043). Left: household with three core migrants, one unable to send (Λ/P = 1/2). Right: household with one core migrant unable and one kin migrant able (Λ/P = θ⁰_core/θ⁰_kin). Dashed line: 2019 routine probability (β = 0, κ = 0).
+
+## P2_receipt_by_core_kin.png: Receipt depends mostly on core migrants; with need and coordination, wider family turns losses into gains
+
+Exact expected monthly probability that a household receives a transfer (ρ = 0, coordination rule), averaged over households in each cell, Apr 2020 – Dec 2021. Left: no-COVID counterfactual (2019 CPS rates of the same month, S = 0) at the best cell, bubble area ∝ probability. Middle and right: COVID run minus counterfactual, bubble area ∝ |change| on a common scale; α refitted to 2019 for each κ. Best cell of the E2 map (quarterly log RMSE 0.043). Cells with fewer than 10 households are not shown (–). There are no households without migrants.

@@ -16,6 +16,10 @@ Monthly order of events (spec §3):
      routine month in which an able migrant chooses not to send)
      Former rule, Params.rule = 'all_core': kappa*U_h,t with U_h,t = 1 if all the
      household's eligible core migrants are unable (kept for comparison)
+     Alternative, Params.rule = 'coordination': every able migrant, core or kin, scales
+     its routine theta by 1 + kappa * Lambda_h,t / P_h,t, capped at 1 (Lambda = routine
+     sending of unable eligible migrants, P = routine sending of able ones); kappa in
+     [0, 1] is the share of lost expected transfers the household's migrants replace
   7. every sender transfers its fixed routine amount m_j
 """
 from dataclasses import dataclass, field
@@ -57,10 +61,17 @@ class Params:
     #   'lost_sending' L_h,-j,t = routine sending lost to unable linked migrants, in core-sender
     #                  units: 1 per unable core migrant, theta_kin0/theta_core0 per unable kin (base model)
     #   'all_core'     U_h,t = 1 if the household's eligible core migrants are all unable (former rule)
+    #   'coordination' all able migrants share the lost routine sending: theta_j = min(1, theta0_j *
+    #                  (1 + kappa * Lambda_h,t / P_h,t)); kappa = replacement share (alternative)
     rule: str = 'lost_sending'
+    # Household need (calibrated to 2019 MMP receipt): logit shift eta_worker * no resident worker
+    # + eta_dep * dependency ratio, both centred on the population mean (NEED_FEATURES).
+    eta_worker: float = 0.0
+    eta_dep: float = 0.0
 
 
-RULES = ('all_core', 'lost_sending')
+RULES = ('all_core', 'lost_sending', 'coordination')
+COUNT_RULES = ('lost_sending', 'coordination')     # exact results depend only on the unable counts
 
 
 def kin_loss_weight(params):
@@ -105,12 +116,31 @@ def load_population():
     eligible = adult & (job_index >= 0)
     h['network_type'] = network_type(h)
     core = m.connection_group.eq('Core').to_numpy()
-    return dict(h=h, m=m, H=len(h), M=len(m), hid=hid, core=core,
+    return dict(h=h, m=m, H=len(h), M=len(m), hid=hid, core=core, need_x=need_features(h),
                 has_core=np.bincount(hid, weights=core, minlength=len(h)) > 0,
                 # Trigger only counts core migrants who could ever send (adult, not 'Not working').
                 has_eligible_core=np.bincount(hid, weights=core & eligible, minlength=len(h)) > 0,
                 job_index=np.where(job_index >= 0, job_index, 0), eligible=eligible,
                 rate_columns=rate_columns)
+
+
+NEED_FEATURES = ['no_worker', 'dependency']
+
+
+def need_features(h):
+    """(H, 2) household need, centred: no resident worker (0/1) and dependency ratio
+    (resident children + older residents) / residents. Households with an incomplete roster or
+    no resident members get the mean (0 after centring)."""
+    known = h.resident.gt(0) & h[['resident_worker', 'resident_child', 'resident_older']].notna().all(axis=1)
+    x = np.column_stack([h.resident_worker.eq(0), (h.resident_child + h.resident_older) / h.resident]).astype(float)
+    x[~known.to_numpy()] = np.nan
+    x = x - np.nanmean(x, axis=0)
+    return np.nan_to_num(x)
+
+
+def need_shift(pop, params):
+    """Household logit shift from need, (H,)."""
+    return pop['need_x'] @ np.array([params.eta_worker, params.eta_dep])
 
 
 def routine_amounts(pop, params, seed):
@@ -173,14 +203,15 @@ def expected_receipt(pop, inputs, params):
     Returns an (T, H) array.
     """
     assert params.rule in RULES, params.rule
-    if params.rule == 'lost_sending':
-        return lost_sending_exact(pop, inputs, params)[0]
+    if params.rule in COUNT_RULES:
+        return count_rule_exact(pop, inputs, params)[0]
     hid, H, core = pop['hid'], pop['H'], pop['core']
     e = able_probability(pop, inputs, params)
     s = inputs.salience[:, None]
-    theta_core = expit(params.alpha_core + params.beta * s)
-    theta_kin0 = expit(params.alpha_kin + params.beta * s)
-    theta_kin1 = expit(params.alpha_kin + params.beta * s + params.kappa)
+    need = need_shift(pop, params)[None, hid]
+    theta_core = expit(params.alpha_core + params.beta * s + need)        # (T, M)
+    theta_kin0 = expit(params.alpha_kin + params.beta * s + need)
+    theta_kin1 = expit(params.alpha_kin + params.beta * s + need + params.kappa)
     clip = lambda x: np.log1p(-np.clip(x, 0, 1 - 1e-12))
     out = np.zeros((len(inputs.dates), H))
     for t in range(len(inputs.dates)):
@@ -212,14 +243,15 @@ def expected_flows(pop, inputs, params, amounts=None):
     """
     assert params.rho == 0, 'expected_flows is exact only for rho = 0'
     assert params.rule in RULES, params.rule
-    if params.rule == 'lost_sending':
-        return lost_sending_exact(pop, inputs, params, amounts)[1]
+    if params.rule in COUNT_RULES:
+        return count_rule_exact(pop, inputs, params, amounts)[1]
     hid, H, core = pop['hid'], pop['H'], pop['core']
     a = able_probability(pop, inputs, params)
     s = inputs.salience[:, None]
-    theta_core = expit(params.alpha_core + params.beta * s)
-    theta_kin0 = expit(params.alpha_kin + params.beta * s)
-    theta_kin1 = expit(params.alpha_kin + params.beta * s + params.kappa)
+    need = need_shift(pop, params)[None, hid]
+    theta_core = expit(params.alpha_core + params.beta * s + need)        # (T, M)
+    theta_kin0 = expit(params.alpha_kin + params.beta * s + need)
+    theta_kin1 = expit(params.alpha_kin + params.beta * s + need + params.kappa)
     rows = []
     for t in range(len(inputs.dates)):
         log_unable = np.bincount(hid, weights=np.where(core, np.log1p(-np.clip(a[t], 0, 1 - 1e-12)), 0), minlength=H)
@@ -267,57 +299,94 @@ def unable_count_distribution(unable):
     return d
 
 
-def lost_sending_exact(pop, inputs, params, amounts=None):
-    """Exact monthly receipt probability (T, H) and expected flows for rule 'lost_sending', rho = 0.
+def count_thetas(params, st, C, K, nc, nk, need):
+    """Sending probabilities of an able core and an able kin migrant, (H, C, K) each, given C (K)
+    eligible core (kin) migrants unable, for the count rules.
 
-    An able kin migrant's loss term is L = C + w K, with C (K) the number of eligible core (kin)
-    migrants unable to send and w = kin_loss_weight; C and K are independent across households'
-    migrants when rho = 0, so everything follows from their two Poisson-binomial distributions.
-    Given (C, K), every able kin migrant has the same theta, which gives receipt and expected kin
-    transfers directly; per-migrant expected sends (for USD) use the leave-one-out distribution of K.
+    'lost_sending': core theta is routine; kin logit rises by kappa * (C + w K).
+    'coordination': both scale their routine theta by 1 + kappa * Lambda / P, capped at 1, with
+    Lambda = C theta_core0 + K theta_kin0 (routine sending lost) and P = routine sending of the
+    able (cells with P = 0 have nobody able, so their theta is irrelevant).
+    need: (H,) household logit shift (need_shift).
+    """
+    need = need[:, None, None]
+    theta_core0 = expit(params.alpha_core + params.beta * st + need)                    # (H, 1, 1)
+    theta_kin0 = expit(params.alpha_kin + params.beta * st + need)
+    shape = (len(nc), len(C), len(K))
+    if params.rule == 'lost_sending':
+        w = kin_loss_weight(params)
+        theta_kin = expit(params.alpha_kin + params.beta * st + need
+                          + params.kappa * (C[:, None] + w * K[None, :])[None])
+        return np.broadcast_to(theta_core0, shape), np.broadcast_to(theta_kin, shape)
+    lost = C[None, :, None] * theta_core0 + K[None, None, :] * theta_kin0               # (H, C, K)
+    able = (np.clip(nc[:, None] - C[None, :], 0, None)[:, :, None] * theta_core0
+            + np.clip(nk[:, None] - K[None, :], 0, None)[:, None, :] * theta_kin0)    # (H, C, K)
+    scale = 1 + params.kappa * np.divide(lost, able, out=np.zeros(shape), where=able > 0)
+    return np.minimum(1, theta_core0 * scale), np.minimum(1, theta_kin0 * scale)
+
+
+def count_rule_exact(pop, inputs, params, amounts=None):
+    """Exact monthly receipt probability (T, H) and expected flows for the count rules
+    ('lost_sending', 'coordination'), rho = 0.
+
+    Under both rules an able migrant's theta depends only on its type and on (C, K), the numbers of
+    eligible core and kin migrants unable to send. C and K are independent when rho = 0, so
+    everything follows from their two Poisson-binomial distributions. Given (C, K), every able
+    migrant of a type has the same theta, which gives receipt and expected transfers directly;
+    per-migrant expected sends (for USD) use the leave-one-out distribution of the migrant's own type.
     """
     assert params.rho == 0
+    assert params.rule in COUNT_RULES, params.rule
     s = padded_slots(pop)
-    hid, core = pop['hid'], pop['core']
-    w = kin_loss_weight(params)
+    core = pop['core']
     a_all = able_probability(pop, inputs, params)
     nc, nk = s['n_core'], s['n_kin']
     C, K = np.arange(s['core'].shape[1] + 1), np.arange(s['kin'].shape[1] + 1)
-    able_core = np.clip(nc[:, None] - C[None, :], 0, None)                 # (H, C)
-    able_kin = np.clip(nk[:, None] - K[None, :], 0, None)                  # (H, K)
+    able_core = np.clip(nc[:, None] - C[None, :], 0, None)[:, :, None]     # (H, C, 1)
+    able_kin = np.clip(nk[:, None] - K[None, :], 0, None)[:, None, :]      # (H, 1, K)
     unable_of = lambda a, mat: np.where(mat >= 0, 1 - a[np.maximum(mat, 0)], 0.0)
+    need = need_shift(pop, params)
     receipt, rows = np.zeros((len(inputs.dates), pop['H'])), []
     for t in range(len(inputs.dates)):
         a = a_all[t]
         st = inputs.salience[t]
-        theta_core = expit(params.alpha_core + params.beta * st)
-        theta_kin0 = expit(params.alpha_kin + params.beta * st)
-        theta_kin = expit(params.alpha_kin + params.beta * st + params.kappa * (C[:, None] + w * K[None, :]))
+        theta_core0 = expit(params.alpha_core + params.beta * st + need)[:, None, None]     # (H, 1, 1)
+        theta_kin0 = expit(params.alpha_kin + params.beta * st + need)[:, None, None]
+        theta_core, theta_kin = count_thetas(params, st, C, K, nc, nk, need)
         u_core, u_kin = unable_of(a, s['core']), unable_of(a, s['kin'])
         dc, dk = unable_count_distribution(u_core), unable_count_distribution(u_kin)
         joint = dc[:, :, None] * dk[:, None, :]                             # (H, C, K)
-        none = (1 - theta_core) ** able_core[:, :, None] * (1 - theta_kin[None]) ** able_kin[:, None, :]
+        none = (1 - theta_core) ** able_core * (1 - theta_kin) ** able_kin
         receipt[t] = 1 - (joint * none).sum(axis=(1, 2))
-        kin_tr = (joint * able_kin[:, None, :] * theta_kin[None]).sum(axis=(1, 2))
-        kin_step = (joint * able_kin[:, None, :] * (theta_kin - theta_kin0)[None]).sum(axis=(1, 2))
-        p_core = np.where(core, a * theta_core, 0)
-        row = dict(date=inputs.dates[t], transfers=p_core.sum() + kin_tr.sum(), core_transfers=p_core.sum(),
+        core_tr = (joint * able_core * theta_core).sum(axis=(1, 2))
+        kin_tr = (joint * able_kin * theta_kin).sum(axis=(1, 2))
+        core_step = (joint * able_core * (theta_core - theta_core0)).sum(axis=(1, 2))
+        kin_step = (joint * able_kin * (theta_kin - theta_kin0)).sum(axis=(1, 2))
+        row = dict(date=inputs.dates[t], transfers=core_tr.sum() + kin_tr.sum(), core_transfers=core_tr.sum(),
                    kin_transfers=kin_tr.sum(), kin_transfers_triggered=kin_step.sum(),
+                   core_transfers_triggered=core_step.sum(),
                    triggered_households=(1 - dc[:, 0] * dk[:, 0]).sum(),
                    able_share=a[pop['eligible']].mean())
         if amounts is not None:
-            # Leave-one-out K for each kin slot i: P(kin i sends) = a_i * E[theta_kin(C + w K_-i)].
-            p_kin = np.zeros(pop['M'])
-            for i in range(s['kin'].shape[1]):
-                live = s['kin'][:, i] >= 0
-                others = u_kin.copy()
-                others[:, i] = 0
-                dk_i = unable_count_distribution(others)
-                e_theta = np.einsum('hc,hk,ck->h', dc, dk_i, theta_kin)
-                j = s['kin'][live, i]
-                p_kin[j] = a[j] * e_theta[live]
-            assert np.isclose(p_kin.sum(), kin_tr.sum()), (p_kin.sum(), kin_tr.sum())
-            row['usd'] = float((p_core * amounts).sum() + (p_kin * amounts).sum())
+            # Leave-one-out count of the migrant's own type for each slot i:
+            # P(i sends) = a_i * E[theta(C_-i, K)] (core) or a_i * E[theta(C, K_-i)] (kin).
+            p = np.zeros(pop['M'])
+            for kind, u, theta in [('core', u_core, theta_core), ('kin', u_kin, theta_kin)]:
+                if kind == 'core' and params.rule == 'lost_sending':
+                    p[core] = a[core] * theta_core0[pop['hid'][core], 0, 0]   # core theta does not depend on (C, K)
+                    continue
+                for i in range(s[kind].shape[1]):
+                    live = s[kind][:, i] >= 0
+                    others = u.copy()
+                    others[:, i] = 0
+                    d_i = unable_count_distribution(others)
+                    dist_c, dist_k = (d_i, dk) if kind == 'core' else (dc, d_i)
+                    e_theta = np.einsum('hc,hk,hck->h', dist_c, dist_k, theta)
+                    j = s[kind][live, i]
+                    p[j] = a[j] * e_theta[live]
+            assert np.isclose(p[core].sum(), core_tr.sum()), (p[core].sum(), core_tr.sum())
+            assert np.isclose(p[~core].sum(), kin_tr.sum()), (p[~core].sum(), kin_tr.sum())
+            row['usd'] = float((p * amounts).sum())
         rows.append(row)
     return receipt, pd.DataFrame(rows).set_index('date')
 
@@ -331,6 +400,7 @@ def simulate(pop, inputs, params, seed, amount_seed=None, keep_households=False)
     streams = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(5)]
     amounts = routine_amounts(pop, params, seed if amount_seed is None else amount_seed)
     benefit_eligible = streams[0].random(M) < params.pi
+    need = need_shift(pop, params)
     z = streams[1].standard_normal(M)                       # stationary start
     rows, household = [], []
     for t in range(T):
@@ -345,8 +415,19 @@ def simulate(pop, inputs, params, seed, amount_seed=None, keep_households=False)
         able = employed | benefit
         u = streams[4].random(M)
         s_t = inputs.salience[t]
-        send_core = able & core & (u < expit(params.alpha_core + params.beta * s_t))
-        if params.rule == 'lost_sending':
+        theta_core0 = expit(params.alpha_core + params.beta * s_t + need)              # (H,)
+        send_core = able & core & (u < theta_core0[hid])
+        if params.rule == 'coordination':
+            theta_kin0 = expit(params.alpha_kin + params.beta * s_t + need)
+            unable = pop['eligible'] & ~able
+            hsum = lambda w: np.bincount(hid, weights=w, minlength=H)
+            lost = theta_core0 * hsum(core & unable) + theta_kin0 * hsum(~core & unable)
+            routine = theta_core0 * hsum(core & able) + theta_kin0 * hsum(~core & able)
+            scale = 1 + params.kappa * np.divide(lost, routine, out=np.zeros(H), where=routine > 0)
+            trigger = lost > 0
+            send_core = able & core & (u < np.minimum(1, (theta_core0 * scale)[hid]))
+            send_kin = able & ~core & (u < np.minimum(1, (theta_kin0 * scale)[hid]))
+        elif params.rule == 'lost_sending':
             # An able kin migrant is not unable, so the household total already excludes it.
             unable = pop['eligible'] & ~able
             loss = (np.bincount(hid, weights=core & unable, minlength=H)
@@ -356,8 +437,9 @@ def simulate(pop, inputs, params, seed, amount_seed=None, keep_households=False)
             core_able = np.bincount(hid, weights=able & core, minlength=H) > 0
             trigger = pop['has_eligible_core'] & ~core_able
             loss = trigger.astype(float)
-        theta_kin = expit(params.alpha_kin + params.beta * s_t + params.kappa * loss[hid])
-        send_kin = able & ~core & (u < theta_kin)
+        if params.rule != 'coordination':
+            theta_kin = expit(params.alpha_kin + params.beta * s_t + need[hid] + params.kappa * loss[hid])
+            send_kin = able & ~core & (u < theta_kin)
         sent = send_core | send_kin
         usd = np.bincount(hid, weights=amounts * sent, minlength=H)
         n = np.bincount(hid, weights=sent, minlength=H)

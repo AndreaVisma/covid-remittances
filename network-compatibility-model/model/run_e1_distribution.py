@@ -2,7 +2,9 @@
 
 Run: python network-compatibility-model/model/run_e1_distribution.py   (~5 min)
      options: --beta 0.06 --kappas 3   (need response with S_t = COVID deaths; output folder
-     outputs/e1-distribution-beta<beta>/)
+     outputs/e1-distribution-beta<beta>/); --rule coordination --kappas 0 0.5 1 uses the
+     coordination rule with the alphas of outputs/e1-coordination/e0_kappa_profile.csv
+     (output folder outputs/e1-distribution-coordination[-beta<beta>]/)
 
 E1a design (beta = 0, rho = 0, pi = 0, base stepping-in rule) for kappa in KAPPAS, with the E0
 alphas. Each household is compared with itself: SEEDS paired stochastic runs (COVID vs no-COVID,
@@ -32,6 +34,7 @@ import run_e1_job_loss as e1
 from run_e0_baseline import household_cells
 
 PROFILE = abm.HERE / 'outputs/e0-baseline/kappa_profile.csv'
+RULE_PROFILES = {'coordination': abm.HERE / 'outputs/e1-coordination/e0_kappa_profile.csv'}
 KAPPAS = [0.0, 2.0, 4.0]
 SEEDS = range(1001, 1201)
 WINDOW = ('2020-04-01', '2021-12-01')
@@ -75,19 +78,20 @@ def gini(x):
     return float((2 * np.arange(1, n + 1) - n - 1) @ x / (n * x.sum()))
 
 
-def main(beta=0.0, kappas=KAPPAS):
-    OUT = abm.HERE / ('outputs/e1-distribution' + (f'-beta{beta:g}' if beta else ''))
+def main(beta=0.0, kappas=KAPPAS, rule=abm.Params.rule):
+    OUT = abm.HERE / ('outputs/e1-distribution' + ('' if rule == abm.Params.rule else f'-{rule}')
+                      + (f'-beta{beta:g}' if beta else ''))
     OUT.mkdir(parents=True, exist_ok=True)
     pop = abm.load_population()
     groups = household_groups(pop)
     covid = abm.make_inputs(e1.DATES, pop['rate_columns'], salience=abm.salience_series(e1.DATES))
     cf = abm.make_inputs(e1.counterfactual_dates(), pop['rate_columns'])
     window = (e1.DATES >= WINDOW[0]) & (e1.DATES <= WINDOW[1])
-    profile = pd.read_csv(PROFILE)
+    profile = pd.read_csv(RULE_PROFILES.get(rule, PROFILE))
     bins, hists, rows, ineq, rbins, rhists, rineq = [], [], [], [], [], [], []
     for kappa in kappas:
         r = profile.loc[np.isclose(profile.kappa, kappa)].iloc[0]
-        params = abm.Params(r.alpha_core, r.alpha_kin, kappa=kappa, beta=beta)
+        params = abm.Params(r.alpha_core, r.alpha_kin, kappa=kappa, beta=beta, rule=rule)
         usd, usd_cf = np.zeros(pop['H']), np.zeros(pop['H'])
         big_loss, severe, half_loss = np.zeros(pop['H']), np.zeros(pop['H']), np.zeros(pop['H'])
         rcount, rhist, rg = np.zeros(len(REAL_LABELS)), np.zeros(len(REAL_HIST) - 1), []
@@ -151,7 +155,7 @@ def main(beta=0.0, kappas=KAPPAS):
     for k, v in tables.items():
         v.to_csv(OUT / f'{k}.csv', index=False)
     (OUT / 'run_settings.json').write_text(json.dumps(dict(
-        experiment='household distribution', beta=beta, rho=0.0, pi=0.0, stepping_in_rule=abm.Params.rule,
+        experiment='household distribution', beta=beta, rho=0.0, pi=0.0, stepping_in_rule=rule,
         kappas=list(kappas), seeds=[SEEDS.start, SEEDS.stop - 1], window=list(WINDOW), amount_seed=e1.AMOUNT_SEED,
         change='sum over seeds of COVID USD / no-COVID USD - 1, households with no-COVID USD > 0',
         loss_risk='share of seeds with USD < 75% of the paired no-COVID run',
@@ -163,7 +167,7 @@ def main(beta=0.0, kappas=KAPPAS):
     print(tables['realized_inequality'].round(3).to_string(index=False))
     print(tables['realized_bins'].round(3).to_string(index=False))
     g = tables['groups']
-    print(g[g.kappa.isin([0, 4])].round(3).to_string(index=False))
+    print(g[g.kappa.isin([0, max(kappas)])].round(3).to_string(index=False))
 
 
 if __name__ == '__main__':
@@ -171,5 +175,6 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--beta', type=float, default=0.0)
     ap.add_argument('--kappas', type=float, nargs='+', default=KAPPAS)
+    ap.add_argument('--rule', default=abm.Params.rule, choices=abm.RULES)
     a = ap.parse_args()
-    main(a.beta, a.kappas)
+    main(a.beta, a.kappas, a.rule)

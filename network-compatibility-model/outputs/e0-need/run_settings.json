@@ -1,0 +1,51 @@
+{
+  "experiment": "E0 with household need (2019, minimum chi-square on MMP receipt cells)",
+  "logit": "alpha_type + beta*S_t + eta_worker*no_worker_h + eta_dep*dependency_h (need centred)",
+  "need_features": {
+    "no_worker": "no resident worker (resident_worker == 0)",
+    "dependency": "(resident_child + resident_older) / resident",
+    "missing": "incomplete roster or no residents: mean (0 after centring), not in fit cells",
+    "means": {
+      "no_worker": 0.15418502202643172,
+      "dependency": 0.3168429732839576
+    }
+  },
+  "fit_cells": {
+    "by": [
+      "network_type",
+      "workers",
+      "dependency"
+    ],
+    "dependency_bins": {
+      "No dependents": "0",
+      "Up to half": "(0, 0.5]",
+      "Over half": "(0.5, 1]"
+    },
+    "n_cells": 18,
+    "households": 3157,
+    "sd": "sqrt(m (1 - m) / n), m = MMP receipt of the network type"
+  },
+  "receipt_mapping": "MMP remus vs exact mean monthly receipt probability, 2019 CPS, rho = 0, S = 0",
+  "rules": {
+    "coordination": {
+      "profile": "outputs\\e1-coordination\\e0_kappa_profile.csv",
+      "kappas": [
+        0.0,
+        0.25,
+        0.5,
+        0.7,
+        1.0
+      ]
+    },
+    "lost_sending": {
+      "profile": "outputs\\e0-baseline\\kappa_profile.csv",
+      "kappas": [
+        0.0,
+        2.0,
+        4.0
+      ]
+    }
+  },
+  "households": 3252,
+  "receiving": 756
+}

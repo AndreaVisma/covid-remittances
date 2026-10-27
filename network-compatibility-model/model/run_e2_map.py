@@ -1,6 +1,9 @@
 """E2 (first pass): behavioural compatibility map over beta x kappa (model-specification.md §6-§7).
 
 Run: python network-compatibility-model/model/run_e2_map.py   (~15 min)
+     --rule coordination: coordination rule, alphas from outputs/e1-coordination/e0_kappa_profile.csv,
+     kappa = replacement share (0..1 by 0.1, plus 1.5 and 2 for over-replacement); outputs in
+     outputs/e2-map-coordination/
 
 pi = 0 (no benefits, user decision), rho = 0, base stepping-in rule, S_t = reported COVID
 deaths / 10,000 (abm.salience_series). For each kappa on the E0 profile (its 2019-refitted
@@ -30,6 +33,8 @@ PROFILE = abm.HERE / 'outputs/e0-baseline/kappa_profile.csv'
 TAU_C = 0.04
 BETAS = np.round(np.arange(0.0, 0.401, 0.02), 2)
 KAPPAS = [0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0]
+RULE_SETUP = {'coordination': (abm.HERE / 'outputs/e1-coordination/e0_kappa_profile.csv',
+                               [round(k, 1) for k in np.arange(0, 1.01, 0.1)] + [1.5, 2.0])}
 MONTHS = pd.date_range('2020-01-01', '2022-12-01', freq='MS')
 FIT_Q = [str(p) for p in pd.period_range('2020Q2', '2021Q4', freq='Q')]
 HOLD_Q = [str(p) for p in pd.period_range('2022Q1', '2022Q4', freq='Q')]
@@ -43,10 +48,12 @@ def log_rmse(model, data, quarters):
     return float(np.sqrt(np.mean(np.log(model[quarters] / data[quarters]) ** 2)))
 
 
-def main():
+def main(rule=abm.Params.rule):
+    profile_path, kappas = RULE_SETUP.get(rule, (PROFILE, KAPPAS))
+    OUT = abm.HERE / ('outputs/e2-map' + ('' if rule == abm.Params.rule else f'-{rule}'))
     OUT.mkdir(parents=True, exist_ok=True)
     pop = abm.load_population()
-    profile = pd.read_csv(PROFILE)
+    profile = pd.read_csv(profile_path)
     bx, trend, bx_info = e1.banxico()
     target = quarterly(bx[MONTHS]) / quarterly(trend[MONTHS])
     salience = abm.salience_series(MONTHS)
@@ -54,9 +61,9 @@ def main():
     cf_inputs = abm.make_inputs(pd.DatetimeIndex([pd.Timestamp(2019, d.month, 1) for d in MONTHS]),
                                 pop['rate_columns'])
     rows, paths = [], []
-    for kappa in KAPPAS:
+    for kappa in kappas:
         r = profile.loc[np.isclose(profile.kappa, kappa)].iloc[0]
-        base = dict(alpha_core=r.alpha_core, alpha_kin=r.alpha_kin, kappa=kappa)
+        base = dict(alpha_core=r.alpha_core, alpha_kin=r.alpha_kin, kappa=kappa, rule=rule)
         cf = quarterly(abm.expected_flows(pop, cf_inputs, abm.Params(**base)).transfers.set_axis(MONTHS))
         for beta in BETAS:
             f = abm.expected_flows(pop, covid_inputs, abm.Params(**base, beta=beta))
@@ -79,11 +86,11 @@ def main():
     pd.concat(paths, ignore_index=True).to_csv(OUT / 'quarterly_paths.csv', index=False)
     best = grid.loc[grid.rmse_log_quarterly.idxmin()]
     settings = dict(experiment='E2 first pass: beta x kappa, count criterion only', pi=0.0, rho=0.0,
-                    stepping_in_rule=abm.Params.rule, salience='reported COVID deaths / 10,000 (S)',
+                    stepping_in_rule=rule, salience='reported COVID deaths / 10,000 (S)',
                     tau_C=TAU_C, criterion='quarterly log RMSE 2020Q2..2021Q4, model (COVID / no-COVID run) '
                                            'vs Banxico / 2017-19 trend',
-                    enigh_criterion='not implemented yet', betas=BETAS.tolist(), kappas=KAPPAS,
-                    alphas_from=str(PROFILE.relative_to(abm.HERE)), banxico_trend=bx_info,
+                    enigh_criterion='not implemented yet', betas=BETAS.tolist(), kappas=kappas,
+                    alphas_from=str(profile_path.relative_to(abm.HERE)), banxico_trend=bx_info,
                     n_cells=len(grid), n_count_compatible=int(grid.count_compatible.sum()),
                     best_cell=dict(kappa=float(best.kappa), beta=float(best.beta),
                                    rmse_log_quarterly=float(best.rmse_log_quarterly)))
@@ -94,4 +101,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--rule', default=abm.Params.rule, choices=abm.RULES)
+    main(ap.parse_args().rule)

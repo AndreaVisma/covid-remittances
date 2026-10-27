@@ -113,6 +113,14 @@ w = θ_kin⁰ / θ_core⁰ = expit(α_kin) / expit(α_core)   (≈ 0.07)
 
 At κ = 4, several kin can each step in for one loss, so large networks can receive more than in the no-COVID counterfactual (over-replacement). This is a property of the rule to report.
 
+*Alternative under evaluation (21 Oct 2026): coordination among all able migrants,* `Params(rule='coordination')`, `model/run_e1_coordination.py`. The household's able migrants, core and kin, share the routine sending lost to migrants who cannot send:
+```
+θ_j,t = min(1, θ⁰_j,t · (1 + κ · Λ_h,t / P_h,t))
+Λ_h,t = Σ θ⁰ over eligible migrants in h unable to send in t   (routine sending lost)
+P_h,t = Σ θ⁰ over migrants in h able to send in t              (routine sending remaining)
+```
+`θ⁰` is the routine probability (`α + β S_t`, by type). `κ` ∈ [0, 1] is the **replacement share**: the fraction of the household's lost expected transfers that its remaining migrants make up, before the cap at 1. Replacement is split in proportion to routine sending, so core migrants carry most of it in mixed households (387 households have two or more eligible core migrants, holding two-thirds of eligible core migrants). A household cannot receive more than without the shock. Single-link households cannot be helped, as under the base rule. Same trigger (inability, not a routine month of not sending) and same eligibility as the base rule.
+
 - `α_core`, `α_kin`: **baseline propensities**, calibrated to 2019 (§7).
 - `S_t`: **national salience index**, the reported COVID-19 deaths in Mexico in month `t`, in units of 10,000 deaths (user decisions, 20 Oct 2026: keep it simple; reported COVID deaths, not excess deaths):
   ```
@@ -123,6 +131,7 @@ At κ = 4, several kin can each step in for one loss, so large networks can rece
   - Sensitivity: excess all-cause deaths (World Mortality Dataset, 2015–19 baseline with a linear trend, negative values set to 0), about 2.2 times reported deaths.
   - A labour-market component (the fall in the employed population, ENOE/ETOE) was considered and set aside for simplicity; the series is kept in `data-prep/outputs/salience_inputs_monthly.csv` in case it is added later.
 - `β ≥ 0`: **need responsiveness**. Axis 1 of the behavioural map.
+- **Household need (added 27 Oct 2026, `model/run_e0_need.py`):** every logit above gains `+ η_w · noworker_h + η_d · dep_h`, the same shift for all migrants of household `h` (`abm.need_shift`). `noworker_h` = no resident worker (0/1); `dep_h` = (resident children + older residents) / residents. Both are centred on the population mean, so `α` remains the propensity of an average household; households with an incomplete roster get the mean. MMP has no usable household income (`hhhincom` is empty for 2010–19), so need comes from composition only (user decision, 27 Oct 2026: dependency ratio and worker presence, nothing else). `η` is calibrated to 2019 and static: it changes *who* receives, not the COVID response (an `S_t × need_h` interaction would need a 2020 target, e.g. ENIGH 2018→2020 by composition).
 - `κ ≥ 0`: **stepping in**. Kin become more likely to send when other migrants linked to the household cannot send, in proportion to the routine sending lost. Axis 2 of the behavioural map.
   - `κ = 0`: kin ignore what happens to other linked migrants.
   - Large `κ`: kin respond strongly when core migrants, or other kin, lose the ability to send.
@@ -183,6 +192,8 @@ Benchmark for E3: with `κ = 0` and `ρ = 0`, receipt probability is `1 − ∏_
 
 For each `κ` on the grid, fit `α_core` and `α_kin` to the 2019 receipt rates of core-only, kin-only and mixed households (MMP; ENIGH 2018 as a check), so every cell of the map starts from a baseline that fits 2019. Report the `κ` profile, i.e. the best 2019 fit at each `κ`. Result: 2019 barely constrains `κ` (weighted RMSE 0.2 pp at `κ = 0`, about 0.7 pp at `κ = 8`), because few migrants are unable to send in a normal year.
 
+**Household need (27 Oct 2026, `outputs/e0-need/`):** `α_core, α_kin, η_w, η_d` by minimum χ² on 18 MMP cells (network type × worker present × dependency none / ≤ ½ / > ½; SD of each cell from its network type's receipt rate). A household likelihood was tried first and rejected: it also chases the core-network size misfit and pulls `α_core` down (network-type error 3.6 pp vs 0.6 pp). Result, stable across `κ` and both rules: `η_w` = 0.40–0.43 (SE 0.17; odds × 1.5 for households without a resident worker), `η_d` ≈ 0 (−0.01 to 0.03, SE 0.20). χ² falls by about 6 (21.9 → 16.2 at coordination `κ` = 0.7); joint test of `η = 0`: p = 0.05–0.07. `α_core` falls by about 0.025, `α_kin` rises by about 0.03. Validation RMSE (coordination, `κ` = 0.7): workers 1.83 → 1.59 pp, children 2.65 → 2.36, network type 0.61 → 0.80, dependency 1.96 → 2.24, size 4.28 → 4.37. One `η_w` for all network types overshoots mixed core + kin households without a worker (72.9% vs 66.7%) and undershoots kin-only ones (8.0% vs 10.4%).
+
 **Network size (decided 19 Oct 2026):** no dilution parameter. The saturation seen in the first E0 run came from counting every distant relative as an independent potential sender. After the population rebuild (distant kin as one aggregated link), the kin-only size gradient matches MMP within ~1 pp. The remaining size misfits are in core networks (±8–12 pp in some bins) and are reported as a limitation.
 
 Known problem to resolve first: the current model underpredicts receipt in single-migrant core households (≈42% simulated vs 54% in MMP) and in kin-only households with older residents. Report whether the simpler model reduces or worsens these errors.
@@ -206,6 +217,7 @@ A cell `(β, κ, π)` is **compatible** if both hold:
 | Parameter | Role | How set |
 |---|---|---|
 | `α_core`, `α_kin` | baseline propensities | calibrated to 2019 |
+| `η_w`, `η_d` | household need (no resident worker, dependency ratio) | calibrated to 2019 (`η_d` ≈ 0) |
 | `β` | need responsiveness | map axis |
 | `κ` | coordination | map axis |
 | `ρ` | job-loss correlation within networks | network-map axis |
@@ -219,7 +231,7 @@ A cell `(β, κ, π)` is **compatible** if both hold:
 - Wages do not affect whether a migrant sends: employment or benefits are a yes/no condition only. Wage effects appear only in the amount margin (data) and the wage-indexing robustness check.
 - The migrant population is fixed: no new migration or return migration during the simulation.
 - No savings, debt, or remittance-channel change (informal → formal); formalization competes as an explanation of recorded growth and is discussed, not modelled.
-- National salience gives every household the same need signal. That is deliberate: household heterogeneity comes only from network structure and migrant shocks.
+- National salience gives every household the same need *signal*. Households differ in baseline need (`η`, from composition measured at the MMP survey, 2010–19, not in 2020), but not in how strongly they respond to the crisis.
 - Compatible cells show which mechanisms are **sufficient** to produce the data, not that they were the historical cause.
 
 ## 9. Implementation tasks

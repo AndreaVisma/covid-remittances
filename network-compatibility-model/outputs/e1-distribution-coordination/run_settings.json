@@ -1,0 +1,25 @@
+{
+  "experiment": "household distribution",
+  "beta": 0.0,
+  "rho": 0.0,
+  "pi": 0.0,
+  "stepping_in_rule": "coordination",
+  "kappas": [
+    0.0,
+    0.5,
+    1.0
+  ],
+  "seeds": [
+    1001,
+    1200
+  ],
+  "window": [
+    "2020-04-01",
+    "2021-12-01"
+  ],
+  "amount_seed": 7,
+  "change": "sum over seeds of COVID USD / no-COVID USD - 1, households with no-COVID USD > 0",
+  "loss_risk": "share of seeds with USD < 75% of the paired no-COVID run",
+  "severe_interruption": "share of seeds with >= 3 consecutive missed months (twin receives, COVID household not)",
+  "occupation": "modal job group among the household's eligible migrants"
+}

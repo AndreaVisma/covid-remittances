@@ -1124,6 +1124,10 @@ def dist_figures():
 def main():
     FIG.mkdir(parents=True, exist_ok=True)
     style()
+    if '--theta' in sys.argv:
+        return p1_sending_probability()
+    if '--bubbles' in sys.argv:
+        return p2_receipt_bubbles()
     if '--dist' in sys.argv:
         return dist_figures()
     if '--e2' in sys.argv:
@@ -1162,6 +1166,153 @@ def e1_figures():
     d4_variants(pd.read_csv(E1A / 'kappa_rule_variants.csv'))
     d5_receipt_paths(pd.read_csv(E1 / 'receipt_ratio_paths.csv'))
     d6_size(pd.read_csv(E1 / 'household_outcomes.csv'))
+    write_captions()
+
+
+def p1_sending_probability():
+    """Sending probability of an able core and an able kin migrant under the coordination rule,
+    along kappa (2019-refitted alphas, interpolated) for three betas, at the Jan 2021 death peak."""
+    profile = pd.read_csv(BASE / 'outputs/e1-coordination/e0_kappa_profile.csv').query('kappa <= 1')
+    best = json.loads((BASE / 'outputs/e2-map-coordination/run_settings.json').read_text())['best_cell']
+    s_peak = float(abm.salience_series(pd.DatetimeIndex(['2021-01-01']))[0])
+    kappa = np.linspace(0, 1, 201)
+    a_core = np.interp(kappa, profile.kappa, profile.alpha_core)
+    a_kin = np.interp(kappa, profile.kappa, profile.alpha_kin)
+    betas = [(0.0, BLUE), (best['beta'], ORANGE), (0.10, AQUA)]
+    marks = [0.0, 0.25, 0.5, 0.75, 1.0]
+
+    def theta(k, b, who):
+        """Two example households: core = three core migrants, one unable (Lambda/P = 1/2);
+        kin = one core migrant unable, one kin migrant able (Lambda/P = theta_core0 / theta_kin0)."""
+        ac, ak = np.interp(k, profile.kappa, profile.alpha_core), np.interp(k, profile.kappa, profile.alpha_kin)
+        tc, tk = abm.expit(ac + b * s_peak), abm.expit(ak + b * s_peak)
+        return np.minimum(1, tc * (1 + k / 2)) if who == 'core' else np.minimum(1, tk * (1 + k * tc / tk))
+
+    fig, axes = plt.subplots(1, 2, figsize=(8.6, 3.9), sharey=True)
+    panels = [('core', 'Core migrant', 'Three core migrants, one has lost their job'),
+              ('kin', 'Kin migrant', 'One core migrant has lost their job, one kin migrant is able')]
+    for ax, (who, head, sub) in zip(axes, panels):
+        routine = abm.expit(a_core[0] if who == 'core' else a_kin[0])
+        ax.axhline(routine, color=MUTED, lw=1, ls=(0, (3, 3)), zorder=1)
+        ax.text(1.0, routine, '2019 routine', color=MUTED, fontsize=7.5, ha='right', va='bottom')
+        for b, color in betas:
+            y = theta(kappa, b, who)
+            ax.plot(kappa, y, color=GRAY_LIGHT, lw=2, zorder=2)
+            ring_dot(ax, marks, theta(np.array(marks), b, who), color, size=46, zorder=4)
+            ax.text(1.03, y[-1], f'β = {b:g}', color=INK2, fontsize=8, va='center')
+        yb = theta(np.array([best['kappa']]), best['beta'], who)[0]
+        ax.scatter(best['kappa'], yb, s=150, facecolor='none', edgecolor=INK, linewidth=1.3, zorder=5)
+        ax.annotate(f'best fit: κ = {best["kappa"]:g}, β = {best["beta"]:g}\nθ = {yb:.0%}', (best['kappa'], yb),
+                    xytext=(-14, 22), textcoords='offset points',
+                    ha='right', fontsize=7.5, color=INK,
+                    arrowprops=dict(arrowstyle='-', color=MUTED, lw=0.8))
+        ax.set_title(head, loc='left', fontsize=10, fontweight='semibold', pad=20)
+        ax.text(0, 1.02, sub, transform=ax.transAxes, fontsize=8, color=INK2, va='bottom')
+        ax.set_xlim(-0.03, 1.02)
+        ax.set_xticks(marks)
+        ax.set_xlabel('κ, replacement share')
+        ax.spines[['top', 'right']].set_visible(False)
+    axes[0].set_ylim(0, 1.04)
+    axes[0].set_ylabel('Monthly probability of sending', labelpad=4)
+    pct_axis(axes[0])
+    handles = [Line2D([], [], marker='o', ls='-', color=GRAY_LIGHT, markerfacecolor=c, markeredgecolor=SURFACE,
+                      markersize=7, label=f'β = {b:g}') for b, c in betas]
+    fig.legend(handles=handles, loc='lower center', ncol=3, frameon=False, bbox_to_anchor=(0.5, -0.06))
+    fig.subplots_adjust(wspace=0.25, top=0.80)
+    save(fig, 'P1_sending_probability', 'How β and κ move the probability of sending', title_y=0.99, caption=
+         f'Monthly sending probability of an able migrant under the coordination rule, '
+         f'θ = min(1, θ⁰(1 + κΛ/P)) with logit θ⁰ = α + βS, at the January 2021 death peak '
+         f'(S = {s_peak:.2f}, i.e. {s_peak * 1e4:,.0f} reported COVID-19 deaths). Grey curves: all κ in [0, 1], '
+         f'with α refitted to 2019 for each κ (interpolated between the 0.1 grid). Dots: κ = 0, 0.25, 0.5, 0.75, 1. '
+         f'Ring: best cell of the E2 map under this rule (quarterly log RMSE 0.043). Left: household with three core '
+         f'migrants, one unable to send (Λ/P = 1/2). Right: household with one core migrant unable and one kin '
+         f'migrant able (Λ/P = θ⁰_core/θ⁰_kin). Dashed line: 2019 routine probability (β = 0, κ = 0).')
+    write_captions()
+
+
+def p2_receipt_bubbles():
+    """Exact monthly receipt probability (rho = 0) by core x kin migrant counts under the coordination
+    rule: no-COVID level, and the COVID change with no response (beta = kappa = 0) and at the best cell."""
+    profile = pd.read_csv(BASE / 'outputs/e1-coordination/e0_kappa_profile.csv')
+    best = json.loads((BASE / 'outputs/e2-map-coordination/run_settings.json').read_text())['best_cell']
+    pop = abm.load_population()
+    h = pop['h']
+    months = pd.date_range('2020-04-01', '2021-12-01', freq='MS')
+    covid = abm.make_inputs(months, pop['rate_columns'], salience=abm.salience_series(months))
+    cf = abm.make_inputs(pd.DatetimeIndex([pd.Timestamp(2019, d.month, 1) for d in months]), pop['rate_columns'])
+
+    def params(kappa, beta):
+        return abm.Params(alpha_core=np.interp(kappa, profile.kappa, profile.alpha_core),
+                          alpha_kin=np.interp(kappa, profile.kappa, profile.alpha_kin),
+                          beta=beta, kappa=kappa, rule='coordination')
+
+    p0, pb = params(0.0, 0.0), params(best['kappa'], best['beta'])
+    core_bins, kin_bins = ['0', '1', '2', '3+'], ['0', '1', '2', '3–4', '5+']
+    d = pd.DataFrame(dict(
+        core=pd.cut(h.core_count, [-1, 0, 1, 2, np.inf], labels=core_bins),
+        kin=pd.cut(h.kin_count, [-1, 0, 1, 2, 4, np.inf], labels=kin_bins),
+        level=abm.expected_receipt(pop, cf, pb).mean(0),
+        none=(abm.expected_receipt(pop, covid, p0) - abm.expected_receipt(pop, cf, p0)).mean(0),
+        best=(abm.expected_receipt(pop, covid, pb) - abm.expected_receipt(pop, cf, pb)).mean(0)))
+    g = d.groupby(['core', 'kin'], observed=False).agg(n=('level', 'size'), level=('level', 'mean'),
+                                                        none=('none', 'mean'), best=('best', 'mean')).reset_index()
+    g['x'] = g.core.cat.codes
+    g['y'] = g.kin.cat.codes
+    min_n = 10
+    shown = g[g.n >= min_n]
+    hidden = g[g.n < min_n]
+
+    s_max = 700
+    d_max = shown[['none', 'best']].abs().to_numpy().max()
+    fig, axes = plt.subplots(1, 3, figsize=(12.6, 4.6), sharey=True)
+    panels = [('level', 'No-COVID receipt probability', 'Monthly, 2019 employment, best cell'),
+              ('none', 'COVID change: no response', 'β = 0, κ = 0 (job losses only)'),
+              ('best', 'COVID change: best cell', f'β = {best["beta"]:g}, κ = {best["kappa"]:g}')]
+    for ax, (col, head, sub) in zip(axes, panels):
+        v = shown[col].to_numpy()
+        if col == 'level':
+            size, face, edge = v * s_max, BLUE, BLUE
+            labels = [f'{x:.0%}' for x in v]
+        else:
+            size = np.abs(v) / d_max * s_max
+            face = edge = np.where(v < 0, ORANGE, AQUA)
+            labels = [f'{x * 100:+.1f}' for x in v]
+        ax.scatter(shown.x, shown.y, s=size, facecolor=face, edgecolor=edge, alpha=0.35, linewidth=0, zorder=3)
+        ax.scatter(shown.x, shown.y, s=size, facecolor='none', edgecolor=edge, linewidth=1.2, zorder=4)
+        for x, y, lab, sz in zip(shown.x, shown.y, labels, size):
+            small = sz < 350                      # label beside the bubble, not on its outline
+            ax.annotate(lab, (x, y), xytext=(np.sqrt(sz) / 2 + 3 if small else 0, 0), textcoords='offset points',
+                        ha='left' if small else 'center', va='center', fontsize=7.5, color=INK, zorder=5)
+        for x, y in zip(hidden.x, hidden.y):
+            ax.text(x, y, '–', ha='center', va='center', fontsize=9, color=MUTED)
+        if col == 'level':
+            for x, y, n in zip(shown.x, shown.y, shown.n):
+                ax.text(x, y - 0.4, f'n = {n}', ha='center', va='top', fontsize=6.5, color=MUTED)
+        ax.set_title(head, loc='left', fontsize=10, fontweight='semibold', pad=18)
+        ax.text(0, 1.02, sub, transform=ax.transAxes, fontsize=8, color=INK2, va='bottom')
+        ax.set_xticks(range(len(core_bins)), core_bins)
+        ax.set_yticks(range(len(kin_bins)), kin_bins)
+        ax.set_xlim(-0.6, len(core_bins) - 0.4)
+        ax.set_ylim(-0.75, len(kin_bins) - 0.4)
+        ax.set_xlabel('Core migrants (household members)')
+        ax.grid(False)
+        ax.spines[['top', 'right']].set_visible(False)
+    axes[0].set_ylabel('Kin migrants (wider family)')
+    axes[2].text(1.0, -0.2, 'Labels in panels 2–3: percentage points', transform=axes[2].transAxes,
+                 ha='right', fontsize=7.5, color=MUTED)
+    handles = [Patch(facecolor=ORANGE, edgecolor=ORANGE, alpha=0.6, label='Receives less than without COVID'),
+               Patch(facecolor=AQUA, edgecolor=AQUA, alpha=0.6, label='Receives more than without COVID')]
+    fig.legend(handles=handles, loc='lower center', ncol=2, frameon=False, bbox_to_anchor=(0.62, -0.05))
+    fig.subplots_adjust(wspace=0.12, top=0.80, bottom=0.17)
+    save(fig, 'P2_receipt_by_core_kin',
+         'Receipt depends mostly on core migrants; with need and coordination, wider family turns losses into gains',
+         title_y=0.99, caption=
+         f'Exact expected monthly probability that a household receives a transfer (ρ = 0, coordination rule), '
+         f'averaged over households in each cell, Apr 2020 – Dec 2021. Left: no-COVID counterfactual (2019 CPS '
+         f'rates of the same month, S = 0) at the best cell, bubble area ∝ probability. Middle and right: COVID '
+         f'run minus counterfactual, bubble area ∝ |change| on a common scale; α refitted to 2019 for each κ. '
+         f'Best cell of the E2 map (quarterly log RMSE {best["rmse_log_quarterly"]:.3f}). '
+         f'Cells with fewer than {min_n} households are not shown (–). There are no households without migrants.')
     write_captions()
 
 
