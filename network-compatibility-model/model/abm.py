@@ -65,9 +65,9 @@ class Params:
     #                  (1 + kappa * Lambda_h,t / P_h,t)); kappa = replacement share (alternative)
     rule: str = 'lost_sending'
     # Household need (calibrated to 2019 MMP receipt): logit shift eta_worker * no resident worker
-    # + eta_dep * dependency ratio, both centred on the population mean (NEED_FEATURES).
+    # + eta_older * any older resident, both centred on the population mean (NEED_FEATURES).
     eta_worker: float = 0.0
-    eta_dep: float = 0.0
+    eta_older: float = 0.0
 
 
 RULES = ('all_core', 'lost_sending', 'coordination')
@@ -124,15 +124,16 @@ def load_population():
                 rate_columns=rate_columns)
 
 
-NEED_FEATURES = ['no_worker', 'dependency']
+NEED_FEATURES = ['no_worker', 'any_older']
 
 
 def need_features(h):
-    """(H, 2) household need, centred: no resident worker (0/1) and dependency ratio
-    (resident children + older residents) / residents. Households with an incomplete roster or
-    no resident members get the mean (0 after centring)."""
-    known = h.resident.gt(0) & h[['resident_worker', 'resident_child', 'resident_older']].notna().all(axis=1)
-    x = np.column_stack([h.resident_worker.eq(0), (h.resident_child + h.resident_older) / h.resident]).astype(float)
+    """(H, 2) household need, centred: no resident worker (0/1) and any older resident (0/1).
+    Households with an incomplete roster or no resident members get the mean (0 after centring).
+    Children are left out: in MMP 2019 they do not predict receipt, and a pooled dependency ratio
+    (children + older over residents) diluted the older-resident effect to zero (27 Oct 2026)."""
+    known = h.resident.gt(0) & h[['resident_worker', 'resident_older']].notna().all(axis=1)
+    x = np.column_stack([h.resident_worker.eq(0), h.resident_older.gt(0)]).astype(float)
     x[~known.to_numpy()] = np.nan
     x = x - np.nanmean(x, axis=0)
     return np.nan_to_num(x)
@@ -140,7 +141,7 @@ def need_features(h):
 
 def need_shift(pop, params):
     """Household logit shift from need, (H,)."""
-    return pop['need_x'] @ np.array([params.eta_worker, params.eta_dep])
+    return pop['need_x'] @ np.array([params.eta_worker, params.eta_older])
 
 
 def routine_amounts(pop, params, seed):

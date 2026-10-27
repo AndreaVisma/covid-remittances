@@ -3,21 +3,25 @@
 Run: python network-compatibility-model/model/run_e0_need.py   (~30 min)
 
 Sending logit with a household need shift (abm.need_shift):
-    logit theta_j = alpha_type + beta * S_t + eta_worker * no_worker_h + eta_dep * dependency_h
-no_worker_h: no resident worker; dependency_h: (resident children + older residents) / residents;
-both centred on the population mean, so alpha stays the propensity of an average household.
+    logit theta_j = alpha_type + beta * S_t + eta_worker * no_worker_h + eta_older * older_h
+no_worker_h: no resident worker; older_h: at least one older resident; both 0/1 and centred on the
+population mean, so alpha stays the propensity of an average household. Children are left out: a
+first run with a pooled dependency ratio ((children + older) / residents) found eta = 0, because
+children do not predict receipt and dilute the older-resident effect (27 Oct 2026).
+
+Run 27 Oct 2026; results in outputs/e0-need/ and spec section 7.
 
 Calibration as in E0 (cell means, not household likelihood: a household likelihood also chases the
 known size-gradient misfit of core networks and pulls alpha_core down). Households with a known
-roster are partitioned into network type x worker present x dependency bin (18 cells). Minimum
+roster are partitioned into network type x worker present x older resident (12 cells). Minimum
 chi-square: residual = (model - MMP receipt) / sqrt(m (1 - m) / n), with m the MMP receipt of the
 cell's network type. Model receipt is the exact mean monthly probability under 2019 CPS employment
 (rho = 0, S = 0, no benefits), the E0 mapping. For each rule and kappa:
   * 'alpha': alpha_core, alpha_kin only (nested model);
-  * 'need':  alpha_core, alpha_kin, eta_worker, eta_dep; covariance (J'J)^-1; test of eta = 0 by the
+  * 'need':  alpha_core, alpha_kin, eta_worker, eta_older; covariance (J'J)^-1; test of eta = 0 by the
     drop in chi-square (2 df).
 The E0 alphas (least squares on receipt by network type) are reported as 'e0' for reference.
-Validation: model vs MMP receipt by network type, workers, dependency, children, older residents,
+Validation: model vs MMP receipt by network type, workers, older residents, children,
 network size, link type and survey period (aggregates only).
 Outputs: outputs/e0-need/fits.csv, validation.csv, panel_rmse.csv, run_settings.json.
 """
@@ -36,21 +40,18 @@ import run_e0_baseline as e0
 OUT = abm.HERE / 'outputs/e0-need'
 RULES = {'coordination': (abm.HERE / 'outputs/e1-coordination/e0_kappa_profile.csv', [0.0, 0.25, 0.5, 0.7, 1.0]),
          'lost_sending': (abm.HERE / 'outputs/e0-baseline/kappa_profile.csv', [0.0, 2.0, 4.0])}
-DEP_BINS = [-0.01, 0.0, 0.5, 1.01]
-DEP_LABELS = ['No dependents', 'Up to half', 'Over half']  # not 'None': read back as NaN
-FIT_BY = ['network_type', 'workers', 'dependency']
+FIT_BY = ['network_type', 'workers', 'older']
 PANELS = [('network_type', ['network_type']), ('workers', ['network_type', 'workers']),
-          ('dependency', ['network_type', 'dependency']), ('children', ['network_type', 'children']),
-          ('older', ['network_type', 'older']), ('size', ['network_type', 'size_bin']),
+          ('older', ['network_type', 'older']), ('children', ['network_type', 'children']), ('size', ['network_type', 'size_bin']),
           ('links', ['links']), ('survey_period', ['survey_period'])]
-NAMES = ['alpha_core', 'alpha_kin', 'eta_worker', 'eta_dep']
+NAMES = ['alpha_core', 'alpha_kin', 'eta_worker', 'eta_older']
 
 
 def cells(h):
     out = e0.household_cells(h)
-    dep = (h.resident_child + h.resident_older) / h.resident.where(h.resident > 0)
-    out['dependency'] = pd.cut(dep, DEP_BINS, labels=DEP_LABELS).astype(object).fillna('Unknown')
-    out['workers'] = np.where(h.resident_worker.isna() | out.dependency.eq('Unknown'), 'Unknown', out['workers'])
+    unknown = ~(h.resident.gt(0) & h[['resident_worker', 'resident_older']].notna().all(axis=1))
+    out['workers'] = np.where(unknown, 'Unknown', out['workers'])
+    out['older'] = np.where(unknown, 'Unknown', out['older'])
     return out
 
 
@@ -73,7 +74,7 @@ class MinChi2:
     @staticmethod
     def params(x, kappa, rule):
         x = list(x) + [0.0] * (4 - len(x))
-        return abm.Params(x[0], x[1], kappa=kappa, rule=rule, eta_worker=x[2], eta_dep=x[3])
+        return abm.Params(x[0], x[1], kappa=kappa, rule=rule, eta_worker=x[2], eta_older=x[3])
 
     def residual(self, x, kappa, rule):
         p = self.receipt(self.params(x, kappa, rule))[self.ok]
@@ -127,7 +128,7 @@ def main():
                         t = t.assign(network_type='All')
                     t = t.rename(columns={by[-1]: 'category'}) if by[-1] != 'network_type' else t.assign(category='All')
                     valid.append(t.assign(rule=rule, kappa=kappa, model=name, panel=panel))
-            print(f'{rule} kappa {kappa}: eta_worker {f_n.x[2]:.3f} ({se[2]:.3f}), eta_dep {f_n.x[3]:.3f} '
+            print(f'{rule} kappa {kappa}: eta_worker {f_n.x[2]:.3f} ({se[2]:.3f}), eta_older {f_n.x[3]:.3f} '
                   f'({se[3]:.3f}), chi2 {chi_a:.1f} -> {chi_n:.1f} on {n_cells} cells, '
                   f'p(eta = 0) {chi2.sf(chi_a - chi_n, 2):.3g}', flush=True)
 
@@ -141,15 +142,16 @@ def main():
     fits.to_csv(OUT / 'fits.csv', index=False)
     valid.to_csv(OUT / 'validation.csv', index=False)
     rmse.to_csv(OUT / 'panel_rmse.csv', index=False)
-    raw = np.column_stack([h.resident_worker.eq(0), (h.resident_child + h.resident_older) / h.resident.where(h.resident > 0)])
+    raw = np.column_stack([h.resident_worker.eq(0), h.resident_older.gt(0)]).astype(float)
+    raw[~(h.resident.gt(0) & h[['resident_worker', 'resident_older']].notna().all(axis=1)).to_numpy()] = np.nan
     settings = dict(
         experiment='E0 with household need (2019, minimum chi-square on MMP receipt cells)',
-        logit='alpha_type + beta*S_t + eta_worker*no_worker_h + eta_dep*dependency_h (need centred)',
+        logit='alpha_type + beta*S_t + eta_worker*no_worker_h + eta_older*older_h (need centred)',
         need_features=dict(no_worker='no resident worker (resident_worker == 0)',
-                           dependency='(resident_child + resident_older) / resident',
+                           any_older='at least one older resident (resident_older > 0)',
                            missing='incomplete roster or no residents: mean (0 after centring), not in fit cells',
                            means=dict(zip(abm.NEED_FEATURES, map(float, np.nanmean(raw, axis=0))))),
-        fit_cells=dict(by=FIT_BY, dependency_bins=dict(zip(DEP_LABELS, ['0', '(0, 0.5]', '(0.5, 1]'])),
+        fit_cells=dict(by=FIT_BY,
                        n_cells=n_cells, households=int((cal.cell_of >= 0).sum()),
                        sd='sqrt(m (1 - m) / n), m = MMP receipt of the network type'),
         receipt_mapping='MMP remus vs exact mean monthly receipt probability, 2019 CPS, rho = 0, S = 0',

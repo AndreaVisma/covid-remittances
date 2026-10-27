@@ -1,0 +1,71 @@
+{
+  "experiment": "Recipient-level receipt logit vs migrant-level model, 2019 MMP",
+  "households": 3252,
+  "receiving": 756,
+  "migrants": 7999,
+  "households_with_eligible_migrant": 2994,
+  "eligible_note": "loglik_eligible / cv_logloss_eligible: households with at least one migrant who can ever send (not all migrants coded Not working); without a floor the migrant model gives the others P = 0",
+  "employment": "2019 CPS rates by occupation, exact Poisson-binomial able counts, rho = 0",
+  "receipt": "MMP remus vs mean monthly receipt probability (E0 mapping)",
+  "kappa": 0,
+  "household_specs": {
+    "H0": [
+      "core",
+      "kin"
+    ],
+    "H1": [
+      "log_core",
+      "log_kin"
+    ],
+    "H2": [
+      "log_core",
+      "log_kin",
+      "no_worker",
+      "any_older"
+    ],
+    "H3": [
+      "log_core",
+      "log_kin",
+      "no_worker",
+      "any_older",
+      "any_core"
+    ]
+  },
+  "migrant_specs": {
+    "M1": [
+      "alpha_core",
+      "alpha_kin"
+    ],
+    "M2": [
+      "alpha_core",
+      "alpha_kin",
+      "eta_worker",
+      "eta_older"
+    ],
+    "M1f": [
+      "alpha_core",
+      "alpha_kin",
+      "floor"
+    ],
+    "M2f": [
+      "alpha_core",
+      "alpha_kin",
+      "eta_worker",
+      "eta_older",
+      "floor"
+    ]
+  },
+  "cv": {
+    "folds": 5,
+    "grouping": "community (country, commun)",
+    "seed": 7
+  },
+  "shock": {
+    "dates": [
+      "2020-01-01",
+      "2021-12-01"
+    ],
+    "counterfactual": "2019 CPS rates of the same calendar month",
+    "response": "job loss only"
+  }
+}
