@@ -43,8 +43,9 @@ CPS_JOBS = ['Agriculture', 'Production/construction/transport',
             'Sales/personal services', 'Professional/administrative']
 ALL_OCC = 'All occupations'
 # MMP job groups without a CPS occupation use the all-occupation rate.
-# 'Not working' migrants are never able to send (no earnings, no benefits).
-JOB_PROXY = {'Unknown': ALL_OCC, 'Working student/pensioner': ALL_OCC, 'Not working': None}
+# 'Not working' (last US trip) is treated as unknown occupation (user decision, 28 Oct 2026):
+# households whose core migrants are all coded so still receive in 43% of MMP cases.
+JOB_PROXY = {'Unknown': ALL_OCC, 'Working student/pensioner': ALL_OCC, 'Not working': ALL_OCC}
 RATE_COLUMN = 'rate_model'
 
 
@@ -114,13 +115,15 @@ def load_population():
     cps_job = m.job_group.map(lambda j: JOB_PROXY.get(j, j))
     assert set(cps_job.dropna()).issubset(rate_columns), set(cps_job.dropna()) - set(rate_columns)
     job_index = cps_job.map({j: i for i, j in enumerate(rate_columns)}).fillna(-1).to_numpy(int)
-    adult = m.age_years.ge(18).fillna(False).to_numpy()
-    eligible = adult & (job_index >= 0)
+    # All migrants can work (user decision, 28 Oct 2026): no age or 'Not working' exclusion.
+    # Ages are measured at the MMP interview (2010-19), so under-18s then are adults by 2020.
+    eligible = job_index >= 0
+    assert eligible.all()
     h['network_type'] = network_type(h)
     core = m.connection_group.eq('Core').to_numpy()
     return dict(h=h, m=m, H=len(h), M=len(m), hid=hid, core=core, need_x=need_features(h),
                 has_core=np.bincount(hid, weights=core, minlength=len(h)) > 0,
-                # Trigger only counts core migrants who could ever send (adult, not 'Not working').
+                # Trigger only counts core migrants who could ever send (since 28 Oct 2026: all).
                 has_eligible_core=np.bincount(hid, weights=core & eligible, minlength=len(h)) > 0,
                 job_index=np.where(job_index >= 0, job_index, 0), eligible=eligible,
                 rate_columns=rate_columns)

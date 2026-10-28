@@ -104,7 +104,7 @@ L_h,−j,t = (number of eligible core migrants in h unable to send in t)
 w = θ_kin⁰ / θ_core⁰ = expit(α_kin) / expit(α_core)   (≈ 0.07)
 ```
 
-`L` is the routine sending the household has lost to inability (job loss without benefits), in core-sender units. Kin step in for core migrants and for other kin, in proportion to what each would routinely have sent. Eligible = adult, working occupation. Migrants who can never send (under 18, 'Not working') do not count, since their absence is structural, not crisis substitution. The trigger responds to inability, not to a routine month in which an able migrant chooses not to send. Only kin raise θ; core migrants do not step in.
+`L` is the routine sending the household has lost to inability (job loss without benefits), in core-sender units. Kin step in for core migrants and for other kin, in proportion to what each would routinely have sent. Since 28 Oct 2026 every migrant is eligible (user decision): 'Not working' on the last MMP trip is treated as unknown occupation (all-occupation CPS rate), and there is no age rule (ages are measured at the 2010–19 interview). The trigger responds to inability, not to a routine month in which an able migrant chooses not to send. Only kin raise θ; core migrants do not step in.
 
 *Revision history (19 Oct 2026).*
 1. `− κ · N_h,t` (kin held back by core transfers). It could only remove a suppression, capping stepping-in at kin's routine θ and changing transfers by ≤ 2%.

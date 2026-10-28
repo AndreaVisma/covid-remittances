@@ -1,6 +1,8 @@
 # Handoff: network-compatibility model
 
-Last updated 28 October 2026 (evening). Read this first in any new session (start with "Where we are"), then `model-specification.md`.
+> **Archive since 28 Oct 2026.** The entry point is now `../2026-10-28/handoff.md` (consolidated story, base model, open decisions, plan, paper outline). This file keeps the full history.
+
+Last updated 28 October 2026 (late evening: trend robustness, recode, benefit schedule). Read this first in any new session (start with "Where we are"), then `model-specification.md`.
 
 ## The project in one paragraph
 
@@ -50,9 +52,25 @@ Pre-COVID forecasts predicted remittances would collapse; flows to Mexico rose i
     - 2021 Q4: +24.4 = +12.3 trend − 0.2 job loss + 2 need + 10.5 unexplained. 2020 Q2: +3.2 = +6.1 − 6.1 + 4.5 − 1.3. Both models agree.
     - All counts (Banxico transactions, senders/receivers), so no inflation adjustment is needed. Counts can still rise through more transfers per sender (`f`).
 
+12. **Trend window does not matter** (28 Oct, section "Banxico trend-window robustness"): 2020Q2 0.97–0.98, 2021Q4 1.09–1.16 for every window 2010–19 to 2018–19.
+13. **All migrants can send; "Not working" = unknown occupation** (user decision, 28 Oct; `abm.JOB_PROXY`, age rule dropped: 6 under-18s, 3 missing ages). Rerun so far: `run_e1_coordination.py`, `run_e2_map.py --rule coordination`.
+    - E0 refit: `α_core` 0.31 → −0.04 (θ 0.58 → 0.49, since 1,417 more migrants can send); `α_kin` −3.18 → −3.38. The 2019 fit gets worse at migrant level (weighted RMSE 0.20 → 0.40 pp at κ = 0), unlike the household logit, where the recode improved the fit.
+    - Aggregate story unchanged. April 2020 index at κ = 1: 0.969 (was 0.955); 2020Q2 0.975 (Banxico 0.974); quarterly RMSE 0.061 (was 0.063). E2: best κ = 0.6, β = 0.06, RMSE 0.043, 0 cells within `τ_C`.
+    - **Stale (old coding) until rerun:** `outputs/e0-baseline`, `e1-job-loss`, `e1-all-core-rule`, `e2-map` (lost-sending), `e1-distribution*`, `e0-need`, figures; the lost-sending rows of `e1-coordination/kappa_ceiling_rules.csv` (old e0-baseline alphas).
+14. **Benefit schedule built** (task 3, 28 Oct; `data-prep/benefit_schedule.py` → `outputs/benefit_schedule_monthly.csv`): EIP rounds with monthly disbursement shares, FPUC/LWA weeks and USD, the early 2021 opt-outs, PUA/PEUC, advance CTC; model flag `stimulus_month` for `abm.make_inputs` (the first preview below also used a UI flag, since dropped). User decision: all migrants receive benefits (π = 1).
+    - **Preview at π = 1 (scratch, coordination, β = 0):** benefits erase the job-loss dip under the yes/no gate. April 2020 index 1.045 (κ = 0), 1.007 (κ = 1) vs Banxico 0.91; 2020Q2 1.04 / 1.01 vs 0.974. Q4 2020 (no supplement) drops to 0.995 while Banxico stays at 1.017. So π = 1 with the gate is rejected by the April dip and the Q4 2020 timing. At κ = 0, π ≈ 0.3 would match April (rough interpolation). Index > 1 in benefit months: a stimulus also makes migrants who were non-employed in 2019 able.
+    - **Stimulus-only flag (user decision, 28 Oct):** `stimulus_month` = Apr 2020, Jan 2021, Mar 2021 only (EIP2 split Dec/Jan; January used); no UI flag in the model, UI columns kept for reference. Preview (scratch `stimulus_preview.py`, π = 1, coordination, β = 0), model vs Banxico/trend:
+      - Apr 2020: 1.045 (κ = 0) / 1.007 (κ = 1) vs **0.912**, the opposite sign. May falls back to the job-loss path (0.870 / 0.974 vs 0.984).
+      - Jan 2021: 1.083 / 1.014 vs 1.065 (Dec 1.034, Feb 1.010); Mar 2021: 1.060 / 1.010 vs 1.070 (Feb 1.010, Apr 1.054). Banxico does peak locally in the 2021 stimulus months.
+      - Quarterly 2020Q2 0.940 / 0.988 vs 0.974; 2021Q1 1.033 / 1.006 vs 1.049. Monthly log RMSE Apr 2020–Dec 2021 unchanged by π (0.091 vs 0.092 at κ = 0; 0.065 vs 0.064 at κ = 1).
+      - Read: the 2021 rounds look like they reached migrants, April 2020 does not. That fits eligibility: EIP1 excluded ITIN filers and mixed-status couples (fixed retroactively by the CAA in Dec 2020), while EIP3 added SSN dependants of ITIN filers. A round-specific π (low for EIP1) is the documented candidate (spec §4.2 already allows it).
+    - **Identification:** π and κ both fill the April dip, but benefits switch on and off (Apr–Sep 2020 on, Oct–Dec 2020 off, Jan–Sep 2021 on) while stepping-in follows unemployment. That timing is what can separate them.
+
 **Decisions pending (user), first thing in the next session:**
 - **A. Model level:** adopt the recipient-level household logit (H3) as the base model, or keep the migrant-level model and state its size/need misfits as limitations. E0/E1/E2, the distribution and the decomposition are now run on the household model (28 Oct, items 10–11). Same aggregate conclusions. Better 2019 fit, but receipt-only outcomes for RQ2. One option is the household model for receipt (calibration and maps) plus the migrant model or an ENIGH amount equation for money lost. Still open if adopted: a more flexible kin term (kin-only households with many kin are under-predicted: 19% vs ~9%), the transfers-per-receiving-household mapping.
-- **B. "Not working" coding:** treat these migrants as unknown occupation (all-occupation CPS rate) in the ABM (`abm.JOB_PROXY['Not working']`). Changes all E0/E1/E2 results.
+- ~~**B. "Not working" coding**~~ **Decided 28 Oct:** unknown occupation, all migrants can work (item 13).
+- **E. π = 1 vs the April dip** (item 14): keep π = 1 as the upper-bound scenario and fit π (or the gate) to the dip, or treat benefits as partial (π from undocumented share).
+- **F. Ability gate:** a model assumption (spec §4.2, "no savings"), not an MMP measurement. Option: unemployed migrants without benefits send with a reduced propensity (savings), one external or profiled parameter.
 - **C. Amount level:** monthly amount per sender = $326 × f (f ≈ 1.5, sensitivity 1–2), or report only relative household changes.
 - **D. Household need η** (step 0 below): moot if A is adopted (need enters the household logit directly).
 - **Data, user action:** a third IPUMS CPS extract with **basic monthly** samples 2010–2021 (or 2007–2021) and the option-2 variables (`cps_00002` has only the March ASEC before 2022), for Mexican-born employment rates (task 1) and the 2008–09 backcast.
@@ -76,6 +94,22 @@ Not yet acted on. Comments and how they map onto the model:
 - **Inequality and wealth.** Distribution within the household is out of the model's scope (the household is the unit); say so. Between households: the recipient Gini is already reported (flat). Add a wealth dimension with an asset index built from items in both MMP and ENIGH (amenities, housing quality); caveat that remittances fund assets (reverse causality), so it is descriptive only.
 - **ENIGH distribution vs wealth.** Extend the ENIGH 2018→2020 criterion (step 2) to receipt by income decile and by the same asset index. Relative changes only (ENIGH ≈ 8% of the Banxico total).
 - Two colleagues offered to discuss ideas (no time for analysis).
+
+### Banxico trend-window robustness (28 Oct 2026, done; quick check, scratch script)
+"2020 flat vs trend, the excess is a 2021 level shift" holds for every pre-COVID window. Same method as `run_e1_job_loss.banxico()` (log-linear trend + month effects on transactions), quarterly ratio of sums:
+
+| Window (trend growth/yr) | 2020Q2 | 2020Q4 | 2021Q2 | 2021Q4 | 2022Q4 | 2023Q4 |
+|---|---|---|---|---|---|---|
+| 2017–19 (6.3%, base) | 0.974 | 1.017 | 1.058 | 1.108 | 1.132 | 1.100 |
+| 2016–19 (6.6%) | 0.971 | 1.014 | 1.052 | 1.102 | 1.123 | 1.088 |
+| 2015–19 (7.0%) | 0.966 | 1.009 | 1.043 | 1.092 | 1.109 | 1.070 |
+| 2018–19 (6.2%) | 0.966 | 1.025 | 1.051 | 1.118 | 1.144 | 1.113 |
+| 2014–19 (6.8%) | 0.968 | 1.014 | 1.047 | 1.100 | 1.118 | 1.082 |
+| 2010–19 (5.9%) | 0.981 | 1.057 | 1.071 | 1.157 | 1.187 | 1.158 |
+
+2020Q2 is 0.97–0.98 and 2021Q4 1.09–1.16 in all windows; only the long 2010–19 window (slower early-2010s growth) makes 2020Q4 clearly positive. Annual growth of transactions: 6.1% (2019), **7.3% (2020, = trend)**, **13.4% (2021)**, 8.8% (2022), 6.6% (2023), 3.0% (2024). Still to do from the colleague list: HP filter on pre-2020 data, STL/X-13, plain year-on-year.
+
+**Recorded cash (Banxico instrument split, `data/mex_remittances.xlsx` Sheet1):** cash and goods are 1.0–1.9% of the total (2014–19), $374 M in 2019, $271 M in 2020, $325 M in 2021. Electronic transfers are ~98%. Recorded cash is far too small to be the channel shift; an informal (unrecorded) shift cannot be seen in Banxico by definition.
 
 ### The missing 2021 driver (27 Oct 2026)
 - **Banxico split, each vs its own 2017–19 log-linear trend (annual):** counts 1.01 (2020), 1.08 (2021), 1.10 (2022), 1.10 (2023), 1.07 (2024), 0.96 (2025); average amount 1.01, 1.09, 1.08, 1.06, 1.02, 1.00. About half of the 2021 USD excess is amount, which the count target never sees. The count excess lasts until 2023, so pandemic-specific mechanisms (death waves, benefits, stepping-in) cannot be the main 2021 driver.
@@ -162,7 +196,7 @@ Older work lives in `oct-26/` (earlier ABM `oct-26/simulations/abms/remittance-m
 |---|---|---|
 | 1 | CPS occupation-month employment rates + persistence `φ` | **Done, with Mexican-origin fallback** (see below) |
 | 2 | Salience index `S_t` (reported COVID deaths in Mexico) | **Done** (`data-prep/salience_inputs.py`, see below); loaded by `abm.salience_series` |
-| 3 | Benefit schedule table; external range for `π` | Not started |
+| 3 | Benefit schedule table; external range for `π` | **Schedule done** (`data-prep/benefit_schedule.py`, 28 Oct); π = 1 by user decision; E1b not yet a script (preview only) |
 | 4 | Amount dispersion `σ` (MMP/ENIGH); Banxico 2019 mean transaction | **Done** (see below) |
 | 4b | Real earnings index `w_t` | Not started |
 | 5 | ABM refactor (two-stage decision, ability gate, fixed `m_j`, latent-factor employment) | **Done** (`model/abm.py`) |
