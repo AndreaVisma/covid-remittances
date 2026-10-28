@@ -30,6 +30,7 @@ from scipy.special import expit
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / 'model'))
 import compare_household_logit as hl
+import run_e1_job_loss as e1
 # The model's make_figures.py shares this file's name, so load it by path.
 _spec = importlib.util.spec_from_file_location('model_make_figures', HERE.parent / 'model/make_figures.py')
 mf = importlib.util.module_from_spec(_spec)
@@ -180,7 +181,7 @@ def s2_households(b, pop, suffix='', note=''):
 
 # %% S3-S8: the household model through E0-E2 and the distribution (run_household_model.py)
 HM = HERE / 'outputs/household-model'
-HM_KAPPA_COLORS = {0.0: mf.K0, 1.0: mf.K2, 2.0: mf.K4}
+HM_KAPPA_COLORS = {0.0: mf.K0, 0.5: mf.K2, 1.0: mf.K4}
 
 
 def quarter_ticks(ax, quarters):
@@ -205,10 +206,10 @@ def s3_kappa_2019(prof, fits, settings):
     ax.axhline(-1.92, color=mf.MUTED, lw=1, ls='--')
     ax.text(prof.kappa.max(), -1.92, '95% profile limit', ha='right', va='bottom', fontsize=8, color=mf.INK2)
     kf = settings['kappa_free']
-    ax.set_title('Profile log-likelihood, κ ≥ 0', fontsize=10)
-    ax.text(0.98, 0.95, f'unrestricted ML: κ = {kf["estimate"]:.2f} (SE {kf["se"]:.2f})', transform=ax.transAxes,
+    ax.set_title('Profile log-likelihood', fontsize=10)
+    ax.text(0.98, 0.95, f'maximum on the grid: κ = {kf["estimate"]:g}', transform=ax.transAxes,
             ha='right', va='top', fontsize=8, color=mf.INK2)
-    ax.set_xlabel('κ (kin stepping-in when a core migrant cannot send)')
+    ax.set_xlabel('κ (share of the receipt lost to job loss that other migrants replace)')
     ax.set_ylabel('Log-likelihood − maximum')
     ax = axes[1]
     for col, label, c in [('any_core', 'Any able core migrant', mf.BLUE), ('log_kin', 'log(1 + able kin)', mf.AQUA),
@@ -220,15 +221,13 @@ def s3_kappa_2019(prof, fits, settings):
     ax.legend(loc='center left', bbox_to_anchor=(0, 0.62))
     ax.set_xlim(None, prof.kappa.max() * 1.12)
     fig.tight_layout(rect=(0, 0, 1, 0.9))
-    save(fig, 'S3_kappa_2019', 'In 2019 the household data lean against stepping-in',
-         'Household model (H3 plus stepping-in κ·[a core migrant cannot send]·log(1 + able kin)), "Not working" '
-         'migrants as unknown occupation, 2019 MMP receipt, maximum likelihood with κ fixed on a grid. Left: '
-         'log-likelihood relative to its maximum; dashed line: the 95% limit of a one-parameter profile (−1.92). '
-         'Right: the other coefficients refitted at each κ. The 2019 fit prefers κ ≤ 0.8; unrestricted, κ is negative '
-         '(log-likelihood +7.1 over κ = 0): '
-         'kin count for less where some core migrant is out of work. In 2019 that indicator mostly marks large core '
-         'networks, so this is a size effect (kin matter less where core migrants are many), not evidence against '
-         'stepping-in in a crisis. The whole range costs at most 2.6 log-likelihood points.')
+    save(fig, 'S3_kappa_2019', 'In 2019 the household data cannot tell the replacement share κ apart',
+         'Household model: H3 receipt s(able core, able kin) plus stepping-in, P = s + κ·[someone can send]·(s if '
+         'nobody were out of work − s), κ ∈ [0, 1] the share of the receipt lost to job loss that other migrants '
+         'replace. "Not working" migrants as unknown occupation, 2019 MMP receipt, maximum likelihood with κ fixed on '
+         'a grid. Left: log-likelihood relative to its maximum; dashed line: the 95% limit of a one-parameter profile '
+         '(−1.92). The whole range κ = 0–1 lies within 0.14 points: ordinary unemployment in 2019 is too rare to '
+         'identify κ. Right: the other coefficients refitted at each κ.')
 
 
 def s4_index(paths, migrant_q, grid):
@@ -238,10 +237,10 @@ def s4_index(paths, migrant_q, grid):
     hold = holdout(ax, quarters)
     ax.axhline(1, color=mf.MUTED, lw=1, zorder=1)
     mq = migrant_q.set_index('quarter')
-    for k, ls in [(0.0, ':'), (4.0, '--')]:
+    for k, ls in [(0.0, ':'), (1.0, '--')]:
         d = migrant_q[migrant_q.kappa == k].set_index('quarter').reindex(quarters)
         ax.plot(x, d.index_model, color=mf.GRAY_LIGHT, lw=1.5, ls=ls, zorder=2,
-                label=f'Migrant-level model, κ = {k:g} (transfers)')
+                label=f'Migrant model, coordination, κ = {k:g} (transfers)')
     for k, c in HM_KAPPA_COLORS.items():
         d = paths[(paths.kappa == k) & (paths.beta == 0)].set_index('quarter').loc[quarters]
         r = grid[(grid.kappa == k) & (grid.beta == 0)].iloc[0]
@@ -265,8 +264,9 @@ def s4_index(paths, migrant_q, grid):
     save(fig, 'S4_receipt_index', 'Households lose less receipt than the migrant model loses transfers; 2021 is still missed',
          'β = 0, ρ = 0, no benefits (E1a on the household model). Household model: expected number of receiving '
          'households, COVID run / no-COVID run (2019 CPS rates of the same month), exact; read as transfers under '
-         'a constant number of transfers per receiving household. Coefficients refitted to 2019 for each κ. Gray: '
-         'the migrant-level model (transfer counts, original "Not working" coding, E1a). Banxico: transactions '
+         'a constant number of transfers per receiving household. κ = replacement share; coefficients refitted to 2019 for '
+         'each κ. Gray: the migrant-level model, coordination rule (κ = replacement share; transfer counts, original '
+         '"Not working" coding, E1a). Banxico: transactions '
          f'relative to their 2017–19 trend. 2020 Q2 at κ = 0: {r0.index_2020q2:.3f}. 2022 held out.')
 
 
@@ -287,7 +287,7 @@ def s5_map(grid, settings):
                 fontsize=8.5, color=mf.INK, bbox=dict(boxstyle='round,pad=0.2', fc=mf.SURFACE, ec='none', alpha=0.85))
     ax.set_xticks(range(piv.shape[1]), [f'{k:g}' for k in piv.columns])
     ax.set_yticks(range(0, piv.shape[0], 2), [f'{v:.2f}' for v in piv.index[::2]])
-    ax.set_xlabel('κ (stepping-in: kin weight when a core migrant cannot send)')
+    ax.set_xlabel('κ (replacement share of the receipt lost to job loss)')
     ax.set_ylabel('β (household log-odds per 10,000 COVID deaths)')
     cb = fig.colorbar(im, ax=ax, pad=0.02)
     cb.set_label('Quarterly log RMSE, 2020 Q2 – 2021 Q4', color=mf.INK2)
@@ -362,7 +362,7 @@ def s7_realized(rb, ineq):
               [Patch(color=c, label=b) for b, c in zip(gains, mf.GAIN_RAMP)]
     ax.legend(handles=handles, loc='upper center', bbox_to_anchor=(0.5, -0.22), ncol=4, fontsize=8)
     k0 = ineq[ineq.kappa == 0].iloc[0]
-    save(fig, 'S7_realized_losses', 'Household model: 6–8% of receiving households lose months; almost none lose every month',
+    save(fig, 'S7_realized_losses', 'Household model: 3–8% of receiving households lose months; almost none lose every month',
          'β = 0, ρ = 0, no benefits. Each household that receives in its no-COVID twin is compared with it (common '
          'random numbers for employment and the receipt draw), Apr 2020 – Dec 2021: change in the number of months '
          'with receipt, pooled over 200 paths. Unlike the migrant model (H1, change in USD), every household draws its '
@@ -405,11 +405,76 @@ def s8_groups(g):
             tick.set_color(mf.INK)
     axes[0].invert_yaxis()
     axes[1].legend(loc='lower right')
-    save(fig, 'S8_who_loses', 'Household model: single links and core-only networks lose most; large networks gain with κ',
+    save(fig, 'S8_who_loses', 'Household model: single links and core-only networks lose most, whatever κ',
          'β = 0, ρ = 0, no benefits; 200 paired paths, Apr 2020 – Dec 2021. Left: expected change in months with '
          'receipt by group (exact, receipt-weighted). Right: share of paths in which a household that receives in '
          'its no-COVID twin receives in no month, averaged over the group. Main occupation: the most common job '
          'group among the household’s eligible migrants ("Not working" migrants count as Other/none).')
+
+
+DECOMP_PARTS = [('trend', 'Pre-COVID trend (+6.3% a year, 2017–19)', mf.GRAY_LIGHT),
+                ('job_loss', 'US job loss, net of stepping-in (κ)', mf.BLUE),
+                ('need', 'Need response to COVID deaths (β)', mf.ORANGE),
+                ('unexplained', 'Unexplained', mf.AQUA)]
+
+
+def decomposition(paths, label):
+    """Raw Banxico vs the same quarter of 2019 = trend x job loss x need x unexplained, in log points.
+    Job loss: the model at beta = 0 and the best cell's kappa; need: best cell / that path."""
+    bx, trend, _ = e1.banxico()
+    q = lambda s: s.groupby(s.index.to_period('Q')).sum()
+    rel19 = lambda s: (s / s[s.index.year == 2019].set_axis([1, 2, 3, 4]).loc[s.index.quarter].to_numpy()).rename(index=str)
+    raw, tr = rel19(q(bx)), rel19(q(trend))
+    grid = paths.groupby(['kappa', 'beta']).apply(
+        lambda d: np.sqrt(np.mean(np.log(d.set_index('quarter').index_model[FIT_Q]
+                                         / d.set_index('quarter').index_banxico[FIT_Q]) ** 2)), include_groups=False)
+    kappa, beta = grid.idxmin()
+    get = lambda k, b: paths[(paths.kappa == k) & (paths.beta == b)].set_index('quarter').index_model
+    best, jl = get(kappa, beta), get(kappa, 0.0)
+    quarters = [s for s in best.index if s >= '2020Q1']
+    d = pd.DataFrame({'quarter': quarters, 'raw': np.log(raw[quarters]).values, 'trend': np.log(tr[quarters]).values,
+                      'job_loss': np.log(jl[quarters]).values, 'need': np.log(best[quarters] / jl[quarters]).values})
+    d['unexplained'] = d.raw - d.trend - d.job_loss - d.need
+    return d.assign(model=label, kappa=kappa, beta=beta)
+
+
+FIT_Q = [str(p) for p in pd.period_range('2020Q2', '2021Q4', freq='Q')]
+
+
+def s9_decomposition(parts):
+    fig, axes = plt.subplots(1, len(parts), figsize=(11, 4.6), sharey=True)
+    for ax, d in zip(axes, parts):
+        quarters = list(d.quarter)
+        x = quarter_ticks(ax, quarters)
+        holdout(ax, quarters)
+        ax.axhline(0, color=mf.AXIS, lw=1)
+        pos, neg = np.zeros(len(d)), np.zeros(len(d))
+        for key, name, c in DECOMP_PARTS:
+            v = d[key].to_numpy() * 100
+            bottom = np.where(v >= 0, pos, neg)
+            ax.bar(x, v, bottom=bottom, width=0.7, color=c, edgecolor=mf.SURFACE, lw=1, label=name, zorder=2)
+            pos, neg = pos + np.clip(v, 0, None), neg + np.clip(v, None, 0)
+        ax.plot(x, d.raw * 100, color=mf.INK, marker='o', markersize=4, zorder=4, label='Banxico, vs same quarter of 2019')
+        for i in [quarters.index('2020Q2'), quarters.index('2021Q4')]:
+            ax.annotate(f'{np.expm1(d.raw.iloc[i]):+.0%}', (i, max(d.raw.iloc[i] * 100, pos[i])), xytext=(0, 5),
+                        textcoords='offset points', ha='center', fontsize=8.5, color=mf.INK2)
+        ax.set_title(f'{d.model.iloc[0]} (κ = {d.kappa.iloc[0]:g}, β = {d.beta.iloc[0]:.2f})', fontsize=10)
+        ax.tick_params(axis='x', labelsize=7.5)
+    axes[0].set_ylabel('Log points × 100 (≈ %)')
+    axes[0].yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{v:+.0f}'))
+    h, l = axes[0].get_legend_handles_labels()
+    fig.legend(h, l, loc='lower center', ncol=3, bbox_to_anchor=(0.5, -0.06), fontsize=8.5)
+    fig.tight_layout(rect=(0, 0.08, 1, 0.92))
+    a = parts[0].set_index('quarter').loc['2021Q4']
+    save(fig, 'S9_decomposition', 'Why transfers grew despite job loss: trend, stepping-in, need and a large remainder',
+         'Banxico transactions relative to the same quarter of 2019 (line), split in log points: the 2017–19 trend '
+         'continued (log-linear with month effects); the model’s job-loss path at β = 0 with stepping-in κ (COVID / '
+         'no-COVID run); the need response to COVID deaths (best map cell relative to its β = 0 path); and what '
+         'remains. κ and β are each model’s best map cell (RMSE against Banxico vs trend, 2020 Q2–2021 Q4). Left: '
+         'migrant-level model, coordination rule (κ = replacement share, original "Not working" coding, transfer '
+         'counts). Right: household model (κ = replacement share, receipt). 2022 held out (shaded). '
+         f'2021 Q4, migrant model: raw {a.raw * 100:+.0f}, trend {a.trend * 100:+.0f}, job loss {a.job_loss * 100:+.1f}, '
+         f'need {a.need * 100:+.1f}, unexplained {a.unexplained * 100:+.0f} log points.')
 
 
 def model_figures():
@@ -417,11 +482,16 @@ def model_figures():
     grid = pd.read_csv(HM / 'map.csv')
     paths = pd.read_csv(HM / 'quarterly_paths.csv')
     s3_kappa_2019(pd.read_csv(HM / 'e0_kappa_profile.csv'), pd.read_csv(HM / 'e0_fits.csv'), settings)
-    s4_index(paths, pd.read_csv(HERE.parent / 'outputs/e1-job-loss/aggregate_quarterly.csv'), grid)
+    s4_index(paths, pd.read_csv(HERE.parent / 'outputs/e1-coordination/aggregate_quarterly.csv'), grid)
     s5_map(grid, settings)
     s6_paths(paths, grid)
     s7_realized(pd.read_csv(HM / 'distribution_realized_bins.csv'), pd.read_csv(HM / 'distribution_inequality.csv'))
     s8_groups(pd.read_csv(HM / 'distribution_groups.csv', dtype={'level': str}))
+    parts = [decomposition(pd.read_csv(HERE.parent / 'outputs/e2-map-coordination/quarterly_paths.csv'),
+                           'Migrant-level model'),
+             decomposition(paths, 'Household model')]
+    pd.concat(parts, ignore_index=True).round(5).to_csv(HERE / 'outputs/decomposition.csv', index=False)
+    s9_decomposition(parts)
 
 
 def write_captions():

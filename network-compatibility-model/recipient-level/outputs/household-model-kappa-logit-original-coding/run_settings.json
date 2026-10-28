@@ -1,0 +1,47 @@
+{
+  "experiment": "Recipient-level household model: E0 kappa profile, E1 (beta = 0), E2 map, distribution",
+  "not_working_as_unknown": false,
+  "households": 3252,
+  "receiving": 756,
+  "score": "b0 + b_any [A_c>0] + b_c log(1+A_c) + b_k log(1+A_k) + eta need + beta S_t + kappa [U_c>0] log(1+A_k)",
+  "kappas": [
+    0.0,
+    0.25,
+    0.5,
+    0.75,
+    1.0,
+    1.5,
+    2.0,
+    3.0,
+    4.0
+  ],
+  "betas": [
+    0.0
+  ],
+  "tau_C": 0.04,
+  "kappa_free": {
+    "estimate": -2.056920588546995,
+    "se": 0.824615552935252,
+    "loglik": -1168.2779336935873
+  },
+  "criterion": "quarterly log RMSE 2020Q2..2021Q4, receipt index (COVID / no-COVID) vs Banxico / 2017-19 trend",
+  "count_mapping": "transfers per receiving household constant (Banxico index = receiving-household index)",
+  "likelihood": "Gaussian on quarterly log residuals 2020Q2..2021Q4, SD = 2017-19 quarterly trend residual SD (0.0143); 7 autocorrelated quarters, use ratios only",
+  "banxico_trend": {
+    "trend_window": [
+      "2017-01-01",
+      "2019-12-01"
+    ],
+    "trend_growth_per_year": 0.06318574356523146,
+    "residual_sd_monthly": 0.01947960600115106,
+    "residual_sd_quarterly": 0.014291824381905507
+  },
+  "n_cells": 9,
+  "n_count_compatible": 0,
+  "best_cell": {
+    "kappa": 4.0,
+    "beta": 0.0,
+    "rmse": 0.05901427580054973
+  },
+  "distribution": null
+}

@@ -1,6 +1,6 @@
 # Handoff: network-compatibility model
 
-Last updated 28 October 2026. Read this first in any new session (start with "Where we are"), then `model-specification.md`.
+Last updated 28 October 2026 (evening). Read this first in any new session (start with "Where we are"), then `model-specification.md`.
 
 ## The project in one paragraph
 
@@ -20,7 +20,7 @@ Pre-COVID forecasts predicted remittances would collapse; flows to Mexico rose i
   - the alternative 'coordination' stepping-in rule (E0 refit, E1a, E2 map, distribution; 21 Oct);
   - household need in the sending logit (27 Oct);
   - **recipient-level (household) receipt logit compared with the migrant-level model** (27 Oct, `recipient-level/`, see its README and the section below);
-  - **the household model through E0 (κ profile), E1, the E2 map and the distribution** (28 Oct, `recipient-level/run_household_model.py`, figures S3–S8).
+  - **the household model through E0 (κ profile), E1, the E2 map and the distribution** (28 Oct, `recipient-level/run_household_model.py`, figures S3–S9; κ = replacement share since 28 Oct).
 - **Data checks (27 Oct):** Banxico counts vs average amount; Mexican-born stock from the CPS ASEC (`data/cps_00002.dat`); amount vs US wages; MMP amount variables.
 
 **What we have learned:**
@@ -37,16 +37,21 @@ Pre-COVID forecasts predicted remittances would collapse; flows to Mexico rose i
 7. **The 2021 excess is per migrant, not more migrants** (27 Oct). Banxico counts are +8–10% vs trend in 2021–23 and only unwind in 2024–25; about half of the 2021 USD excess is a one-off rise in the average amount. The CPS Mexican-born stock is flat (slightly below trend), so transfers per migrant rose (0.77 → 0.97 → 1.12 a month, 2019/21/23). US wages and the exchange rate do not explain the amount. User decisions: channel shift and transit migrants are left out; amounts stay outside the model (scope: counts).
 8. **The household logit fits MMP receipt better than independent migrant senders** (27 Oct). Raw MMP: 6% receipt without a core migrant, 59% with one, then 66–76%. The household logit captures this jump (first able core migrant +2.7–3.0 log-odds); the migrant model makes receipt rise too fast with network size. Need is clean at household level. Best fit with "Not working" migrants recoded as unknown occupation: AIC 2303 vs 2374, CV log loss 0.357 vs 0.370.
 9. **"Not working" migrants (1,417 of 7,999) are not unable to send:** households whose core migrants are all coded so still receive in 43% of cases. The ABM gives them P = 0.
-10. **The household model tells the same aggregate story** (28 Oct; see `recipient-level/README.md`).
-    - 2020 Q2 receipt index: 0.94 at κ = 0, 0.977 at κ = 2 (Banxico 0.974).
+10. **The household model tells the same aggregate story** (28 Oct; κ = replacement share; see `recipient-level/README.md`).
+    - 2019 does not identify κ: the profile over κ = 0–1 is flat (within 0.14 log-likelihood points).
+    - 2020 Q2 receipt index: 0.94 at κ = 0, 0.976 at κ = 1 (Banxico 0.974). Full replacement matches the dip.
     - 2021 is missed: the model is at 0.99–1.00, Banxico at 1.05–1.11.
-    - E2: 0 of 189 cells within τ_C. The best is κ = 0, β = 0.08, RMSE 0.043 (migrant map: also 0.043), and κ is not identified once β is free.
-    - In 2019 the κ ≥ 0 profile prefers κ = 0 (κ > 0.8 outside the 95% limit; unrestricted κ = −2.7, a size effect). This is in tension with the 2020 dip, which needs κ ≈ 2.
-    - Distribution (months with receipt): −2.1% at κ = 0. Core-only and single-link households lose most whatever κ; large networks gain with κ.
+    - E2: 0 of 231 cells within τ_C. The best is κ = 0, β = 0.08, RMSE 0.043 (migrant coordination map: κ = 0.7, β = 0.06, 0.043), and κ is not identified once β is free.
+    - Distribution (months with receipt, κ = 0/0.5/1): −2.1 / −1.4 / −0.8%. Single-link and core-only households lose the same at every κ; no group gains.
     - It cannot see losses within receiving months, so for RQ2 it needs an amount equation.
+11. **Raw Banxico vs 2019 instead of the trend** (28 Oct). The raw index has no 2020 dip (2020 Q2 +3%) and reaches +28% in 2021 Q4 (+39% in 2022 Q4).
+    - Against it, both maps fit far worse: best RMSE 0.10 vs 0.043. The fit loads the pre-COVID growth onto β (0.18–0.20) or onto κ at the grid edge.
+    - User decision: the paper's question is "why did transfers grow 28% despite job loss". It is answered by a decomposition (S9, `recipient-level/outputs/decomposition.csv`): raw = trend + job loss net of stepping-in + need + unexplained, in log points.
+    - 2021 Q4: +24.4 = +12.3 trend − 0.2 job loss + 2 need + 10.5 unexplained. 2020 Q2: +3.2 = +6.1 − 6.1 + 4.5 − 1.3. Both models agree.
+    - All counts (Banxico transactions, senders/receivers), so no inflation adjustment is needed. Counts can still rise through more transfers per sender (`f`).
 
 **Decisions pending (user), first thing in the next session:**
-- **A. Model level:** adopt the recipient-level household logit (H3) as the base model, or keep the migrant-level model and state its size/need misfits as limitations. E0/E1/E2 and the distribution are now run on the household model (28 Oct, item 10). Same aggregate conclusions. Better 2019 fit, but receipt-only outcomes for RQ2. One option is the household model for receipt (calibration and maps) plus the migrant model or an ENIGH amount equation for money lost. Still open if adopted: a more flexible kin term (kin-only households with many kin are under-predicted: 19% vs ~9%), the transfers-per-receiving-household mapping.
+- **A. Model level:** adopt the recipient-level household logit (H3) as the base model, or keep the migrant-level model and state its size/need misfits as limitations. E0/E1/E2, the distribution and the decomposition are now run on the household model (28 Oct, items 10–11). Same aggregate conclusions. Better 2019 fit, but receipt-only outcomes for RQ2. One option is the household model for receipt (calibration and maps) plus the migrant model or an ENIGH amount equation for money lost. Still open if adopted: a more flexible kin term (kin-only households with many kin are under-predicted: 19% vs ~9%), the transfers-per-receiving-household mapping.
 - **B. "Not working" coding:** treat these migrants as unknown occupation (all-occupation CPS rate) in the ABM (`abm.JOB_PROXY['Not working']`). Changes all E0/E1/E2 results.
 - **C. Amount level:** monthly amount per sender = $326 × f (f ≈ 1.5, sensitivity 1–2), or report only relative household changes.
 - **D. Household need η** (step 0 below): moot if A is adopted (need enters the household logit directly).
@@ -97,14 +102,14 @@ User asked to test a household-level specification seriously. `recipient-level/c
 ## Decisions already made (do not reopen without the user)
 
 - **Few parameters.** Calibrated: `α_core`, `α_kin` (2019); household need `η_w`, `η_o` (2019, added 27 Oct; need = no resident worker and any older resident, user decisions; children tested and left out). Map axes: `β`, `κ`. Network-map axis: `ρ`. Scenario: `π`. Everything else external.
-- **Sending is a Bernoulli draw with probability θ**, two stages: core migrants (RELHEAD 1/2/3) first, then kin, with `logit θ_kin,j = α_kin + β S_t + κ L_h,−j,t`. `L` is the routine sending lost to linked migrants unable to send, in core-sender units: 1 per eligible core migrant, `w = θ_kin⁰/θ_core⁰ ≈ 0.07` per other eligible kin ("lost sending", base model since 19 Oct 2026; spec §4.3).
+- **Sending is a Bernoulli draw with probability θ**, two stages: core migrants (RELHEAD 1/2/3) first, then kin, with `logit θ_kin,j = α_kin + β S_t + κ L_h,−j,t`. `L` is the routine sending lost to linked migrants unable to send, in core-sender units: 1 per eligible core migrant, `w = θ_kin⁰/θ_core⁰ ≈ 0.07` per other eligible kin ("lost sending", base model 19–28 Oct 2026; spec §4.3). **Since 28 Oct (user decision) the base stepping-in rule is 'coordination':** `κ` ∈ [0, 1] is the replacement share of the household's lost routine sending (spec §4.3; `abm.Params.rule` still defaults to 'lost_sending' so output folders keep their meaning, and coordination results are in the `*-coordination` folders). The household model uses the same replacement-share κ.
 - **Salience `S_t` is national only and simple:** reported COVID deaths in Mexico per month (OWID), in 10,000s; 0 in 2019 (user decisions, 20 Oct 2026). Excess deaths are the sensitivity. Components such as employment can be added later.
 - **Amount separated from sending.** Each migrant has a fixed routine amount `m_j` (lognormal, mean = Banxico 2019 mean transaction). The model targets the transfer **count**; the change in mean amount is reported as a data margin.
 - **Income is a yes/no condition only:** a migrant can send if employed or receiving a benefit payment that month. The old $20,000 allowance / 20%-of-surplus rule is dropped.
 - **Benefits (UI supplements, stimulus checks) only act through that condition.** Eligibility `π` is a scenario.
 - **Wages:** not in the base model. Wage-indexed amounts are a robustness check only.
 - **Scope: 2020–21.** 2022 is held out; the model is expected to undershoot it (migrant-stock growth, wages, formalization).
-- **Results are maps, not a single best fit.** Acceptance tolerance `τ_C` = 0.04, quarterly log RMSE over 2020Q2–2021Q4 against Banxico relative to its 2017–19 trend (user decision, 20 Oct 2026).
+- **Results are maps, not a single best fit.** Acceptance tolerance `τ_C` = 0.04, quarterly log RMSE over 2020Q2–2021Q4 against Banxico relative to its 2017–19 trend (user decision, 20 Oct 2026). The headline is the raw growth (+28% by 2021 Q4 vs 2019), decomposed into trend, job loss net of stepping-in, need and unexplained (user decision, 28 Oct 2026).
 
 ## Folder layout
 
@@ -130,8 +135,9 @@ network-compatibility-model/
     run_e0_need.py           E0 with household need η (no resident worker, any older resident)
   recipient-level/           household receipt logit vs migrant model (README.md has results)
     compare_household_logit.py   ML comparison, CV, panels, 2020-21 response; --not-working-as-unknown
-    run_household_model.py   household model: E0 κ profile, E1 (β = 0), E2 β × κ map, distribution; --original-coding
-    make_figures.py          S1 curve with example households, S2 all households; --not-working-as-unknown; --model (S3-S8)
+    run_household_model.py   household model (κ = replacement share): E0 κ profile, E1 (β = 0), E2 map, distribution;
+                             --original-coding; --kappa-logit (first version, unbounded κ)
+    make_figures.py          S1 curve with example households, S2 all households; --not-working-as-unknown; --model (S3-S9, incl. decomposition)
     outputs/, figures/       aggregates only
   outputs/e0-baseline/       aggregate E0 tables (base rule)
   outputs/e1-job-loss/       E1a tables (base rule)

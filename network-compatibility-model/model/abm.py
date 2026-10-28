@@ -59,10 +59,12 @@ class Params:
     kin_amount_factor: float = 1.0
     # Stepping-in trigger for kin (kappa):
     #   'lost_sending' L_h,-j,t = routine sending lost to unable linked migrants, in core-sender
-    #                  units: 1 per unable core migrant, theta_kin0/theta_core0 per unable kin (base model)
+    #                  units: 1 per unable core migrant, theta_kin0/theta_core0 per unable kin
+    #                  (code default; base model until 28 Oct 2026)
     #   'all_core'     U_h,t = 1 if the household's eligible core migrants are all unable (former rule)
     #   'coordination' all able migrants share the lost routine sending: theta_j = min(1, theta0_j *
-    #                  (1 + kappa * Lambda_h,t / P_h,t)); kappa = replacement share (alternative)
+    #                  (1 + kappa * Lambda_h,t / P_h,t)); kappa = replacement share (base model since 28 Oct 2026;
+    #                  pass rule='coordination' explicitly, outputs in *-coordination folders)
     rule: str = 'lost_sending'
     # Household need (calibrated to 2019 MMP receipt): logit shift eta_worker * no resident worker
     # + eta_older * any older resident, both centred on the population mean (NEED_FEATURES).

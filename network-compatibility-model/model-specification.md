@@ -113,7 +113,7 @@ w = θ_kin⁰ / θ_core⁰ = expit(α_kin) / expit(α_core)   (≈ 0.07)
 
 At κ = 4, several kin can each step in for one loss, so large networks can receive more than in the no-COVID counterfactual (over-replacement). This is a property of the rule to report.
 
-*Alternative under evaluation (21 Oct 2026): coordination among all able migrants,* `Params(rule='coordination')`, `model/run_e1_coordination.py`. The household's able migrants, core and kin, share the routine sending lost to migrants who cannot send:
+*Base rule since 28 Oct 2026 (user decision; introduced 21 Oct as an alternative): coordination among all able migrants,* `Params(rule='coordination')`, `model/run_e1_coordination.py`. The lost-sending rule above is kept for comparison; `abm.Params.rule` still defaults to it so that existing output folders keep their meaning (coordination results are in the `*-coordination` folders). The household model (`recipient-level/run_household_model.py`) uses the same idea at household level: `κ` ∈ [0, 1] is the share of the receipt probability lost to job loss that the household's able migrants replace. The household's able migrants, core and kin, share the routine sending lost to migrants who cannot send:
 ```
 θ_j,t = min(1, θ⁰_j,t · (1 + κ · Λ_h,t / P_h,t))
 Λ_h,t = Σ θ⁰ over eligible migrants in h unable to send in t   (routine sending lost)

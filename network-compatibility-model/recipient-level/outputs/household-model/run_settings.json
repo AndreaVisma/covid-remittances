@@ -3,17 +3,20 @@
   "not_working_as_unknown": true,
   "households": 3252,
   "receiving": 756,
-  "score": "b0 + b_any [A_c>0] + b_c log(1+A_c) + b_k log(1+A_k) + eta need + beta S_t + kappa [U_c>0] log(1+A_k)",
+  "kappa_mode": "share",
+  "receipt": "s(A_c, A_k) + kappa [A_c + A_k > 0] (s(N_c, N_k) - s(A_c, A_k)), s = expit(b0 + b_any [a>0] + b_c log(1+a) + b_k log(1+b) + eta need + beta S_t); kappa = replacement share in [0, 1]",
   "kappas": [
     0.0,
-    0.25,
+    0.1,
+    0.2,
+    0.3,
+    0.4,
     0.5,
-    0.75,
-    1.0,
-    1.5,
-    2.0,
-    3.0,
-    4.0
+    0.6,
+    0.7,
+    0.8,
+    0.9,
+    1.0
   ],
   "betas": [
     0.0,
@@ -40,9 +43,10 @@
   ],
   "tau_C": 0.04,
   "kappa_free": {
-    "estimate": -2.665863859584581,
-    "se": 0.8806795679232173,
-    "loglik": -1138.3815550015688
+    "estimate": 0.4,
+    "se": null,
+    "loglik": -1145.4045654317865,
+    "note": "kappa in [0, 1]: maximum of the profile on the grid"
   },
   "criterion": "quarterly log RMSE 2020Q2..2021Q4, receipt index (COVID / no-COVID) vs Banxico / 2017-19 trend",
   "count_mapping": "transfers per receiving household constant (Banxico index = receiving-household index)",
@@ -56,7 +60,7 @@
     "residual_sd_monthly": 0.01947960600115106,
     "residual_sd_quarterly": 0.014291824381905507
   },
-  "n_cells": 189,
+  "n_cells": 231,
   "n_count_compatible": 0,
   "best_cell": {
     "kappa": 0.0,
@@ -66,8 +70,8 @@
   "distribution": {
     "kappas": [
       0.0,
-      1.0,
-      2.0
+      0.5,
+      1.0
     ],
     "beta": 0.0,
     "seeds": [

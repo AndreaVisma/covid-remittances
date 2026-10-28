@@ -58,27 +58,57 @@ The household logit fits better, clearly but not dramatically, once the zero-rec
 
 ## The household model through E0–E2 and the distribution (28 Oct 2026)
 
-`run_household_model.py` (~3 min; outputs in `outputs/household-model/`; `--original-coding` keeps "Not working" migrants unable, E0/E1 only, in `outputs/household-model-original-coding/`). Figures S3–S8: `make_figures.py --model`. Base: H3 with "Not working" as unknown occupation, plus the two map axes:
+`run_household_model.py` (~4 min; outputs in `outputs/household-model/`; `--original-coding` keeps "Not working" migrants unable, E0/E1 only). Figures S3–S9: `make_figures.py --model`. Base: H3 with "Not working" as unknown occupation, plus the two map axes:
 
-score = H3 + β·S_t + κ·[a core migrant cannot send]·log(1 + able kin)
+P = E[ s(A_c, A_k) + κ·[someone can send]·(s(N_c, N_k) − s(A_c, A_k)) ],  s = expit(H3 score + β·S_t)
 
-κ is stepping-in at household level: when an eligible core migrant is out of work, the household's able kin count for more. S_t = reported COVID deaths / 10,000, as in the migrant model. Receipt maps to Banxico counts assuming a constant number of transfers per receiving household. ρ = 0, no benefits.
+- **κ ∈ [0, 1] is the replacement share** (user decision, 28 Oct): the share of the receipt probability lost to job loss that the household's able migrants make up. This is the household analogue of the migrant model's coordination rule, now the base in both models. κ = 1 means the household receives as if nobody had lost their job, as long as one linked migrant can send. It cannot over-replace.
+- S_t = reported COVID deaths / 10,000.
+- Receipt maps to Banxico counts at a constant number of transfers per receiving household.
+- ρ = 0, no benefits.
 
-**E0, κ in 2019 (S3).** The six coefficients are refitted for each κ. The κ ≥ 0 profile prefers κ = 0, and κ > 0.8 falls outside the 95% profile limit, but the whole range κ = 0–4 costs only 2.6 log-likelihood points. Unrestricted, κ = −2.67 (SE 0.88, +7.1 log-likelihood); with the original coding −2.06 (SE 0.83). In 2019 the trigger mostly marks large core networks, so this reads as a size effect (kin matter less where core migrants are many), not as evidence against crisis stepping-in. It is still a tension to state: 2019 does not support κ > 0, while the 2020 dip needs κ ≈ 2.
+**E0, κ in 2019 (S3).** The six coefficients are refitted for each κ. The profile is flat: κ = 0–1 within 0.14 log-likelihood points (maximum at 0.4). 2019 does not identify κ, and there is no tension with 2020.
 
-**E1, job loss only (β = 0, S4).** Receipt index in 2020 Q2: 0.940 (κ = 0), 0.960 (κ = 1), 0.977 (κ = 2), 0.999 (κ = 4); Banxico 0.974. The household model loses less than the migrant model at κ = 0 (transfers 0.875), because losing one of several core migrants barely moves receipt. 2021: the model returns to 0.99–1.00, while Banxico rises to 1.05–1.11. RMSE 2020 Q2–2021 Q4: 0.069 (κ = 0) to 0.057 (κ = 4). The original coding gives nearly the same paths (2020 Q2 0.940 at κ = 0, 0.985 at κ = 4).
+**E1, job loss only (β = 0, S4).**
+- 2020 Q2 receipt index: 0.940 (κ = 0), 0.958 (κ = 0.5), 0.976 (κ = 1); Banxico 0.974. Full replacement matches the dip.
+- At κ = 0 the household model loses less than the migrant model (transfers 0.875), because losing one of several core migrants barely moves receipt.
+- 2021: the model is at 0.99–1.00, Banxico at 1.05–1.11. RMSE 2020 Q2–2021 Q4: 0.069 (κ = 0) to 0.061 (κ = 1).
+- The original coding gives nearly identical paths.
 
-**E2, β × κ map (S5, S6).** **0 of 189 cells are within τ_C = 0.04**; the best is κ = 0, β = 0.08, RMSE 0.043, the same RMSE as the migrant-model map (κ = 3, β = 0.06). β = 0.06–0.08 gives 0.043–0.045 for every κ ≤ 1.5, so κ is not identified once β is free. The best path follows the death waves (2021 Q1 peak, 2021 Q2 drop) instead of the steady rise. Holdout 2022: RMSE 0.09. A Gaussian likelihood on the quarterly log residuals (SD 0.0143, the 2017–19 trend residual) is in `map.csv` (`loglik_gaussian`, `delta_loglik`). Within β = 0 it favours large κ: κ = 4 is 24 points below the best cell.
+**E2, β × κ map (S5, S6).**
+- **0 of 231 cells are within τ_C = 0.04.** The best is κ = 0, β = 0.08, RMSE 0.043. The migrant coordination map is the same (best κ = 0.7, β = 0.06, 0.043).
+- At β = 0.06 every κ gives 0.044–0.045: κ is not identified once β is free.
+- The best path follows the COVID-death waves. Holdout 2022: RMSE 0.09.
+- `map.csv` has a Gaussian likelihood of the quarterly log residuals (SD 0.0143, the 2017–19 trend residual).
 
-**Who lost out (β = 0, κ = 0/1/2; S7, S8).** 200 paired paths, Apr 2020 – Dec 2021, using the abm employment process and common draws for employment and receipt. The outcome is months with receipt, because the household model has no amounts.
-- Aggregate expected change: −2.1% (κ = 0), −1.3% (κ = 1), −0.7% (κ = 2).
-- In a typical path, 8 / 7 / 6% of receiving households receive in fewer months, and 0.3 / 0.2 / 0.2% receive in no month.
-- Core-only households lose −2.4% at every κ: nobody steps in. Single-link households lose −2.7%. Sales/personal services is the hardest-hit occupation (−3.0%), agriculture the least (−0.5%).
-- With κ > 0, core + kin households and large networks gain: 10+ links +3.5% at κ = 2, the same over-replacement as in the migrant model.
+**Who lost out (β = 0, κ = 0/0.5/1; S7, S8).** 200 paired paths, Apr 2020 – Dec 2021. The outcome is months with receipt, because the household model has no amounts.
+- Expected change: −2.1% / −1.4% / −0.8%.
+- In a typical path, 8 / 6 / 3% of receiving households receive in fewer months, and 0.3 / 0.2 / 0.1% in no month.
+- Single-link households (−2.7% to −2.6%) and core-only households (−2.4% to −2.1%) lose about the same at every κ: nobody can replace. Core + kin households go from −2.4% to −0.2%.
+- Sales/personal services is the hardest-hit occupation (−3.0% to −1.7%). No group gains: the replacement share cannot over-replace.
 
-**Read.** At the aggregate level the household model tells the same story as the migrant model:
-- The 2020 dip fits with stepping-in or a mild need response.
-- 2021 is not explained, and no cell is within τ_C.
-- The likelihood comparison of mechanisms (colleague feedback) does not discriminate either.
+**Decomposition (S9, `outputs/decomposition.csv`).** Raw Banxico against the same quarter of 2019 splits, in log points, into the pre-COVID trend, job loss net of stepping-in (β = 0 at the best cell's κ), the need response (best cell relative to its β = 0 path), and an unexplained remainder. Both models give almost the same numbers (log points × 100):
 
-For RQ2 it is coarser. It sees only whether anything arrives, so it misses losses within receiving months (fewer senders, less money). That is why it shows far fewer losers than the migrant model's USD outcome (H1: ~20% lose something, 1.5% everything). A household-level amount equation (ENIGH, decision C) would be needed to report money lost at household level.
+| | Raw | Trend | Job loss | Need | Unexplained |
+|---|---|---|---|---|---|
+| 2020 Q2, migrant / household | +3.2 | +6.1 | −6.0 / −6.2 | +4.2 / +4.9 | −1.1 / −1.6 |
+| 2021 Q4 | +24.4 | +12.3 | −0.2 | +1.8 / +2.0 | +10.6 / +10.4 |
+| 2022 Q4 (held out) | +32.7 | +18.4 | +0.2 / +0.3 | +0.1 | +13.9 |
+
+So, of the 28% growth by 2021 Q4:
+- the pre-COVID trend accounts for half;
+- job loss is gone by then;
+- the death-driven need response adds about 2 points;
+- about 10 points are unexplained.
+
+In 2020 Q2, job loss (−6) is offset by the trend (+6) and need or stepping-in (+4 to +5).
+
+**Read.** The aggregate story does not depend on the model level. For RQ2 the household model is coarser: it sees only whether anything arrives, so it misses losses within receiving months. That is why it shows far fewer losers than the migrant model's USD outcome. A household amount equation (ENIGH, decision C) would be needed for money lost.
+
+**Variant `--kappa-logit`** (first version, 28 Oct; `outputs/household-model-kappa-logit[-original-coding]/`): κ as an unbounded logit shift on the kin term when a core migrant is out of work. Results:
+- 2019 prefers κ ≤ 0.8; unrestricted, κ = −2.7, a size effect.
+- 2020 Q2 0.977 at κ = 2.
+- Same map best (0.043).
+- Over-replacement: 10+ link networks +3.5% at κ = 2.
+
+The replacement share replaces it because it bounds over-replacement and is not in tension with 2019.

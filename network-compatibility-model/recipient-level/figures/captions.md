@@ -8,15 +8,15 @@ Fitted household logit (H3, MMP 2019, maximum likelihood). Illustrative composit
 
 Fitted household logit (H3). Each bubble is a group of households with the same expected 2019 score (able migrant counts averaged over 2019 CPS employment), drawn on the curve and sized by the number of households; colour is network type. Diamonds: observed MMP receipt in score bands of 0.5 with at least 30 households, 95% Wilson intervals. Kin-only households cluster at the flat bottom, households with core migrants in the upper half; almost none sit on the steep middle. The curve at the expected score differs from the mean fitted probability by at most 0.8% per band. 3,252 households.
 
-## S3_kappa_2019: In 2019 the household data lean against stepping-in
+## S3_kappa_2019: In 2019 the household data cannot tell the replacement share κ apart
 
-Household model (H3 plus stepping-in κ·[a core migrant cannot send]·log(1 + able kin)), "Not working" migrants as unknown occupation, 2019 MMP receipt, maximum likelihood with κ fixed on a grid. Left: log-likelihood relative to its maximum; dashed line: the 95% limit of a one-parameter profile (−1.92). Right: the other coefficients refitted at each κ. The 2019 fit prefers κ ≤ 0.8; unrestricted, κ is negative (log-likelihood +7.1 over κ = 0): kin count for less where some core migrant is out of work. In 2019 that indicator mostly marks large core networks, so this is a size effect (kin matter less where core migrants are many), not evidence against stepping-in in a crisis. The whole range costs at most 2.6 log-likelihood points.
+Household model: H3 receipt s(able core, able kin) plus stepping-in, P = s + κ·[someone can send]·(s if nobody were out of work − s), κ ∈ [0, 1] the share of the receipt lost to job loss that other migrants replace. "Not working" migrants as unknown occupation, 2019 MMP receipt, maximum likelihood with κ fixed on a grid. Left: log-likelihood relative to its maximum; dashed line: the 95% limit of a one-parameter profile (−1.92). The whole range κ = 0–1 lies within 0.14 points: ordinary unemployment in 2019 is too rare to identify κ. Right: the other coefficients refitted at each κ.
 
 ## S4_receipt_index: Households lose less receipt than the migrant model loses transfers; 2021 is still missed
 
-β = 0, ρ = 0, no benefits (E1a on the household model). Household model: expected number of receiving households, COVID run / no-COVID run (2019 CPS rates of the same month), exact; read as transfers under a constant number of transfers per receiving household. Coefficients refitted to 2019 for each κ. Gray: the migrant-level model (transfer counts, original "Not working" coding, E1a). Banxico: transactions relative to their 2017–19 trend. 2020 Q2 at κ = 0: 0.940. 2022 held out.
+β = 0, ρ = 0, no benefits (E1a on the household model). Household model: expected number of receiving households, COVID run / no-COVID run (2019 CPS rates of the same month), exact; read as transfers under a constant number of transfers per receiving household. κ = replacement share; coefficients refitted to 2019 for each κ. Gray: the migrant-level model, coordination rule (κ = replacement share; transfer counts, original "Not working" coding, E1a). Banxico: transactions relative to their 2017–19 trend. 2020 Q2 at κ = 0: 0.940. 2022 held out.
 
-## S5_compatibility_map: Household model: 0 of 189 (β, κ) cells fit within τ_C = 0.04
+## S5_compatibility_map: Household model: 0 of 231 (β, κ) cells fit within τ_C = 0.04
 
 E2 on the household model (π = 0, ρ = 0, S_t = reported COVID deaths / 10,000). Fit error of the quarterly receipt index against Banxico relative to its 2017–19 trend. Outlined: count-compatible cells (RMSE ≤ 0.04). Dot: best cell (κ = 0, β = 0.08). Coefficients refitted to 2019 for each κ. β is on the household log-odds scale, not the migrant scale of the migrant-level map (M1).
 
@@ -24,10 +24,14 @@ E2 on the household model (π = 0, ρ = 0, S_t = reported COVID deaths / 10,000)
 
 E2 on the household model. Quarterly receipt index of the best cell, the other count-compatible cells and the best β = 0 cell, against Banxico relative to its 2017–19 trend. 2022 held out.
 
-## S7_realized_losses: Household model: 6–8% of receiving households lose months; almost none lose every month
+## S7_realized_losses: Household model: 3–8% of receiving households lose months; almost none lose every month
 
 β = 0, ρ = 0, no benefits. Each household that receives in its no-COVID twin is compared with it (common random numbers for employment and the receipt draw), Apr 2020 – Dec 2021: change in the number of months with receipt, pooled over 200 paths. Unlike the migrant model (H1, change in USD), every household draws its receipt each month, so luck moves months both ways; the paired draw removes most of it. About 2,752 households receive in a path.
 
-## S8_who_loses: Household model: single links and core-only networks lose most; large networks gain with κ
+## S8_who_loses: Household model: single links and core-only networks lose most, whatever κ
 
 β = 0, ρ = 0, no benefits; 200 paired paths, Apr 2020 – Dec 2021. Left: expected change in months with receipt by group (exact, receipt-weighted). Right: share of paths in which a household that receives in its no-COVID twin receives in no month, averaged over the group. Main occupation: the most common job group among the household’s eligible migrants ("Not working" migrants count as Other/none).
+
+## S9_decomposition: Why transfers grew despite job loss: trend, stepping-in, need and a large remainder
+
+Banxico transactions relative to the same quarter of 2019 (line), split in log points: the 2017–19 trend continued (log-linear with month effects); the model’s job-loss path at β = 0 with stepping-in κ (COVID / no-COVID run); the need response to COVID deaths (best map cell relative to its β = 0 path); and what remains. κ and β are each model’s best map cell (RMSE against Banxico vs trend, 2020 Q2–2021 Q4). Left: migrant-level model, coordination rule (κ = replacement share, original "Not working" coding, transfer counts). Right: household model (κ = replacement share, receipt). 2022 held out (shaded). 2021 Q4, migrant model: raw +24, trend +12, job loss -0.2, need +1.8, unexplained +11 log points.

@@ -1,21 +1,25 @@
 """Recipient-level (household) model: E0, E1, E2 map and household distribution (28 Oct 2026).
 
 Run: python network-compatibility-model/recipient-level/run_household_model.py   (~5 min)
-     --original-coding: 'Not working' migrants never able to send (abm coding); E0 and E1 only,
-     outputs in outputs/household-model-original-coding/
+     --original-coding: 'Not working' migrants never able to send (abm coding); E0 and E1 only
+     --kappa-logit: the first version (28 Oct) with kappa as an unbounded logit shift,
+       score + kappa [U_c > 0] log(1 + A_k), U_c = eligible core migrants unable; kappa grid 0..4
+     outputs in outputs/household-model[-kappa-logit][-original-coding]/
 
 The household logit H3 of compare_household_logit.py, extended with the two map axes:
-    P(h receives in t) = E[ expit(score_h,t) ] over the able counts (A_c, A_k), with
-    score = b0 + b_any [A_c > 0] + b_c log(1 + A_c) + b_k log(1 + A_k) + eta' need_h
-            + beta S_t + kappa [U_c > 0] log(1 + A_k)
-U_c = eligible core migrants unable to send (job loss, n_eligible_core - A_c). The kappa term is
-stepping-in: when a core migrant cannot send, the household's able kin count for more. It is zero
-without able kin. S_t = reported COVID deaths in Mexico / 10,000 (abm.salience_series), 0 in 2019.
+    s(a, b) = expit(b0 + b_any [a > 0] + b_c log(1 + a) + b_k log(1 + b) + eta' need_h + beta S_t)
+    P(h receives in t) = E[ s(A_c, A_k) + kappa [A_c + A_k > 0] (s(N_c, N_k) - s(A_c, A_k)) ]
+over the able counts (A_c, A_k); N_c, N_k = eligible core and kin migrants (nobody out of work).
+kappa in [0, 1] is the share of the receipt probability lost to job loss that the household's able
+migrants replace: the household analogue of the migrant model's coordination rule (base since
+28 Oct 2026). 0 = no stepping-in; 1 = the household receives as if nobody had lost their job, as
+long as one linked migrant can send. It cannot over-replace. S_t = reported COVID deaths in Mexico
+/ 10,000 (abm.salience_series), 0 in 2019.
 Base population: 'Not working' migrants as unknown occupation (all-occupation CPS rate), the best
 fit in the comparison (recipient-level/README.md). rho = 0, no benefits.
 
 E0: for each kappa on KAPPAS, the six H3 coefficients by maximum likelihood on 2019 MMP receipt
-    (kappa enters 2019 through ordinary unemployment); also kappa free (profile likelihood).
+    (kappa enters 2019 through ordinary unemployment): the profile likelihood of kappa.
 E1: beta = 0, exact receipt index (COVID / same calendar month of 2019, the no-COVID run) for
     2019-01..2022-12, quarterly against Banxico transactions relative to their 2017-19 trend
     (run_e1_job_loss.banxico). Mapping to counts: Banxico transfers move with the number of
@@ -48,9 +52,10 @@ import run_e1_distribution as e1d
 import compare_household_logit as hl
 
 TERMS = ['any_core', 'log_core', 'log_kin', 'no_worker', 'any_older']
-KAPPAS = [0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0]
+KAPPAS = {'share': [round(k, 1) for k in np.arange(0, 1.01, 0.1)],
+          'logit': [0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0]}
+DIST_KAPPAS = {'share': [0.0, 0.5, 1.0], 'logit': [0.0, 1.0, 2.0]}
 BETAS = np.round(np.arange(0.0, 0.401, 0.02), 2)
-DIST_KAPPAS = [0.0, 1.0, 2.0]
 TAU_C = 0.04
 DATES = pd.date_range('2019-01-01', '2022-12-01', freq='MS')
 FIT_Q = [str(p) for p in pd.period_range('2020Q2', '2021Q4', freq='Q')]
@@ -60,14 +65,29 @@ SEEDS = range(2001, 2201)
 PMF_TOL = 1e-12
 
 
+def eligible_counts(pop):
+    hsum = lambda w: np.bincount(pop['hid'], weights=w, minlength=pop['H'])
+    return hsum(pop['core'] & pop['eligible']), hsum(~pop['core'] & pop['eligible'])
+
+
+def household_receipt(x, kappa, mode, a, b, n_core, n_kin, need, shift=0.0):
+    """Receipt probability for able counts (a, b); n_core, n_kin, need aligned with a."""
+    if mode == 'logit':
+        return expit(hl.design(a, b, need, TERMS) @ x + shift + kappa * ((n_core - a) > 0) * np.log1p(b))
+    s = expit(hl.design(a, b, need, TERMS) @ x + shift)
+    s_full = expit(hl.design(n_core, n_kin, need, TERMS) @ x + shift)
+    return s + kappa * ((a + b) > 0) * (s_full - s)
+
+
 # %% Cells: (household, able core a, able kin b) with monthly probabilities
 class Cells:
     """All (h, a, b) cells with positive probability in some month, contiguous by household.
     W: (T, n_cells) joint pmf of the able counts per month (rho = 0, exact)."""
 
-    def __init__(self, pop, inputs):
+    def __init__(self, pop, inputs, mode='share'):
+        self.mode = mode
         pmfs = hl.able_pmfs(pop, inputs)
-        n_elig_core = np.bincount(pop['hid'], weights=pop['core'] & pop['eligible'], minlength=pop['H'])
+        n_core, n_kin = eligible_counts(pop)
         hh, A, B, W = [], [], [], []
         for h, (pc, pk) in enumerate(pmfs):
             J = pc[:, :, None] * pk[:, None, :]                       # (T, a, b)
@@ -81,7 +101,11 @@ class Cells:
         self.H, self.T = pop['H'], len(inputs.dates)
         self.starts = np.searchsorted(self.hh, np.arange(self.H))
         self.X = hl.design(a, b, pop['need_x'][self.hh], TERMS)       # intercept + TERMS
-        self.trigger = ((n_elig_core[self.hh] - a) > 0) * np.log1p(b)  # [U_c > 0] log(1 + A_k)
+        if mode == 'logit':
+            self.trigger = ((n_core[self.hh] - a) > 0) * np.log1p(b)   # [U_c > 0] log(1 + A_k)
+        else:
+            self.trigger = ((a + b) > 0).astype(float)                 # someone can send
+            self.X_full = hl.design(n_core, n_kin, pop['need_x'], TERMS)  # (H, k): nobody out of work
         self.salience = inputs.salience
 
     def household_sum(self, Z):
@@ -89,25 +113,46 @@ class Cells:
 
     def receipt(self, x, kappa=0.0, beta=0.0):
         """(T, H) receipt probabilities."""
-        base = self.X @ x + kappa * self.trigger
-        return self.household_sum(self.W * expit(base[None, :] + beta * self.salience[:, None]))
+        shift = beta * self.salience[:, None]
+        if self.mode == 'logit':
+            return self.household_sum(self.W * expit((self.X @ x + kappa * self.trigger)[None, :] + shift))
+        s = expit((self.X @ x)[None, :] + shift)
+        s_full = expit((self.X_full @ x)[None, :] + shift)
+        return (self.household_sum(self.W * s * (1 - kappa * self.trigger))
+                + kappa * s_full * self.household_sum(self.W * self.trigger))
 
     def annual(self, x, kappa):
         return self.receipt(x, kappa).mean(0)
 
 
 def fit_2019(cells, y, mask, kappa=None, start=None):
-    """ML for the six H3 coefficients; kappa fixed, or free if None. Returns (x, kappa, negloglik, se)."""
+    """ML for the six H3 coefficients with kappa fixed (kappa None: free, logit mode only).
+    Returns (x, kappa, negloglik, se). 2019: S_t = 0, so the annual pmf average suffices."""
     Wbar = cells.W.mean(0)
-    X = cells.X if kappa is not None else np.column_stack([cells.X, cells.trigger])
-    off = kappa * cells.trigger if kappa is not None else 0.0
+    if cells.mode == 'share':
+        # P_h = sum_c w_c (1 - kappa g_c) s_c + kappa G_h s_full,h,  G_h = sum_c w_c g_c
+        G = cells.household_sum(Wbar * cells.trigger)
+        keep = Wbar * (1 - kappa * cells.trigger)
+        X, Xf = cells.X, cells.X_full
+
+        def prob_grad(z):
+            s, sf = expit(X @ z), expit(Xf @ z)
+            P = cells.household_sum(keep * s) + kappa * G * sf
+            return P, lambda r: X.T @ (r[cells.hh] * keep * s * (1 - s)) + Xf.T @ (r * kappa * G * sf * (1 - sf))
+    else:
+        X = cells.X if kappa is not None else np.column_stack([cells.X, cells.trigger])
+        off = kappa * cells.trigger if kappa is not None else 0.0
+
+        def prob_grad(z):
+            s = expit(X @ z + off)
+            return cells.household_sum(Wbar * s), lambda r: X.T @ (r[cells.hh] * Wbar * s * (1 - s))
 
     def nll(z):
-        s = expit(X @ z + off)
-        P = np.clip(cells.household_sum(Wbar * s), 1e-12, 1 - 1e-12)
+        P, grad = prob_grad(z)
+        P = np.clip(P, 1e-12, 1 - 1e-12)
         r = np.where(mask, y / P - (1 - y) / (1 - P), 0.0)
         ll = np.sum(np.where(mask, y * np.log(P) + (1 - y) * np.log(1 - P), 0.0))
-        return -ll, -(X.T @ (r[cells.hh] * Wbar * s * (1 - s)))
+        return -ll, -grad(r)
 
     z0 = np.r_[-1.0, np.zeros(X.shape[1] - 1)] if start is None else start
     res = minimize(nll, z0, jac=True, method='BFGS', options=dict(gtol=1e-7, maxiter=3000))
@@ -146,14 +191,14 @@ def banxico_pre():
 
 
 # %% Distribution: realized paths
-def simulate_receipt(pop, inputs, x, kappa, seed, n_elig_core):
+def simulate_receipt(pop, inputs, x, kappa, seed, mode='share'):
     """One paired path: (T, H) bool receipt. Employment as abm.simulate (rho = 0); the receipt draw
     u_h,t uses its own stream so the COVID and no-COVID twins share it."""
     T, M, H, hid, core = len(inputs.dates), pop['M'], pop['H'], pop['hid'], pop['core']
     phi = abm.employment_phi()
     streams = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(3)]
     z = streams[0].standard_normal(M)
-    need = pop['need_x']
+    n_core, n_kin = eligible_counts(pop)
     out = np.zeros((T, H), bool)
     for t in range(T):
         if t > 0:
@@ -161,18 +206,16 @@ def simulate_receipt(pop, inputs, x, kappa, seed, n_elig_core):
         able = (norm.cdf(z) < inputs.rates[t, pop['job_index']]) & pop['eligible']
         ac = np.bincount(hid, weights=able & core, minlength=H)
         ak = np.bincount(hid, weights=able & ~core, minlength=H)
-        X = hl.design(ac, ak, need, TERMS)
-        score = X @ x + kappa * ((n_elig_core - ac) > 0) * np.log1p(ak)
-        out[t] = streams[2].random(H) < expit(score)
+        p = household_receipt(x, kappa, mode, ac, ak, n_core, n_kin, pop['need_x'])
+        out[t] = streams[2].random(H) < p
     return out
 
 
-def distribution(pop, x_by_kappa, covid, cf, groups, out):
+def distribution(pop, x_by_kappa, covid, cf, groups, out, mode='share'):
     window = (covid.dates >= WINDOW[0]) & (covid.dates <= WINDOW[1])
-    n_elig_core = np.bincount(pop['hid'], weights=pop['core'] & pop['eligible'], minlength=pop['H'])
-    cells_c, cells_f = Cells(pop, covid), Cells(pop, cf)
+    cells_c, cells_f = Cells(pop, covid, mode), Cells(pop, cf, mode)
     bins, hists, rows, ineq = [], [], [], []
-    for kappa in DIST_KAPPAS:
+    for kappa in DIST_KAPPAS[mode]:
         x = x_by_kappa[kappa]
         exp_c = cells_c.receipt(x, kappa)[window].sum(0)
         exp_f = cells_f.receipt(x, kappa)[window].sum(0)
@@ -182,8 +225,8 @@ def distribution(pop, x_by_kappa, covid, cf, groups, out):
         rhist = np.zeros(len(e1d.REAL_HIST) - 1)
         per_seed = []
         for seed in SEEDS:
-            a = simulate_receipt(pop, covid, x, kappa, seed, n_elig_core)[window].sum(0)
-            b = simulate_receipt(pop, cf, x, kappa, seed, n_elig_core)[window].sum(0)
+            a = simulate_receipt(pop, covid, x, kappa, seed, mode)[window].sum(0)
+            b = simulate_receipt(pop, cf, x, kappa, seed, mode)[window].sum(0)
             rec = b > 0
             ch = a[rec] / b[rec] - 1
             received_cf += rec
@@ -228,42 +271,50 @@ def distribution(pop, x_by_kappa, covid, cf, groups, out):
 
 
 # %% Main
-def main(original_coding=False):
-    out = HERE / ('outputs/household-model' + ('-original-coding' if original_coding else ''))
+def main(original_coding=False, mode='share'):
+    out = HERE / ('outputs/household-model' + ('-kappa-logit' if mode == 'logit' else '')
+                  + ('-original-coding' if original_coding else ''))
     out.mkdir(parents=True, exist_ok=True)
     pop = hl.load_population(not_working_as_unknown=not original_coding)
     h = pop['h']
     ok = e0.target_mask(h)
     y = h.remus.eq(1).to_numpy(float)
+    kappas = KAPPAS[mode]
 
     # E0
-    base = Cells(pop, abm.make_inputs(abm.baseline_2019_dates(), pop['rate_columns']))
+    base = Cells(pop, abm.make_inputs(abm.baseline_2019_dates(), pop['rate_columns']), mode)
     x_by_kappa, prof, fits = {}, [], []
     start = None
-    for kappa in KAPPAS:
+    for kappa in kappas:
         x, _, nll, se = fit_2019(base, y, ok, kappa, start)
         start = x_by_kappa[kappa] = x
         prof.append(dict(kappa=kappa, loglik=-nll, **dict(zip(['intercept'] + TERMS, x)),
                          mean_receipt=base.annual(x, kappa)[ok].mean()))
         fits += [dict(kappa=kappa, parameter=n, estimate=b, se=s) for n, b, s in zip(['intercept'] + TERMS, x, se)]
-    xf, kf, nllf, sef = fit_2019(base, y, ok, None, np.r_[x_by_kappa[0.0], 0.0])
-    fits += [dict(kappa='free', parameter=n, estimate=b, se=s)
-             for n, b, s in zip(['intercept'] + TERMS + ['kappa'], np.r_[xf, kf], sef)]
     prof = pd.DataFrame(prof)
+    if mode == 'logit':
+        xf, kf, nllf, sef = fit_2019(base, y, ok, None, np.r_[x_by_kappa[0.0], 0.0])
+        fits += [dict(kappa='free', parameter=n, estimate=b, se=s)
+                 for n, b, s in zip(['intercept'] + TERMS + ['kappa'], np.r_[xf, kf], sef)]
+        kappa_free = dict(estimate=float(kf), se=float(sef[-1]), loglik=float(-nllf))
+    else:
+        top = prof.loc[prof.loglik.idxmax()]
+        kappa_free = dict(estimate=float(top.kappa), se=None, loglik=float(top.loglik),
+                          note='kappa in [0, 1]: maximum of the profile on the grid')
     prof.to_csv(out / 'e0_kappa_profile.csv', index=False)
     pd.DataFrame(fits).to_csv(out / 'e0_fits.csv', index=False)
     print(prof.round(3).to_string(index=False))
-    print(f'kappa free: {kf:.3f} (SE {sef[-1]:.3f}), loglik {-nllf:.2f}', flush=True)
+    print('kappa free:', kappa_free, flush=True)
 
     # E1 and E2
     target, bx_info = banxico_target()
     sigma_q = bx_info['residual_sd_quarterly']
     covid = abm.make_inputs(DATES, pop['rate_columns'], salience=abm.salience_series(DATES))
     cf = abm.make_inputs(pd.DatetimeIndex([pd.Timestamp(2019, d.month, 1) for d in DATES]), pop['rate_columns'])
-    cc, cfc = Cells(pop, covid), Cells(pop, cf)
+    cc, cfc = Cells(pop, covid, mode), Cells(pop, cf, mode)
     rows, paths, monthly = [], [], []
     betas = [0.0] if original_coding else BETAS
-    for kappa in KAPPAS:
+    for kappa in kappas:
         x = x_by_kappa[kappa]
         rf = pd.Series(cfc.receipt(x, kappa).sum(1), index=DATES)
         for beta in betas:
@@ -287,17 +338,14 @@ def main(original_coding=False):
     grid.to_csv(out / 'map.csv', index=False)
     pd.concat(paths, ignore_index=True).to_csv(out / 'quarterly_paths.csv', index=False)
     pd.concat(monthly, ignore_index=True).to_csv(out / 'e1_monthly.csv', index=False)
-    e1_rows = grid[grid.beta == 0]
-    print(e1_rows.round(3).to_string(index=False))
+    print(grid[grid.beta == 0].round(3).to_string(index=False))
     best = grid.loc[grid.rmse_log_quarterly.idxmin()]
     if not original_coding:
         print(grid.pivot(index='beta', columns='kappa', values='rmse_log_quarterly').round(3).to_string())
         print('best', best.to_dict(), 'compatible cells', int(grid.count_compatible.sum()))
 
-    tables = None
     if not original_coding:
-        groups = e1d.household_groups(pop)
-        tables = distribution(pop, x_by_kappa, covid, cf, groups, out)
+        tables = distribution(pop, x_by_kappa, covid, cf, e1d.household_groups(pop), out, mode)
         pd.set_option('display.width', 220)
         print(tables['inequality'].round(3).to_string(index=False))
         print(tables['realized_bins'].round(3).to_string(index=False))
@@ -305,9 +353,12 @@ def main(original_coding=False):
     settings = dict(
         experiment='Recipient-level household model: E0 kappa profile, E1 (beta = 0), E2 map, distribution',
         not_working_as_unknown=not original_coding, households=int(ok.sum()), receiving=int(y[ok].sum()),
-        score='b0 + b_any [A_c>0] + b_c log(1+A_c) + b_k log(1+A_k) + eta need + beta S_t + kappa [U_c>0] log(1+A_k)',
-        kappas=KAPPAS, betas=list(map(float, betas)), tau_C=TAU_C,
-        kappa_free=dict(estimate=float(kf), se=float(sef[-1]), loglik=float(-nllf)),
+        kappa_mode=mode,
+        receipt=('expit(b0 + b_any [A_c>0] + b_c log(1+A_c) + b_k log(1+A_k) + eta need + beta S_t '
+                 '+ kappa [U_c>0] log(1+A_k)), kappa = logit shift' if mode == 'logit' else
+                 's(A_c, A_k) + kappa [A_c + A_k > 0] (s(N_c, N_k) - s(A_c, A_k)), s = expit(b0 + b_any [a>0] '
+                 '+ b_c log(1+a) + b_k log(1+b) + eta need + beta S_t); kappa = replacement share in [0, 1]'),
+        kappas=kappas, betas=list(map(float, betas)), tau_C=TAU_C, kappa_free=kappa_free,
         criterion='quarterly log RMSE 2020Q2..2021Q4, receipt index (COVID / no-COVID) vs Banxico / 2017-19 trend',
         count_mapping='transfers per receiving household constant (Banxico index = receiving-household index)',
         likelihood=f'Gaussian on quarterly log residuals 2020Q2..2021Q4, SD = 2017-19 quarterly trend residual SD '
@@ -315,11 +366,11 @@ def main(original_coding=False):
         banxico_trend=bx_info, n_cells=len(grid), n_count_compatible=int(grid.count_compatible.sum()),
         best_cell=dict(kappa=float(best.kappa), beta=float(best.beta), rmse=float(best.rmse_log_quarterly)),
         distribution=None if original_coding else dict(
-            kappas=DIST_KAPPAS, beta=0.0, seeds=[SEEDS.start, SEEDS.stop - 1], window=list(WINDOW),
+            kappas=DIST_KAPPAS[mode], beta=0.0, seeds=[SEEDS.start, SEEDS.stop - 1], window=list(WINDOW),
             outcome='months with receipt, household vs its no-COVID twin (common random numbers)',
             employment='latent Gaussian AR(1) as abm.simulate, rho = 0'))
     (out / 'run_settings.json').write_text(json.dumps(settings, indent=2))
 
 
 if __name__ == '__main__':
-    main(original_coding='--original-coding' in sys.argv)
+    main(original_coding='--original-coding' in sys.argv, mode='logit' if '--kappa-logit' in sys.argv else 'share')
