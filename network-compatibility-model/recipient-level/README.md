@@ -55,3 +55,30 @@ The household logit fits better, clearly but not dramatically, once the zero-rec
 - H3: any able core +2.98 (SE 0.24), log core 0.39 (SE 0.21), log kin 0.27 (SE 0.11), no worker 0.36 (SE 0.15), older 0.28 (SE 0.13).
 - **The middle of the curve gets emptier, not fuller:** the "Not working" core households move up to the other core households. The clusters are a composition fact (core vs kin-only), not created by the any-core term (raw MMP: 6% with no core migrant, 59% with one, then 66–76%).
 - Remaining misfit: kin-only households with high scores (many kin and/or need) receive more than predicted (band around −2.35: MMP 19% vs ~9%).
+
+## The household model through E0–E2 and the distribution (28 Oct 2026)
+
+`run_household_model.py` (~3 min; outputs in `outputs/household-model/`; `--original-coding` keeps "Not working" migrants unable, E0/E1 only, in `outputs/household-model-original-coding/`). Figures S3–S8: `make_figures.py --model`. Base: H3 with "Not working" as unknown occupation, plus the two map axes:
+
+score = H3 + β·S_t + κ·[a core migrant cannot send]·log(1 + able kin)
+
+κ is stepping-in at household level: when an eligible core migrant is out of work, the household's able kin count for more. S_t = reported COVID deaths / 10,000, as in the migrant model. Receipt maps to Banxico counts assuming a constant number of transfers per receiving household. ρ = 0, no benefits.
+
+**E0, κ in 2019 (S3).** The six coefficients are refitted for each κ. The κ ≥ 0 profile prefers κ = 0, and κ > 0.8 falls outside the 95% profile limit, but the whole range κ = 0–4 costs only 2.6 log-likelihood points. Unrestricted, κ = −2.67 (SE 0.88, +7.1 log-likelihood); with the original coding −2.06 (SE 0.83). In 2019 the trigger mostly marks large core networks, so this reads as a size effect (kin matter less where core migrants are many), not as evidence against crisis stepping-in. It is still a tension to state: 2019 does not support κ > 0, while the 2020 dip needs κ ≈ 2.
+
+**E1, job loss only (β = 0, S4).** Receipt index in 2020 Q2: 0.940 (κ = 0), 0.960 (κ = 1), 0.977 (κ = 2), 0.999 (κ = 4); Banxico 0.974. The household model loses less than the migrant model at κ = 0 (transfers 0.875), because losing one of several core migrants barely moves receipt. 2021: the model returns to 0.99–1.00, while Banxico rises to 1.05–1.11. RMSE 2020 Q2–2021 Q4: 0.069 (κ = 0) to 0.057 (κ = 4). The original coding gives nearly the same paths (2020 Q2 0.940 at κ = 0, 0.985 at κ = 4).
+
+**E2, β × κ map (S5, S6).** **0 of 189 cells are within τ_C = 0.04**; the best is κ = 0, β = 0.08, RMSE 0.043, the same RMSE as the migrant-model map (κ = 3, β = 0.06). β = 0.06–0.08 gives 0.043–0.045 for every κ ≤ 1.5, so κ is not identified once β is free. The best path follows the death waves (2021 Q1 peak, 2021 Q2 drop) instead of the steady rise. Holdout 2022: RMSE 0.09. A Gaussian likelihood on the quarterly log residuals (SD 0.0143, the 2017–19 trend residual) is in `map.csv` (`loglik_gaussian`, `delta_loglik`). Within β = 0 it favours large κ: κ = 4 is 24 points below the best cell.
+
+**Who lost out (β = 0, κ = 0/1/2; S7, S8).** 200 paired paths, Apr 2020 – Dec 2021, using the abm employment process and common draws for employment and receipt. The outcome is months with receipt, because the household model has no amounts.
+- Aggregate expected change: −2.1% (κ = 0), −1.3% (κ = 1), −0.7% (κ = 2).
+- In a typical path, 8 / 7 / 6% of receiving households receive in fewer months, and 0.3 / 0.2 / 0.2% receive in no month.
+- Core-only households lose −2.4% at every κ: nobody steps in. Single-link households lose −2.7%. Sales/personal services is the hardest-hit occupation (−3.0%), agriculture the least (−0.5%).
+- With κ > 0, core + kin households and large networks gain: 10+ links +3.5% at κ = 2, the same over-replacement as in the migrant model.
+
+**Read.** At the aggregate level the household model tells the same story as the migrant model:
+- The 2020 dip fits with stepping-in or a mild need response.
+- 2021 is not explained, and no cell is within τ_C.
+- The likelihood comparison of mechanisms (colleague feedback) does not discriminate either.
+
+For RQ2 it is coarser. It sees only whether anything arrives, so it misses losses within receiving months (fewer senders, less money). That is why it shows far fewer losers than the migrant model's USD outcome (H1: ~20% lose something, 1.5% everything). A household-level amount equation (ENIGH, decision C) would be needed to report money lost at household level.

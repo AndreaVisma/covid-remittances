@@ -8,11 +8,15 @@ S1 (concept): the fitted curve P = expit(score) with illustrative households (ma
 S2 (data; --not-working-as-unknown draws S2 for that variant fit): every sample household at its expected 2019 score (able counts averaged over 2019 CPS
    employment), drawn on the curve and sized by the number of households with that score, with
    observed MMP receipt by score band (aggregates, bands with >= 30 households) and a histogram.
+S3-S8 (--model, after run_household_model.py): the household model through E0-E2 and the
+   distribution: S3 kappa in 2019, S4 receipt index vs Banxico (beta = 0), S5 beta x kappa map,
+   S6 compatible paths, S7 realized losses, S8 who loses.
 Score = intercept + any_core * [A_c > 0] + log_core * log(1 + A_c) + log_kin * log(1 + A_k)
         + no_worker * (no worker - mean) + any_older * (older resident - mean).
 """
 from pathlib import Path
 import importlib.util
+import json
 import sys
 import numpy as np
 import pandas as pd
@@ -20,6 +24,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 from scipy.special import expit
 
 HERE = Path(__file__).resolve().parent
@@ -173,13 +178,278 @@ def s2_households(b, pop, suffix='', note=''):
          f'by at most {gap:.1%} per band. {len(d):,} households.')
 
 
+# %% S3-S8: the household model through E0-E2 and the distribution (run_household_model.py)
+HM = HERE / 'outputs/household-model'
+HM_KAPPA_COLORS = {0.0: mf.K0, 1.0: mf.K2, 2.0: mf.K4}
+
+
+def quarter_ticks(ax, quarters):
+    x = np.arange(len(quarters))
+    ax.set_xticks(x, [q.replace('Q', ' Q') if q.endswith('Q1') else q[-2:] for q in quarters])
+    ax.set_xlim(x[0] - 0.5, x[-1] + 0.5)
+    return x
+
+
+def holdout(ax, quarters):
+    hold = quarters.index('2022Q1')
+    ax.axvspan(hold - 0.5, len(quarters) - 0.5, color=mf.HOLDOUT_WASH, lw=0, zorder=0)
+    return hold
+
+
+def s3_kappa_2019(prof, fits, settings):
+    fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.6))
+    ax = axes[0]
+    d = prof.loglik - prof.loglik.max()
+    ax.plot(prof.kappa, d, color=mf.BLUE, zorder=3)
+    ax.scatter(prof.kappa, d, s=22, color=mf.BLUE, edgecolor=mf.SURFACE, lw=1, zorder=4)
+    ax.axhline(-1.92, color=mf.MUTED, lw=1, ls='--')
+    ax.text(prof.kappa.max(), -1.92, '95% profile limit', ha='right', va='bottom', fontsize=8, color=mf.INK2)
+    kf = settings['kappa_free']
+    ax.set_title('Profile log-likelihood, κ ≥ 0', fontsize=10)
+    ax.text(0.98, 0.95, f'unrestricted ML: κ = {kf["estimate"]:.2f} (SE {kf["se"]:.2f})', transform=ax.transAxes,
+            ha='right', va='top', fontsize=8, color=mf.INK2)
+    ax.set_xlabel('κ (kin stepping-in when a core migrant cannot send)')
+    ax.set_ylabel('Log-likelihood − maximum')
+    ax = axes[1]
+    for col, label, c in [('any_core', 'Any able core migrant', mf.BLUE), ('log_kin', 'log(1 + able kin)', mf.AQUA),
+                          ('log_core', 'log(1 + able core)', mf.ORANGE)]:
+        ax.plot(prof.kappa, prof[col], color=c, label=label)
+        mf.end_label(ax, prof.kappa.iloc[-1], prof[col].iloc[-1], f'{prof[col].iloc[-1]:.2f}')
+    ax.set_title('Fitted coefficients, refitted for each κ', fontsize=10)
+    ax.set_xlabel('κ')
+    ax.legend(loc='center left', bbox_to_anchor=(0, 0.62))
+    ax.set_xlim(None, prof.kappa.max() * 1.12)
+    fig.tight_layout(rect=(0, 0, 1, 0.9))
+    save(fig, 'S3_kappa_2019', 'In 2019 the household data lean against stepping-in',
+         'Household model (H3 plus stepping-in κ·[a core migrant cannot send]·log(1 + able kin)), "Not working" '
+         'migrants as unknown occupation, 2019 MMP receipt, maximum likelihood with κ fixed on a grid. Left: '
+         'log-likelihood relative to its maximum; dashed line: the 95% limit of a one-parameter profile (−1.92). '
+         'Right: the other coefficients refitted at each κ. The 2019 fit prefers κ ≤ 0.8; unrestricted, κ is negative '
+         '(log-likelihood +7.1 over κ = 0): '
+         'kin count for less where some core migrant is out of work. In 2019 that indicator mostly marks large core '
+         'networks, so this is a size effect (kin matter less where core migrants are many), not evidence against '
+         'stepping-in in a crisis. The whole range costs at most 2.6 log-likelihood points.')
+
+
+def s4_index(paths, migrant_q, grid):
+    quarters = sorted(paths.quarter.unique())
+    fig, ax = plt.subplots(figsize=(10, 4.6))
+    x = quarter_ticks(ax, quarters)
+    hold = holdout(ax, quarters)
+    ax.axhline(1, color=mf.MUTED, lw=1, zorder=1)
+    mq = migrant_q.set_index('quarter')
+    for k, ls in [(0.0, ':'), (4.0, '--')]:
+        d = migrant_q[migrant_q.kappa == k].set_index('quarter').reindex(quarters)
+        ax.plot(x, d.index_model, color=mf.GRAY_LIGHT, lw=1.5, ls=ls, zorder=2,
+                label=f'Migrant-level model, κ = {k:g} (transfers)')
+    for k, c in HM_KAPPA_COLORS.items():
+        d = paths[(paths.kappa == k) & (paths.beta == 0)].set_index('quarter').loc[quarters]
+        r = grid[(grid.kappa == k) & (grid.beta == 0)].iloc[0]
+        ax.plot(x, d.index_model, color=c, zorder=3,
+                label=f'Household model, κ = {k:g} (RMSE {r.rmse_log_quarterly:.3f})')
+    b = paths[(paths.kappa == 0) & (paths.beta == 0)].set_index('quarter').loc[quarters].index_banxico
+    ax.plot(x, b, color=mf.INK, zorder=4, label='Banxico vs its 2017–19 trend')
+    k0 = paths[(paths.kappa == 0) & (paths.beta == 0)].set_index('quarter').loc[quarters].index_model
+    i = quarters.index('2020Q2')
+    for yv, c, dy in [(k0.iloc[i], mf.K0, -14), (b.iloc[i], mf.INK, 10)]:
+        mf.ring_dot(ax, i, yv, c)
+        ax.annotate(f'{yv:.3f}', (i, yv), xytext=(0, dy), textcoords='offset points', ha='center', fontsize=8.5,
+                    color=mf.INK2)
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.2f'))
+    ax.set_ylabel('Relative to no-COVID path (quarterly)')
+    lo = min(k0.min(), b.min(), migrant_q[migrant_q.kappa == 0].index_model.min())
+    ax.set_ylim(lo - 0.03, 1.2)
+    ax.text(hold - 0.3, lo - 0.025, '2022 held out', fontsize=8.5, color=mf.INK2, va='bottom')
+    ax.legend(loc='upper left', ncol=2, fontsize=8)
+    r0 = grid[(grid.kappa == 0) & (grid.beta == 0)].iloc[0]
+    save(fig, 'S4_receipt_index', 'Households lose less receipt than the migrant model loses transfers; 2021 is still missed',
+         'β = 0, ρ = 0, no benefits (E1a on the household model). Household model: expected number of receiving '
+         'households, COVID run / no-COVID run (2019 CPS rates of the same month), exact; read as transfers under '
+         'a constant number of transfers per receiving household. Coefficients refitted to 2019 for each κ. Gray: '
+         'the migrant-level model (transfer counts, original "Not working" coding, E1a). Banxico: transactions '
+         f'relative to their 2017–19 trend. 2020 Q2 at κ = 0: {r0.index_2020q2:.3f}. 2022 held out.')
+
+
+def s5_map(grid, settings):
+    from matplotlib.colors import LinearSegmentedColormap
+    tau = settings['tau_C']
+    piv = grid.pivot(index='beta', columns='kappa', values='rmse_log_quarterly').sort_index(ascending=False)
+    ok = grid.pivot(index='beta', columns='kappa', values='count_compatible').sort_index(ascending=False)
+    fig, ax = plt.subplots(figsize=(9, 5.2))
+    im = ax.imshow(piv.values, cmap=LinearSegmentedColormap.from_list('seq', mf.SEQ_BLUE), aspect='auto', vmin=0,
+                   vmax=min(0.10, piv.values.max()))
+    ax.grid(False)
+    for r, c in zip(*np.where(ok.values.astype(bool))):
+        ax.add_patch(plt.Rectangle((c - 0.5, r - 0.5), 1, 1, fill=False, edgecolor=mf.INK, lw=1.5))
+    b = np.unravel_index(np.argmin(piv.values), piv.shape)
+    ax.scatter(b[1], b[0], s=50, color=mf.SURFACE, edgecolor=mf.INK, lw=1.5, zorder=5)
+    ax.annotate(f'best {piv.values[b]:.3f}', (b[1], b[0]), xytext=(8, 0), textcoords='offset points', va='center',
+                fontsize=8.5, color=mf.INK, bbox=dict(boxstyle='round,pad=0.2', fc=mf.SURFACE, ec='none', alpha=0.85))
+    ax.set_xticks(range(piv.shape[1]), [f'{k:g}' for k in piv.columns])
+    ax.set_yticks(range(0, piv.shape[0], 2), [f'{v:.2f}' for v in piv.index[::2]])
+    ax.set_xlabel('κ (stepping-in: kin weight when a core migrant cannot send)')
+    ax.set_ylabel('β (household log-odds per 10,000 COVID deaths)')
+    cb = fig.colorbar(im, ax=ax, pad=0.02)
+    cb.set_label('Quarterly log RMSE, 2020 Q2 – 2021 Q4', color=mf.INK2)
+    cb.outline.set_visible(False)
+    cb.ax.axhline(tau, color=mf.INK, lw=1.5)
+    n = int(ok.values.sum())
+    best = grid.loc[grid.rmse_log_quarterly.idxmin()]
+    save(fig, 'S5_compatibility_map', f'Household model: {n} of {ok.size} (β, κ) cells fit within τ_C = {tau}',
+         f'E2 on the household model (π = 0, ρ = 0, S_t = reported COVID deaths / 10,000). Fit error of the quarterly '
+         f'receipt index against Banxico relative to its 2017–19 trend. Outlined: count-compatible cells (RMSE ≤ '
+         f'{tau}). Dot: best cell (κ = {best.kappa:g}, β = {best.beta:.2f}). Coefficients refitted to 2019 for each '
+         f'κ. β is on the household log-odds scale, not the migrant scale of the migrant-level map (M1).')
+
+
+def s6_paths(paths, grid):
+    quarters = sorted(paths.quarter.unique())
+    fig, ax = plt.subplots(figsize=(10, 4.4))
+    x = quarter_ticks(ax, quarters)
+    hold = holdout(ax, quarters)
+    ax.axhline(1, color=mf.AXIS, lw=1)
+    ok = grid[grid.count_compatible]
+    get = lambda k, b: paths[(paths.kappa == k) & (paths.beta == b)].set_index('quarter').loc[quarters]
+    for _, c in ok.iterrows():
+        ax.plot(x, get(c.kappa, c.beta).index_model, color=mf.K0, lw=1, alpha=0.7, zorder=2)
+    best = grid.loc[grid.rmse_log_quarterly.idxmin()]
+    d = get(best.kappa, best.beta)
+    ax.plot(x, d.index_model, color=mf.K4, zorder=3,
+            label=f'Best cell: κ = {best.kappa:g}, β = {best.beta:.2f} (RMSE {best.rmse_log_quarterly:.3f})')
+    z = grid[grid.beta == 0].sort_values('rmse_log_quarterly').iloc[0]
+    ax.plot(x, get(z.kappa, 0.0).index_model, color=mf.MUTED, lw=1.5, zorder=2,
+            label=f'Best with β = 0: κ = {z.kappa:g} (RMSE {z.rmse_log_quarterly:.3f})')
+    ax.plot(x, d.index_banxico, color=mf.INK, zorder=4, label='Banxico vs its 2017–19 trend')
+    if len(ok) > 1:
+        ax.plot([], [], color=mf.K0, lw=1, label=f'Other count-compatible cells ({len(ok) - 1})')
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.2f'))
+    ax.set_ylabel('Relative to no-COVID path (quarterly)')
+    ax.text(hold - 0.3, ax.get_ylim()[0] + 0.003, '2022 held out', fontsize=8.5, color=mf.INK2, va='bottom')
+    ax.legend(loc='upper left')
+    save(fig, 'S6_compatible_paths', 'Household model: the best cell still follows the death waves',
+         'E2 on the household model. Quarterly receipt index of the best cell, the other count-compatible cells '
+         'and the best β = 0 cell, against Banxico relative to its 2017–19 trend. 2022 held out.')
+
+
+def s7_realized(rb, ineq):
+    losses = ['Lost everything', 'Lost 50–99%', 'Lost 25–50%', 'Lost 10–25%']
+    gains = ['Gained 0–10%', 'Gained 10–25%', 'Gained > 25%']
+    kappas = list(HM_KAPPA_COLORS)
+    fig, ax = plt.subplots(figsize=(10, 3.6))
+    ax.axvline(0, color=mf.AXIS, lw=1)
+    for i, k in enumerate(kappas):
+        d = rb[rb.kappa == k].set_index('bin').share * 100
+        y = len(kappas) - 1 - i
+        left = 0.0
+        for b, c in list(zip(losses + ['Lost 0–10%'], mf.LOSS_RAMP + ['#f3c2c1']))[::-1]:
+            ax.barh(y, -d[b], left=-left, height=0.5, color=c, edgecolor=mf.SURFACE, lw=1.5)
+            left += d[b]
+        right = 0.0
+        for b, c in zip(gains, mf.GAIN_RAMP):
+            ax.barh(y, d[b], left=right, height=0.5, color=c, edgecolor=mf.SURFACE, lw=1.5)
+            right += d[b]
+        ax.annotate(f'lost: {left:.0f}% (everything: {d["Lost everything"]:.1f}%)', (-left, y), xytext=(-6, 0),
+                    textcoords='offset points', ha='right', va='center', fontsize=8.5, color=mf.INK2)
+        ax.annotate(f'gained: {right:.0f}% · unchanged: {d["No change"]:.0f}%', (right, y), xytext=(6, 0),
+                    textcoords='offset points', ha='left', va='center', fontsize=8.5, color=mf.INK2)
+    ax.set_yticks(range(len(kappas)), [f'κ = {k:g}' for k in kappas[::-1]])
+    ax.grid(axis='y', visible=False)
+    lim = rb[rb.bin.str.startswith('Lost')].groupby('kappa').share.sum().max() * 100
+    ax.set_xlim(-lim * 2.1, lim * 1.5)
+    ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{abs(v):.0f}%'))
+    ax.set_xlabel('Share of receiving households in a typical COVID path  (← fewer months · more months →)')
+    handles = [Patch(color=c, label=b) for b, c in zip(losses + ['Lost 0–10%'], mf.LOSS_RAMP + ['#f3c2c1'])] + \
+              [Patch(color=c, label=b) for b, c in zip(gains, mf.GAIN_RAMP)]
+    ax.legend(handles=handles, loc='upper center', bbox_to_anchor=(0.5, -0.22), ncol=4, fontsize=8)
+    k0 = ineq[ineq.kappa == 0].iloc[0]
+    save(fig, 'S7_realized_losses', 'Household model: 6–8% of receiving households lose months; almost none lose every month',
+         'β = 0, ρ = 0, no benefits. Each household that receives in its no-COVID twin is compared with it (common '
+         'random numbers for employment and the receipt draw), Apr 2020 – Dec 2021: change in the number of months '
+         'with receipt, pooled over 200 paths. Unlike the migrant model (H1, change in USD), every household draws its '
+         'receipt each month, so luck moves months both ways; the paired draw removes most of it. About '
+         f'{k0.realized_receiving_households:,.0f} households receive in a path.')
+
+
+def s8_groups(g):
+    fig, axes = plt.subplots(1, 2, figsize=(10, 6.2), sharey=True)
+    labels, ys, y = [], [], 0
+    for col, title, levels in mf.GROUP_ROWS:
+        labels.append((y, title, True))
+        y += 1
+        for lv in levels:
+            if ((g.group == col) & (g.level == lv)).any():
+                labels.append((y, lv, False))
+                ys.append((col, lv, y))
+                y += 1
+        y += 0.4
+    panels = [('change_expected', 'Expected change in months with receipt'),
+              ('lose_all_risk', 'Risk of losing every month (share of paths)')]
+    offsets = dict(zip(HM_KAPPA_COLORS, [-0.2, 0, 0.2]))
+    for ax, (metric, title) in zip(axes, panels):
+        if metric == 'change_expected':
+            ax.axvline(0, color=mf.AXIS, lw=1)
+        for k, c in HM_KAPPA_COLORS.items():
+            d = g[g.kappa == k].set_index(['group', 'level'])
+            xs = [d.loc[(cc, lv), metric] * 100 for cc, lv, _ in ys]
+            ax.scatter(xs, [yy + offsets[k] for _, _, yy in ys], s=34, color=c, edgecolor=mf.SURFACE, lw=1.2,
+                       zorder=3, label=f'κ = {k:g}')
+        ax.set_title(title, fontsize=10)
+        ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{v:.1f}%'))
+        ax.grid(axis='y', visible=False)
+        if metric != 'change_expected':
+            ax.set_xlim(0, None)
+    axes[0].set_yticks([l[0] for l in labels], [l[1] if l[2] else mf.OCC_SHORT.get(l[1], l[1]) for l in labels])
+    for tick, l in zip(axes[0].get_yticklabels(), labels):
+        if l[2]:
+            tick.set_fontweight('semibold')
+            tick.set_color(mf.INK)
+    axes[0].invert_yaxis()
+    axes[1].legend(loc='lower right')
+    save(fig, 'S8_who_loses', 'Household model: single links and core-only networks lose most; large networks gain with κ',
+         'β = 0, ρ = 0, no benefits; 200 paired paths, Apr 2020 – Dec 2021. Left: expected change in months with '
+         'receipt by group (exact, receipt-weighted). Right: share of paths in which a household that receives in '
+         'its no-COVID twin receives in no month, averaged over the group. Main occupation: the most common job '
+         'group among the household’s eligible migrants ("Not working" migrants count as Other/none).')
+
+
+def model_figures():
+    settings = json.loads((HM / 'run_settings.json').read_text())
+    grid = pd.read_csv(HM / 'map.csv')
+    paths = pd.read_csv(HM / 'quarterly_paths.csv')
+    s3_kappa_2019(pd.read_csv(HM / 'e0_kappa_profile.csv'), pd.read_csv(HM / 'e0_fits.csv'), settings)
+    s4_index(paths, pd.read_csv(HERE.parent / 'outputs/e1-job-loss/aggregate_quarterly.csv'), grid)
+    s5_map(grid, settings)
+    s6_paths(paths, grid)
+    s7_realized(pd.read_csv(HM / 'distribution_realized_bins.csv'), pd.read_csv(HM / 'distribution_inequality.csv'))
+    s8_groups(pd.read_csv(HM / 'distribution_groups.csv', dtype={'level': str}))
+
+
+def write_captions():
+    path = FIG / 'captions.md'
+    old = {}
+    if path.exists():                    # keep captions of figures not redrawn in this call
+        for block in path.read_text(encoding='utf-8').split('\n## ')[1:]:
+            head, _, body = block.partition('\n\n')
+            name, _, title = head.partition(': ')
+            old[name] = (title, body.strip())
+    old.update(CAPTIONS)
+    lines = ['# Recipient-level figures', '']
+    for name in sorted(old):
+        title, caption = old[name]
+        lines += [f'## {name}: {title}', '', caption, '']
+    path.write_text('\n'.join(lines), encoding='utf-8')
+
+
 def main():
     FIG.mkdir(exist_ok=True)
     mf.style()
+    if '--model' in sys.argv:
+        model_figures()
+        return write_captions()
     if '--not-working-as-unknown' in sys.argv:      # S2 only, variant fit
         b = h3_coefficients(HERE / 'outputs/not-working-unknown')
         s2_households(b, hl.load_population(True), '_not_working_unknown', ', "Not working" as unknown occupation')
-        return
+        return write_captions()
     b = h3_coefficients()
     pop = hl.abm.load_population()
     raw = np.column_stack([pop['h'].resident_worker.eq(0), pop['h'].resident_older.gt(0)]).astype(float)
@@ -187,10 +457,7 @@ def main():
     need_mean = raw[known].mean(0)
     s1_concept(b, need_mean)
     s2_households(b, pop)
-    lines = ['# Recipient-level figures', '']
-    for name, (title, caption) in CAPTIONS.items():
-        lines += [f'## {name}: {title}', '', caption, '']
-    (FIG / 'captions.md').write_text('\n'.join(lines), encoding='utf-8')
+    write_captions()
 
 
 if __name__ == '__main__':
