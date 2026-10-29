@@ -44,6 +44,8 @@ Forecasts expected remittances to Mexico to collapse in 2020; they did not. We b
 3. **Savings margin: robustness check only.** Base keeps the yes/no gate. One sensitivity: unemployed migrants without benefits send with a reduced probability (e.g. 25% and 50% of routine), reporting how κ and π move.
 4. **Household need η: in the base model.** In the household logit it enters directly (no resident worker, any older resident; fitted η_w ≈ 0.42, η_o ≈ 0.38 in the 27 Oct comparison).
 
+5. **Need (29 Oct, user): option 6 is the main modelling story for 2021.** Need brings in more senders per receiving household (θ_j,t = expit(α_j + β_s N*_t)), with a cumulative, non-decaying need stock (λ = 1). Receipt is unchanged; transfers per receiving household rise. Experiments and results: `recipient-level/outputs/need-margins/README.md` (6a closes 88% of the 2021Q4 gap, 2022 holdout 0.024). Caveats: a placebo ramp fits as well (identification is by timing and by the intensive-margin evidence, not by the need series); the cross-section (ENIGH cells, state panel) shows no need gradient. Supporting fact: ENIGH receiving households +5% 2018→22 while Banxico counts +40%, so count growth is transfers per receiving household. **Chosen: 6a (all migrants; core θ 44% → 60% by end-2021) and series E (excess deaths, cumulative).** The count mapping is the base mapping (transfers per receiver constant except need-activated senders), stated as an assumption; the lower bound overshoots the stimulus spikes. Still needed: an external anchor for β_s (ENIGH 2016 pre-period) and putting 6a + E into `run_household_model.py` in place of β S_t.
+
 **Base map:** κ × π (× β), household model, criterion as in §3 (quarterly for the headline, monthly for benefit timing).
 
 ## 5. Plan
