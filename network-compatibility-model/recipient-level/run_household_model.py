@@ -7,7 +7,9 @@ Run: python network-compatibility-model/recipient-level/run_household_model.py  
      outputs in outputs/household-model[-kappa-logit][-original-coding]/
 
 The household logit H3 of compare_household_logit.py, extended with the two map axes:
-    s(a, b) = expit(b0 + b_any [a > 0] + b_c log(1 + a) + b_k log(1 + b) + eta' need_h + beta S_t)
+    s(a, b) = expit(b0 + b_any [a > 0] + b_c log(1 + a) + b_k log(1 + b) + b_k0 [N_c = 0] log(1 + b)
+                    + eta' need_h + beta S_t)
+(b_k0: kin x no core migrant at all, added 29 Oct 2026)
     P(h receives in t) = E[ s(A_c, A_k) + kappa [A_c + A_k > 0] (s(N_c, N_k) - s(A_c, A_k)) ]
 over the able counts (A_c, A_k); N_c, N_k = eligible core and kin migrants (nobody out of work).
 kappa in [0, 1] is the share of the receipt probability lost to job loss that the household's able
@@ -16,15 +18,25 @@ migrants replace: the household analogue of the migrant model's coordination rul
 long as one linked migrant can send. It cannot over-replace. S_t = reported COVID deaths in Mexico
 / 10,000 (abm.salience_series), 0 in 2019.
 Base population: 'Not working' migrants as unknown occupation (all-occupation CPS rate), the best
-fit in the comparison (recipient-level/README.md). rho = 0, no benefits.
+fit in the comparison (recipient-level/README.md). rho = 0.
+Stimulus checks (user decision, 29 Oct 2026): in a stimulus month a non-employed migrant can send with
+probability pi_t, P(able) = e + (1 - e) pi_t. PI_STIMULUS: pi = 1 in Jan and Mar 2021 (rounds 2-3, wider
+eligibility), pi = 0 in Apr 2020 (round 1 excluded ITIN filers and mixed-status couples; the April
+moment is also distorted by the March 2020 rush to send at the weak peso, so it cannot identify pi).
+With pi fixed, the Jan/Mar 2021 spikes (log index minus the mean of its neighbouring months, monthly)
+are a second moment for kappa: more stepping-in leaves less lost sending for the checks to restore.
 
-E0: for each kappa on KAPPAS, the six H3 coefficients by maximum likelihood on 2019 MMP receipt
+E0: for each kappa on KAPPAS, the seven receipt coefficients by maximum likelihood on 2019 MMP receipt
     (kappa enters 2019 through ordinary unemployment): the profile likelihood of kappa.
 E1: beta = 0, exact receipt index (COVID / same calendar month of 2019, the no-COVID run) for
     2019-01..2022-12, quarterly against Banxico transactions relative to their 2017-19 trend
-    (run_e1_job_loss.banxico). Mapping to counts: Banxico transfers move with the number of
-    receiving households (transfers per receiving household constant). Log RMSE 2020Q2..2021Q4;
-    2022 held out.
+    (run_e1_job_loss.banxico). Mapping to counts (user decision, 29 Oct 2026): base = Banxico
+    transfers move with the number of receiving households (transfers per receiving household
+    constant). Lower bound = receipt x expected able senders per receiving household, from the
+    migrant-level M1 sending probabilities (compare_household_logit, 'Not working' as unknown):
+    r_h,t = sum_j e_j,t theta_j / (1 - prod_j (1 - e_j,t theta_j)), exact for rho = 0. Losing one of
+    several senders then lowers counts; stepping-in (kappa) restores receipt but not the lost
+    transfers, so this bounds the count index from below. Log RMSE 2020Q2..2021Q4; 2022 held out.
 E2: beta x kappa map, same criterion, tau_C = 0.04; plus a Gaussian log-likelihood of the quarterly
     log residuals with the SD of the 2017-19 quarterly trend residuals (colleague feedback).
 Distribution (who lost out), beta = 0, kappa in DIST_KAPPAS: exact expected change in months with
@@ -51,7 +63,11 @@ import run_e1_job_loss as e1
 import run_e1_distribution as e1d
 import compare_household_logit as hl
 
-TERMS = ['any_core', 'log_core', 'log_kin', 'no_worker', 'any_older']
+# log_kin_no_core: kin x no core migrant at all (structural; user decision 29 Oct 2026). In 2019 MMP kin
+# matter only in households without core migrants (kin effect -0.13 with core, +1.18 without; dAIC -30).
+# Structural, not 'no able core', so that job loss does not trigger kin automatically: kappa stays the
+# only stepping-in channel. The two versions cannot be separated in 2019.
+TERMS = ['any_core', 'log_core', 'log_kin', 'log_kin_no_core', 'no_worker', 'any_older']
 KAPPAS = {'share': [round(k, 1) for k in np.arange(0, 1.01, 0.1)],
           'logit': [0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0]}
 DIST_KAPPAS = {'share': [0.0, 0.5, 1.0], 'logit': [0.0, 1.0, 2.0]}
@@ -62,12 +78,47 @@ FIT_Q = [str(p) for p in pd.period_range('2020Q2', '2021Q4', freq='Q')]
 HOLD_Q = [str(p) for p in pd.period_range('2022Q1', '2022Q4', freq='Q')]
 WINDOW = ('2020-04-01', '2021-12-01')
 SEEDS = range(2001, 2201)
+PI_STIMULUS = {'2020-04': 0.0, '2021-01': 1.0, '2021-03': 1.0}
+SPIKE_MONTHS = ['2021-01', '2021-03']
+BENEFITS = HERE.parent / 'data-prep/outputs/benefit_schedule_monthly.csv'
+
+
+def stimulus_pi(dates):
+    """(T,) pi in each month: PI_STIMULUS in the schedule's stimulus months, 0 otherwise (and in 2019)."""
+    sched = pd.read_csv(BENEFITS, parse_dates=['date'])
+    flagged = set(sched.loc[sched.stimulus_month.astype(bool), 'date'].dt.strftime('%Y-%m'))
+    assert flagged == set(PI_STIMULUS), f'stimulus months in the schedule {flagged} != PI_STIMULUS'
+    return np.array([PI_STIMULUS.get(d, 0.0) for d in pd.DatetimeIndex(dates).strftime('%Y-%m')])
+
+
+def spikes(index):
+    """Monthly series -> {month: log index - mean of the log index in the months before and after}."""
+    l = np.log(pd.Series(np.asarray(index, float), index=DATES.strftime('%Y-%m')))
+    return {m: float(l[m] - 0.5 * (l.shift(1)[m] + l.shift(-1)[m])) for m in SPIKE_MONTHS}
 PMF_TOL = 1e-12
 
 
 def eligible_counts(pop):
     hsum = lambda w: np.bincount(pop['hid'], weights=w, minlength=pop['H'])
     return hsum(pop['core'] & pop['eligible']), hsum(~pop['core'] & pop['eligible'])
+
+
+def design_features(pop):
+    """Household columns for hl.design: need features plus [no core migrant at all]."""
+    n_core, _ = eligible_counts(pop)
+    return np.column_stack([pop['need_x'], (n_core == 0).astype(float)])
+
+
+def transfers_per_receiver(pop, inputs):
+    """(T, H) expected able senders per receiving household, migrant-level M1 (count lower bound)."""
+    fits = pd.read_csv(HERE / 'outputs/not-working-unknown/fits.csv').query("model == 'M1'").set_index('parameter')
+    theta = np.where(pop['core'], expit(fits.estimate['alpha_core']), expit(fits.estimate['alpha_kin']))
+    e = abm.able_probability(pop, inputs, abm.Params(0.0, 0.0))
+    e = e + (1 - e) * stimulus_pi(inputs.dates)[:, None] * pop['eligible'][None, :]
+    q = e * theta[None, :]
+    hsum = lambda Z: np.stack([np.bincount(pop['hid'], weights=z, minlength=pop['H']) for z in Z])
+    p_any = -np.expm1(hsum(np.log1p(-q)))
+    return np.divide(hsum(q), p_any, out=np.ones_like(p_any), where=p_any > 1e-12)
 
 
 def household_receipt(x, kappa, mode, a, b, n_core, n_kin, need, shift=0.0):
@@ -86,7 +137,7 @@ class Cells:
 
     def __init__(self, pop, inputs, mode='share'):
         self.mode = mode
-        pmfs = hl.able_pmfs(pop, inputs)
+        pmfs = hl.able_pmfs(pop, inputs, stimulus_pi(inputs.dates))
         n_core, n_kin = eligible_counts(pop)
         hh, A, B, W = [], [], [], []
         for h, (pc, pk) in enumerate(pmfs):
@@ -100,12 +151,12 @@ class Cells:
         self.W = np.concatenate(W, axis=1)
         self.H, self.T = pop['H'], len(inputs.dates)
         self.starts = np.searchsorted(self.hh, np.arange(self.H))
-        self.X = hl.design(a, b, pop['need_x'][self.hh], TERMS)       # intercept + TERMS
+        self.X = hl.design(a, b, design_features(pop)[self.hh], TERMS)       # intercept + TERMS
         if mode == 'logit':
             self.trigger = ((n_core[self.hh] - a) > 0) * np.log1p(b)   # [U_c > 0] log(1 + A_k)
         else:
             self.trigger = ((a + b) > 0).astype(float)                 # someone can send
-            self.X_full = hl.design(n_core, n_kin, pop['need_x'], TERMS)  # (H, k): nobody out of work
+            self.X_full = hl.design(n_core, n_kin, design_features(pop), TERMS)  # (H, k): nobody out of work
         self.salience = inputs.salience
 
     def household_sum(self, Z):
@@ -126,7 +177,7 @@ class Cells:
 
 
 def fit_2019(cells, y, mask, kappa=None, start=None):
-    """ML for the six H3 coefficients with kappa fixed (kappa None: free, logit mode only).
+    """ML for the receipt coefficients with kappa fixed (kappa None: free, logit mode only).
     Returns (x, kappa, negloglik, se). 2019: S_t = 0, so the annual pmf average suffices."""
     Wbar = cells.W.mean(0)
     if cells.mode == 'share':
@@ -196,17 +247,20 @@ def simulate_receipt(pop, inputs, x, kappa, seed, mode='share'):
     u_h,t uses its own stream so the COVID and no-COVID twins share it."""
     T, M, H, hid, core = len(inputs.dates), pop['M'], pop['H'], pop['hid'], pop['core']
     phi = abm.employment_phi()
-    streams = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(3)]
+    streams = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(4)]
+    pi_t = stimulus_pi(inputs.dates)
     z = streams[0].standard_normal(M)
     n_core, n_kin = eligible_counts(pop)
     out = np.zeros((T, H), bool)
     for t in range(T):
         if t > 0:
             z = phi * z + np.sqrt(1 - phi ** 2) * streams[1].standard_normal(M)
-        able = (norm.cdf(z) < inputs.rates[t, pop['job_index']]) & pop['eligible']
+        employed = norm.cdf(z) < inputs.rates[t, pop['job_index']]
+        checked = streams[3].random(M) < pi_t[t]      # drawn every month, so the twins share it
+        able = (employed | checked) & pop['eligible']
         ac = np.bincount(hid, weights=able & core, minlength=H)
         ak = np.bincount(hid, weights=able & ~core, minlength=H)
-        p = household_receipt(x, kappa, mode, ac, ak, n_core, n_kin, pop['need_x'])
+        p = household_receipt(x, kappa, mode, ac, ak, n_core, n_kin, design_features(pop))
         out[t] = streams[2].random(H) < p
     return out
 
@@ -308,31 +362,48 @@ def main(original_coding=False, mode='share'):
 
     # E1 and E2
     target, bx_info = banxico_target()
+    bx_m, trend_m, _ = e1.banxico()
+    spike_bx = spikes((bx_m / trend_m).reindex(DATES))
     sigma_q = bx_info['residual_sd_quarterly']
     covid = abm.make_inputs(DATES, pop['rate_columns'], salience=abm.salience_series(DATES))
     cf = abm.make_inputs(pd.DatetimeIndex([pd.Timestamp(2019, d.month, 1) for d in DATES]), pop['rate_columns'])
     cc, cfc = Cells(pop, covid, mode), Cells(pop, cf, mode)
+    r_c, r_f = transfers_per_receiver(pop, covid), transfers_per_receiver(pop, cf)
     rows, paths, monthly = [], [], []
     betas = [0.0] if original_coding else BETAS
     for kappa in kappas:
         x = x_by_kappa[kappa]
-        rf = pd.Series(cfc.receipt(x, kappa).sum(1), index=DATES)
+        Pf = cfc.receipt(x, kappa)
+        rf, tf = pd.Series(Pf.sum(1), index=DATES), pd.Series((Pf * r_f).sum(1), index=DATES)
         for beta in betas:
-            rc = pd.Series(cc.receipt(x, kappa, beta).sum(1), index=DATES)
+            Pc = cc.receipt(x, kappa, beta)
+            rc, tc = pd.Series(Pc.sum(1), index=DATES), pd.Series((Pc * r_c).sum(1), index=DATES)
             model = quarterly(rc) / quarterly(rf)
+            lower = quarterly(tc) / quarterly(tf)
             resid = np.log(model[FIT_Q] / target[FIT_Q])
-            rows.append(dict(kappa=kappa, beta=beta, rmse_log_quarterly=log_rmse(model, target, FIT_Q),
+            sp, sp_low = spikes(rc / rf), spikes(tc / tf)
+            spike_cols = {f'spike_{m}': sp[m] for m in SPIKE_MONTHS}
+            spike_cols.update({f'spike_{m}_lower_bound': sp_low[m] for m in SPIKE_MONTHS})
+            spike_cols.update(spike_rmse=float(np.sqrt(np.mean([(sp[m] - spike_bx[m]) ** 2 for m in SPIKE_MONTHS]))),
+                              spike_rmse_lower_bound=float(np.sqrt(np.mean([(sp_low[m] - spike_bx[m]) ** 2
+                                                                            for m in SPIKE_MONTHS]))))
+            rows.append(dict(kappa=kappa, beta=beta, rmse_log_quarterly=log_rmse(model, target, FIT_Q), **spike_cols,
                              count_compatible=log_rmse(model, target, FIT_Q) <= TAU_C,
                              loglik_gaussian=float(np.sum(norm.logpdf(resid, scale=sigma_q))),
                              rmse_log_quarterly_holdout_2022=log_rmse(model, target, HOLD_Q),
                              index_2020q2=float(model['2020Q2']),
+                             rmse_log_quarterly_lower_bound=log_rmse(lower, target, FIT_Q),
+                             index_2020q2_lower_bound=float(lower['2020Q2']),
+                             mean_index_2021_lower_bound=float(lower[[q for q in FIT_Q if q.startswith('2021')]].mean()),
                              mean_index_2020=float(model[[q for q in FIT_Q if q.startswith('2020')]].mean()),
                              mean_index_2021=float(model[[q for q in FIT_Q if q.startswith('2021')]].mean())))
             paths.append(pd.DataFrame({'quarter': model.index, 'kappa': kappa, 'beta': beta,
-                                       'index_model': model.values, 'index_banxico': target[model.index].values}))
+                                       'index_model': model.values, 'index_model_lower_bound': lower.values,
+                                       'index_banxico': target[model.index].values}))
             if beta == 0:
                 monthly.append(pd.DataFrame({'date': DATES, 'kappa': kappa, 'receipt_covid': rc.values / pop['H'],
-                                             'receipt_cf': rf.values / pop['H'], 'index_model': (rc / rf).values}))
+                                             'receipt_cf': rf.values / pop['H'], 'index_model': (rc / rf).values,
+                                             'index_model_lower_bound': (tc / tf).values}))
     grid = pd.DataFrame(rows)
     grid['delta_loglik'] = grid.loglik_gaussian - grid.loglik_gaussian.max()
     grid.to_csv(out / 'map.csv', index=False)
@@ -357,12 +428,18 @@ def main(original_coding=False, mode='share'):
         receipt=('expit(b0 + b_any [A_c>0] + b_c log(1+A_c) + b_k log(1+A_k) + eta need + beta S_t '
                  '+ kappa [U_c>0] log(1+A_k)), kappa = logit shift' if mode == 'logit' else
                  's(A_c, A_k) + kappa [A_c + A_k > 0] (s(N_c, N_k) - s(A_c, A_k)), s = expit(b0 + b_any [a>0] '
-                 '+ b_c log(1+a) + b_k log(1+b) + eta need + beta S_t); kappa = replacement share in [0, 1]'),
+                 '+ b_c log(1+a) + b_k log(1+b) + b_k0 [N_c=0] log(1+b) + eta need + beta S_t); '
+                 'kappa = replacement share in [0, 1]'),
         kappas=kappas, betas=list(map(float, betas)), tau_C=TAU_C, kappa_free=kappa_free,
         criterion='quarterly log RMSE 2020Q2..2021Q4, receipt index (COVID / no-COVID) vs Banxico / 2017-19 trend',
-        count_mapping='transfers per receiving household constant (Banxico index = receiving-household index)',
+        count_mapping=('base: transfers per receiving household constant (Banxico index = receiving-household '
+                       'index); lower bound: receipt x expected able senders per receiving household (migrant-level '
+                       'M1 thetas, no stepping-in on the number of transfers), columns *_lower_bound'),
         likelihood=f'Gaussian on quarterly log residuals 2020Q2..2021Q4, SD = 2017-19 quarterly trend residual SD '
                    f'({sigma_q:.4f}); 7 autocorrelated quarters, use ratios only',
+        stimulus=dict(pi=PI_STIMULUS, margin='non-employed migrants able to send in the stimulus month',
+                      spike_months=SPIKE_MONTHS, spike_banxico={m: round(v, 4) for m, v in spike_bx.items()},
+                      spike_definition='log monthly index minus the mean of the neighbouring months'),
         banxico_trend=bx_info, n_cells=len(grid), n_count_compatible=int(grid.count_compatible.sum()),
         best_cell=dict(kappa=float(best.kappa), beta=float(best.beta), rmse=float(best.rmse_log_quarterly)),
         distribution=None if original_coding else dict(

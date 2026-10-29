@@ -10,7 +10,9 @@ S2 (data; --not-working-as-unknown draws S2 for that variant fit): every sample 
    observed MMP receipt by score band (aggregates, bands with >= 30 households) and a histogram.
 S3-S8 (--model, after run_household_model.py): the household model through E0-E2 and the
    distribution: S3 kappa in 2019, S4 receipt index vs Banxico (beta = 0), S5 beta x kappa map,
-   S6 compatible paths, S7 realized losses, S8 who loses.
+   S6 compatible paths, S7 realized losses, S8 who loses, S9 count decomposition, S10 USD accounting
+   (counts x observed average amount, split into US inflation and the real amount; amounts are
+   accounting only, not modelled: user decision, 29 Oct 2026).
 Score = intercept + any_core * [A_c > 0] + log_core * log(1 + A_c) + log_kin * log(1 + A_k)
         + no_worker * (no worker - mean) + any_older * (older resident - mean).
 """
@@ -477,6 +479,55 @@ def s9_decomposition(parts):
          f'need {a.need * 100:+.1f}, unexplained {a.unexplained * 100:+.0f} log points.')
 
 
+USD_PARTS = DECOMP_PARTS[:-1] + [('unexplained', 'Unexplained (counts)', mf.AQUA),
+                                  ('inflation', 'US inflation (CPI-U), on the amount', '#e87ba4'),
+                                  ('real_amount', 'Real amount per transfer', '#6250d6')]
+
+
+def usd_accounting(d):
+    """Banxico USD vs the same quarter of 2019 = counts (decomposition d) x average amount per transfer,
+    the amount split into US CPI-U inflation and the real amount. Log points."""
+    bx = pd.read_parquet(hl.abm.BANXICO)
+    bx = bx.assign(date=pd.to_datetime(bx.date)).set_index('date')[['total_usd', 'transactions']]
+    cpi = pd.read_csv(HERE.parent / 'data-prep/outputs/us_cpi_monthly.csv', parse_dates=['date']).set_index('date').cpi_u
+    q = bx.groupby(bx.index.to_period('Q')).sum().join(cpi.groupby(cpi.index.to_period('Q')).mean())
+    rel19 = lambda s: np.log(s / s[s.index.year == 2019].set_axis([1, 2, 3, 4]).loc[s.index.quarter].to_numpy()).rename(index=str)
+    avg = rel19(q.total_usd / q.transactions)
+    out = d.assign(raw_usd=rel19(q.total_usd)[d.quarter].values, amount=avg[d.quarter].values,
+                   inflation=rel19(q.cpi_u)[d.quarter].values)
+    out['real_amount'] = out.amount - out.inflation
+    assert np.allclose(out.raw + out.amount, out.raw_usd)
+    return out
+
+
+def s10_usd(u):
+    fig, ax = plt.subplots(figsize=(8.6, 4.8))
+    quarters = list(u.quarter)
+    x = quarter_ticks(ax, quarters)
+    holdout(ax, quarters)
+    ax.axhline(0, color=mf.AXIS, lw=1)
+    pos, neg = np.zeros(len(u)), np.zeros(len(u))
+    for key, name, c in USD_PARTS:
+        v = u[key].to_numpy() * 100
+        bottom = np.where(v >= 0, pos, neg)
+        ax.bar(x, v, bottom=bottom, width=0.7, color=c, edgecolor=mf.SURFACE, lw=1, label=name, zorder=2)
+        pos, neg = pos + np.clip(v, 0, None), neg + np.clip(v, None, 0)
+    ax.plot(x, u.raw_usd * 100, color=mf.INK, marker='o', markersize=4, zorder=4, label='Banxico USD, vs same quarter of 2019')
+    ax.set_ylabel('Log points × 100 (≈ %)')
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{v:+.0f}'))
+    ax.tick_params(axis='x', labelsize=7.5)
+    ax.legend(loc='upper left', fontsize=8, ncol=2)
+    a = u.set_index('quarter').loc['2021Q4']
+    b = u.set_index('quarter').loc['2022Q4']
+    save(fig, 'S10_usd_accounting', 'USD received: counts drive the lasting rise; the real amount rise of 2020–21 fades by 2022',
+         'Banxico USD relative to the same quarter of 2019 (line) = transfer counts × average amount per transfer, '
+         'in log points. Counts are split as in S9 (household model, best map cell κ = '
+         f'{u.kappa.iloc[0]:g}, β = {u.beta.iloc[0]:.2f}); the observed average amount is split into US CPI-U '
+         'inflation and the real amount (2019 USD). Amounts are accounting, not modelled. 2022 held out (shaded). '
+         f'2021 Q4: USD {a.raw_usd * 100:+.0f}, counts {a.raw * 100:+.0f}, inflation {a.inflation * 100:+.1f}, '
+         f'real amount {a.real_amount * 100:+.1f} log points; 2022 Q4: real amount {b.real_amount * 100:+.1f}.')
+
+
 def model_figures():
     settings = json.loads((HM / 'run_settings.json').read_text())
     grid = pd.read_csv(HM / 'map.csv')
@@ -492,6 +543,9 @@ def model_figures():
              decomposition(paths, 'Household model')]
     pd.concat(parts, ignore_index=True).round(5).to_csv(HERE / 'outputs/decomposition.csv', index=False)
     s9_decomposition(parts)
+    u = usd_accounting(parts[1])
+    u.round(5).to_csv(HERE / 'outputs/usd_accounting.csv', index=False)
+    s10_usd(u)
 
 
 def write_captions():

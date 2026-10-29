@@ -4,7 +4,7 @@
   "households": 3252,
   "receiving": 756,
   "kappa_mode": "share",
-  "receipt": "s(A_c, A_k) + kappa [A_c + A_k > 0] (s(N_c, N_k) - s(A_c, A_k)), s = expit(b0 + b_any [a>0] + b_c log(1+a) + b_k log(1+b) + eta need + beta S_t); kappa = replacement share in [0, 1]",
+  "receipt": "s(A_c, A_k) + kappa [A_c + A_k > 0] (s(N_c, N_k) - s(A_c, A_k)), s = expit(b0 + b_any [a>0] + b_c log(1+a) + b_k log(1+b) + b_k0 [N_c=0] log(1+b) + eta need + beta S_t); kappa = replacement share in [0, 1]",
   "kappas": [
     0.0,
     0.1,
@@ -43,14 +43,31 @@
   ],
   "tau_C": 0.04,
   "kappa_free": {
-    "estimate": 0.4,
+    "estimate": 1.0,
     "se": null,
-    "loglik": -1145.4045654317865,
+    "loglik": -1126.9426467510427,
     "note": "kappa in [0, 1]: maximum of the profile on the grid"
   },
   "criterion": "quarterly log RMSE 2020Q2..2021Q4, receipt index (COVID / no-COVID) vs Banxico / 2017-19 trend",
-  "count_mapping": "transfers per receiving household constant (Banxico index = receiving-household index)",
+  "count_mapping": "base: transfers per receiving household constant (Banxico index = receiving-household index); lower bound: receipt x expected able senders per receiving household (migrant-level M1 thetas, no stepping-in on the number of transfers), columns *_lower_bound",
   "likelihood": "Gaussian on quarterly log residuals 2020Q2..2021Q4, SD = 2017-19 quarterly trend residual SD (0.0143); 7 autocorrelated quarters, use ratios only",
+  "stimulus": {
+    "pi": {
+      "2020-04": 0.0,
+      "2021-01": 1.0,
+      "2021-03": 1.0
+    },
+    "margin": "non-employed migrants able to send in the stimulus month",
+    "spike_months": [
+      "2021-01",
+      "2021-03"
+    ],
+    "spike_banxico": {
+      "2021-01": 0.0411,
+      "2021-03": 0.036
+    },
+    "spike_definition": "log monthly index minus the mean of the neighbouring months"
+  },
   "banxico_trend": {
     "trend_window": [
       "2017-01-01",
@@ -63,9 +80,9 @@
   "n_cells": 231,
   "n_count_compatible": 0,
   "best_cell": {
-    "kappa": 0.0,
-    "beta": 0.08,
-    "rmse": 0.043382142657766506
+    "kappa": 0.8,
+    "beta": 0.06,
+    "rmse": 0.045339149716345416
   },
   "distribution": {
     "kappas": [

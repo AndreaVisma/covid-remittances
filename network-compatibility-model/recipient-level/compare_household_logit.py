@@ -80,9 +80,12 @@ def poisson_binomial(P):
     return out
 
 
-def able_pmfs(pop, inputs):
-    """Per household: (pmf of able core migrants, pmf of able kin migrants), each (T, n + 1)."""
+def able_pmfs(pop, inputs, pi_t=None):
+    """Per household: (pmf of able core migrants, pmf of able kin migrants), each (T, n + 1).
+    pi_t: optional (T,) share of non-employed migrants able to send that month (stimulus checks)."""
     e = abm.able_probability(pop, inputs, abm.Params(0.0, 0.0))
+    if pi_t is not None:
+        e = e + (1 - e) * np.asarray(pi_t, float)[:, None] * pop['eligible'][None, :]
     order = np.argsort(pop['hid'], kind='stable')
     bounds = np.searchsorted(pop['hid'][order], np.arange(pop['H'] + 1))
     out = []
@@ -96,6 +99,8 @@ def able_pmfs(pop, inputs):
 def design(a, b, need, terms):
     cols = {'core': a, 'kin': b, 'log_core': np.log1p(a), 'log_kin': np.log1p(b),
             'any_core': (a > 0).astype(float), 'no_worker': need[:, 0], 'any_older': need[:, 1]}
+    if need.shape[1] > 2:   # third column: household has no core migrant at all (structural, not job loss)
+        cols['log_kin_no_core'] = np.log1p(b) * need[:, 2]
     return np.column_stack([np.ones(len(a))] + [cols[t] for t in terms])
 
 
