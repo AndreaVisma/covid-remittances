@@ -1,0 +1,77 @@
+{
+  "task": "trend_window",
+  "model": "base household model (run_household_model.py), unchanged",
+  "target": "Banxico transactions / log-linear trend (with or without calendar-month effects) fitted on the window, quarterly ratio of sums; fit 2020Q2..2021Q4, 2022 held out",
+  "beta": "fitted continuously per kappa (bounded, [0, 3]) against each target, as need_fit.csv",
+  "best_kappa": "lowest fit RMSE over kappa 0..1 (step 0.1)",
+  "gap_closed_2021q4": "(log model(beta) - log model(0)) / (log Banxico - log model(0)) in 2021Q4",
+  "gap_closed_rmse": "1 - RMSE(beta) / RMSE(beta = 0)",
+  "lower_bound": "rmse_lower_bound at the base-mapping beta; *_refit: beta refitted under lower bound",
+  "decomposition": "raw Banxico vs same quarter of 2019 = trend + job loss (beta = 0) + need (beta vs beta = 0) + unexplained, log points, at each row kappa and its beta",
+  "spikes": "Banxico spikes from each variant monthly index (bx / trend)",
+  "distribution": "skipped",
+  "variants": {
+    "2017-19 (base)": {
+      "window": [
+        "2017-01-01",
+        "2019-12-01"
+      ],
+      "month_effects": true,
+      "growth_per_year": 0.06318574356523146,
+      "residual_sd_monthly": 0.01947960600115106,
+      "residual_sd_quarterly": 0.014291824381905507,
+      "need_fit_max_abs_diff": 2.220446049250313e-16,
+      "decomposition_max_abs_diff": 4.859990525116209e-06
+    },
+    "2015-19": {
+      "window": [
+        "2015-01-01",
+        "2019-12-01"
+      ],
+      "month_effects": true,
+      "growth_per_year": 0.06988058602945639,
+      "residual_sd_monthly": 0.02290565374989182,
+      "residual_sd_quarterly": 0.013770478354967614
+    },
+    "2013-19": {
+      "window": [
+        "2013-01-01",
+        "2019-12-01"
+      ],
+      "month_effects": true,
+      "growth_per_year": 0.06496431005882275,
+      "residual_sd_monthly": 0.02480032583538164,
+      "residual_sd_quarterly": 0.016771767061505367
+    },
+    "2018-19": {
+      "window": [
+        "2018-01-01",
+        "2019-12-01"
+      ],
+      "month_effects": true,
+      "growth_per_year": 0.06171033903729951,
+      "residual_sd_monthly": 0.01681064291586887,
+      "residual_sd_quarterly": 0.011715149706305479
+    },
+    "2010-19": {
+      "window": [
+        "2010-01-01",
+        "2019-12-01"
+      ],
+      "month_effects": true,
+      "growth_per_year": 0.05860824447086893,
+      "residual_sd_monthly": 0.032885198313962645,
+      "residual_sd_quarterly": 0.02565177067142942
+    },
+    "2017-19, no month effects": {
+      "window": [
+        "2017-01-01",
+        "2019-12-01"
+      ],
+      "month_effects": false,
+      "growth_per_year": 0.07477288333389495,
+      "residual_sd_monthly": 0.07132256593131665,
+      "residual_sd_quarterly": 0.04931415756541453
+    }
+  }
+}

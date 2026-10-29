@@ -1,0 +1,112 @@
+{
+  "task": "pooled_mar_apr",
+  "experiment": "6d: April 2020 timing shift; refit beta per kappa under alternative criteria",
+  "periods": {
+    "base": [
+      "2020Q2",
+      "2020Q3",
+      "2020Q4",
+      "2021Q1",
+      "2021Q2",
+      "2021Q3",
+      "2021Q4"
+    ],
+    "pooled": [
+      "2020-03..04",
+      "2020-05..06",
+      "2020Q3",
+      "2020Q4",
+      "2021Q1",
+      "2021Q2",
+      "2021Q3",
+      "2021Q4"
+    ],
+    "q2_apr_avg": [
+      "2020Q2",
+      "2020Q3",
+      "2020Q4",
+      "2021Q1",
+      "2021Q2",
+      "2021Q3",
+      "2021Q4"
+    ],
+    "drop_q2": [
+      "2020Q3",
+      "2020Q4",
+      "2021Q1",
+      "2021Q2",
+      "2021Q3",
+      "2021Q4"
+    ]
+  },
+  "holdout": [
+    "2022Q1",
+    "2022Q2",
+    "2022Q3",
+    "2022Q4"
+  ],
+  "q2_apr_avg": "April 2020 level := (Mar + Apr 2020)/2 in Banxico, trend, model COVID and no-COVID series",
+  "index": "period sum of the model count series / no-COVID sum; Banxico period sum / trend period sum",
+  "count_mapping": "base (hm): sum P r(beta)/r(0); lower bound: sum P r(beta) (rmse at the fitted beta and refit)",
+  "beta_bounds": [
+    0.0,
+    3.0
+  ],
+  "kappas": [
+    0.0,
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8,
+    0.9,
+    1.0
+  ],
+  "spike_banxico": {
+    "2021-01": 0.04108565238817641,
+    "2021-03": 0.03603518119869308
+  },
+  "banxico_period_index": {
+    "2020-03..04": 1.0002912996615982,
+    "2020-05..06": 1.0021444196131886,
+    "2020Q3": 1.0245974376420852,
+    "2020Q4": 1.017141244032217,
+    "2021Q1": 1.0494750212401207,
+    "2021Q2": 1.0581256125232807,
+    "2021Q3": 1.0829122604576011,
+    "2021Q4": 1.1082835695648485,
+    "2022Q1": 1.068043558836988,
+    "2022Q2": 1.079661843680534,
+    "2022Q3": 1.1177153042219574,
+    "2022Q4": 1.132214927622789
+  },
+  "verification": {
+    "reference": "outputs/household-model/need_fit.csv",
+    "max_abs_diff": 2.220446049250313e-16
+  },
+  "best": {
+    "base": {
+      "kappa_min_rmse_fit": 1.0,
+      "kappa_min_spike_rmse": 0.9,
+      "kappa_min_rmse_lower_bound": 1.0
+    },
+    "pooled": {
+      "kappa_min_rmse_fit": 1.0,
+      "kappa_min_spike_rmse": 0.9,
+      "kappa_min_rmse_lower_bound": 1.0
+    },
+    "q2_apr_avg": {
+      "kappa_min_rmse_fit": 1.0,
+      "kappa_min_spike_rmse": 0.9,
+      "kappa_min_rmse_lower_bound": 1.0
+    },
+    "drop_q2": {
+      "kappa_min_rmse_fit": 1.0,
+      "kappa_min_spike_rmse": 0.9,
+      "kappa_min_rmse_lower_bound": 1.0
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "task": "savings_margin",
+  "savings_s": [
+    0.0,
+    0.25,
+    0.5
+  ],
+  "kappas": [
+    0.0,
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8,
+    0.9,
+    1.0
+  ],
+  "report_kappas": [
+    0.0,
+    0.5,
+    0.8,
+    1.0
+  ],
+  "ability": "P(able) = e + (1 - e) max(pi_t, s), eligible migrants; pi_t = hm.PI_STIMULUS",
+  "interpretation": "able is binary in the household model: savings enter as a probability s that an out-of-work migrant is able in a month (closest analogue of sending a share s of routine sending)",
+  "applied_to": [
+    "hl.able_pmfs via hm.Cells (2019 calibration, COVID, no-COVID)",
+    "hm.Senders.e (count mapping)"
+  ],
+  "refit": "7 receipt coefficients by ML on 2019 MMP per kappa and s (no SEs computed)",
+  "not_refit": "migrant-level M1 alphas (theta_j in r(beta)), kept at base values",
+  "beta": "fitted continuously per kappa on [0, 3], quarterly log RMSE 2020Q2..2021Q4",
+  "spike_banxico": {
+    "2021-01": 0.04108565238817641,
+    "2021-03": 0.03603518119869308
+  },
+  "base_reproduction_max_abs_diff": {
+    "beta": 0.0,
+    "rmse_fit": 6.765421556309548e-17,
+    "rmse_holdout_2022": 7.632783294297951e-17,
+    "index_2020q2": 1.1102230246251565e-16,
+    "index_2021q4": 2.220446049250313e-16,
+    "mean_index_2022": 0.0
+  },
+  "best": {
+    "0.0": {
+      "kappa_min_rmse_fit": 1.0,
+      "kappa_min_spike_rmse": 0.9
+    },
+    "0.25": {
+      "kappa_min_rmse_fit": 0.9,
+      "kappa_min_spike_rmse": 0.6
+    },
+    "0.5": {
+      "kappa_min_rmse_fit": 0.5,
+      "kappa_min_spike_rmse": 0.0
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "task": "pi_april_2020 (6b)",
+  "variants": {
+    "pi_apr_0_base": 0.0,
+    "pi_apr_0.5": 0.5,
+    "pi_apr_1": 1.0
+  },
+  "pi_other": {
+    "2021-01": 1.0,
+    "2021-03": 1.0
+  },
+  "reproduction_max_abs_diff_vs_need_fit": 2.220446049250313e-16,
+  "best": {
+    "pi_apr_0_base": {
+      "kappa_min_rmse_fit": 1.0,
+      "kappa_min_spike_rmse": 0.9
+    },
+    "pi_apr_0.5": {
+      "kappa_min_rmse_fit": 1.0,
+      "kappa_min_spike_rmse": 0.9
+    },
+    "pi_apr_1": {
+      "kappa_min_rmse_fit": 1.0,
+      "kappa_min_spike_rmse": 0.9
+    }
+  },
+  "banxico": {
+    "variant": "banxico",
+    "index_2020-03": 1.0869590326886691,
+    "index_2020-04": 0.9118488751001744,
+    "index_2020-05": 0.9838102342317858,
+    "index_2020-06": 1.021915119132408,
+    "spike_2020_04": -0.12581184331144657,
+    "spike_2021_01": 0.04108565238817641,
+    "spike_2021_03": 0.03603518119869308,
+    "index_2020_mar_apr_pooled": 1.0002912996615982,
+    "index_2020q2": 0.9738038309382245,
+    "index_2021q4": 1.1082835695648485,
+    "mean_index_2022": 1.0994089085905672
+  },
+  "april_spike": "log index Apr 2020 - mean(log Mar 2020, log May 2020), monthly",
+  "mar_apr_pooled": "(model counts Mar+Apr 2020) / (no-COVID Mar+Apr); Banxico: (Mar+Apr) / (trend Mar+Apr)",
+  "beta": "fitted continuously per kappa and variant, bounded (0, 3), quarterly log RMSE 2020Q2-2021Q4",
+  "e0": "2019 receipt coefficients independent of pi (2019 dates), fitted once"
+}

@@ -1,0 +1,54 @@
+{
+  "task": "6e out_of_sample_2019",
+  "kappas": [
+    0.0,
+    0.5,
+    0.8,
+    1.0
+  ],
+  "households": 3252,
+  "receiving": 756,
+  "forward": "coefficients by ML with 2018 CPS employment (MMP 2010-19 receipt targets); index = run with 2019 CPS / run with same calendar month of 2018; beta = 0, N* = 0, no stimulus",
+  "reverse": "coefficients with 2019 CPS (base); index = run 2018 / same month 2019",
+  "count_mapping": "base: sum_h P_h,t (beta = 0); lower bound: sum_h P_h,t r_h,t",
+  "banxico": {
+    "a": {
+      "note": "2019 in trend window: ~1 by construction (calendar dummies + log-linear trend)",
+      "trend_window": [
+        "2017-01-01",
+        "2019-12-01"
+      ],
+      "trend_growth_per_year": 0.06318574356523146,
+      "residual_sd_monthly": 0.01947960600115106
+    },
+    "b": {
+      "note": "extrapolated to 2019",
+      "trend_window": [
+        "2015-01-01",
+        "2018-12-01"
+      ],
+      "trend_growth_per_year": 0.07300886526012239,
+      "residual_sd_monthly": 0.023553090045303243
+    },
+    "c": "raw 2019 / same month 2018",
+    "reverse": {
+      "note": "extrapolated to 2018",
+      "trend_window": [
+        "2015-01-01",
+        "2017-12-01"
+      ],
+      "trend_growth_per_year": 0.07732332480892606,
+      "residual_sd_monthly": 0.02400565927873596
+    }
+  },
+  "cps_source": "network-compatibility-model\\data-prep\\outputs\\cps_employment_rates_monthly.csv",
+  "cps_column": "rate_model",
+  "cps_coverage": "2017-01..2023-12 (2018 available, no rebuild needed)",
+  "rate_columns": [
+    "Agriculture",
+    "Production/construction/transport",
+    "Sales/personal services",
+    "Professional/administrative",
+    "All occupations"
+  ]
+}
