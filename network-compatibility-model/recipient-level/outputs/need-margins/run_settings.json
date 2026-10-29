@@ -46,7 +46,7 @@
   },
   "verification": {
     "reference": "outputs/household-model/map.csv",
-    "max_abs_difference": 2.280260424925018e-10
+    "max_abs_difference": 1.5039991474452563e-10
   },
   "heterogeneity": {
     "kappa": 0.8,

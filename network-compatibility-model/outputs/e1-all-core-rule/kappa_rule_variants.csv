@@ -1,7 +1,0 @@
-rule,label,kappa,index_april_2020,kin_transfers_april_2020,kin_transfers_april_2019,transfers_april_2019,calibrated
-current,All eligible core migrants unable,0,0.8538916269608312,160.795,187.9,1098.705,True
-current,All eligible core migrants unable,4,0.8892861726901004,209.25,199.43,1090.74,True
-any_core,Any eligible core migrant unable,0,0.8538916269608312,160.795,187.9,1098.705,False
-any_core,Any eligible core migrant unable,4,0.9451281754115387,299.425,230.395,1121.705,False
-any_link,Any other eligible linked migrant unable,0,0.8538916269608312,160.795,187.9,1098.705,False
-any_link,Any other eligible linked migrant unable,4,1.2687418859249395,944.605,452.805,1344.115,False

@@ -1,7 +1,6 @@
-"""E1a under the coordination rule ('coordination'), for comparison with the base rule.
+"""Migrant-level comparison model: E0 and E1a under the coordination rule ('coordination').
 
-Run after run_e0_baseline.py and run_e1_job_loss.py:
-    python network-compatibility-model/model/run_e1_coordination.py
+Run: python network-compatibility-model/model/run_e1_coordination.py
 
 Coordination rule: the household's able migrants, core and kin, share the routine sending lost to
 migrants who cannot send. Each able migrant j sends with
@@ -15,9 +14,10 @@ to locate the ceiling of the April 2020 index.
 
 Steps (outputs in outputs/e1-coordination/):
   1. E0 refit of alpha_core, alpha_kin for each kappa: e0_kappa_profile.csv
-  2. 2019 validation for both rules (network type x size, link type): e0_validation.csv;
+  2. 2019 validation (network type x size, link type): e0_validation.csv;
      stochastic 2019 receipt check: e0_stochastic_check.csv
-  3. April 2020 count index and replacement share against kappa for both rules: kappa_ceiling_rules.csv
+  3. April 2020 count index and replacement share against kappa: kappa_ceiling_rules.csv
+(The rows for the former lost-sending rule were removed in the 29 Oct 2026 cleanup (git history up to a83b60c).)
   4. E1a with the refitted alphas, same design and tables as outputs/e1-job-loss/
 """
 from pathlib import Path
@@ -29,15 +29,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import abm
 import run_e0_baseline as e0
 import run_e1_job_loss as e1
-from run_e1_rule_comparison import params_from
 
 RULE = 'coordination'
 OUT = abm.HERE / 'outputs/e1-coordination'
-BASE_PROFILE = abm.HERE / 'outputs/e0-baseline/kappa_profile.csv'
 KAPPA_PROFILE = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.5, 2.0, 3.0]
 KAPPAS = [0.0, 0.25, 0.5, 0.75, 1.0]
 VALIDATION_KAPPAS = [0.0, 1.0]
-BASE_KAPPAS = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0]
+
+
+def params_from(profile, kappa, rule):
+    row = profile.loc[np.isclose(profile.kappa, kappa)].iloc[0]
+    return abm.Params(row.alpha_core, row.alpha_kin, kappa=kappa, rule=rule)
 CHECK_SEEDS = [11, 12, 13, 14, 15]
 
 
@@ -111,13 +113,11 @@ def main():
 
     profile = fit_profile(cal, sorted(set(KAPPA_PROFILE) | set(KAPPAS)))
     profile.to_csv(OUT / 'e0_kappa_profile.csv', index=False)
-    base = pd.read_csv(BASE_PROFILE)
-    validation(cal, cells_src, cells_sim, {abm.Params.rule: (base, [0.0, 4.0]), RULE: (profile, VALIDATION_KAPPAS)}
+    validation(cal, cells_src, cells_sim, {RULE: (profile, VALIDATION_KAPPAS)}
                ).to_csv(OUT / 'e0_validation.csv', index=False)
     check = stochastic_check(pop, profile)
     check.to_csv(OUT / 'e0_stochastic_check.csv', index=False)
-    ceil = ceiling(pop, {abm.Params.rule: (base, [k for k in BASE_KAPPAS if np.isclose(base.kappa, k).any()]),
-                         RULE: (profile, list(profile.kappa))})
+    ceil = ceiling(pop, {RULE: (profile, list(profile.kappa))})
     ceil.to_csv(OUT / 'kappa_ceiling_rules.csv', index=False)
 
     fitted = profile.loc[profile.kappa.isin(KAPPAS), ['kappa', 'alpha_core', 'alpha_kin']].to_dict('records')

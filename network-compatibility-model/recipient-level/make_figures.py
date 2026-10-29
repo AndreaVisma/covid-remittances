@@ -574,10 +574,6 @@ def main():
     if '--model' in sys.argv:
         model_figures()
         return write_captions()
-    if '--not-working-as-unknown' in sys.argv:      # S2 only, variant fit
-        b = h3_coefficients(HERE / 'outputs/not-working-unknown')
-        s2_households(b, hl.load_population(True), '_not_working_unknown', ', "Not working" as unknown occupation')
-        return write_captions()
     b = h3_coefficients()
     pop = hl.abm.load_population()
     raw = np.column_stack([pop['h'].resident_worker.eq(0), pop['h'].resident_older.gt(0)]).astype(float)

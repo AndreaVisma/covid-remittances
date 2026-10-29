@@ -1,140 +1,138 @@
 {
   "experiment": "Recipient-level household model: E0 kappa profile, E1 (beta = 0), E2 map, distribution",
-  "not_working_as_unknown": true,
   "households": 3252,
   "receiving": 756,
-  "kappa_mode": "share",
   "receipt": "s(A_c, A_k) + kappa [A_c + A_k > 0] (s(N_c, N_k) - s(A_c, A_k)), s = expit(b0 + b_any [a>0] + b_c log(1+a) + b_k log(1+b) + b_k0 [N_c=0] log(1+b) + eta need); kappa = replacement share in [0, 1]",
   "need": {
     "option": "6a: more senders per receiving household, all migrants; receipt unchanged",
     "theta": "expit(alpha_j + beta N*_t), alpha_j from migrant-level M1 (alpha_core, alpha_kin)",
     "alphas": {
-      "alpha_core": -0.2295962284028715,
-      "alpha_kin": -3.3609738147611465
+      "alpha_core": -0.2325304861669463,
+      "alpha_kin": -3.3672001457013616
     },
     "series": "excess_deaths_trend (salience_inputs_monthly.csv), negatives 0, from 2020-03-01, cumulative (non-decaying), scaled to 1 at 2021-12-01",
     "beta": "logit rise of every migrant sending probability at the scaling date",
     "fit": [
       {
         "kappa": 0.0,
-        "beta": 0.6844007936081004,
-        "rmse_log_quarterly": 0.0247692064135603,
-        "rmse_log_quarterly_holdout_2022": 0.027434150424160832,
-        "index_2020q2": 0.9354738669761596,
-        "index_2021q4": 1.097950861623936,
-        "mean_index_2022": 1.1145816586286517,
-        "theta_core_2019": 0.4428517673146781,
-        "theta_core_2021_12": 0.6117809532713329
+        "beta": 0.6849992079019491,
+        "rmse_log_quarterly": 0.024769526650351127,
+        "rmse_log_quarterly_holdout_2022": 0.027437228975123115,
+        "index_2020q2": 0.9354723989746618,
+        "index_2021q4": 1.0979551574959867,
+        "mean_index_2022": 1.1145887782835238,
+        "theta_core_2019": 0.4421279078278947,
+        "theta_core_2021_12": 0.6112260340861093
       },
       {
         "kappa": 0.1,
-        "beta": 0.680071060247905,
-        "rmse_log_quarterly": 0.02311200439529041,
-        "rmse_log_quarterly_holdout_2022": 0.02696993784845541,
-        "index_2020q2": 0.9394389332275476,
-        "index_2021q4": 1.097421363692082,
-        "mean_index_2022": 1.1136550858491367,
-        "theta_core_2019": 0.4428517673146781,
-        "theta_core_2021_12": 0.6107521235420504
+        "beta": 0.680667860070903,
+        "rmse_log_quarterly": 0.023112269465956566,
+        "rmse_log_quarterly_holdout_2022": 0.026972925274777976,
+        "index_2020q2": 0.9394374609790409,
+        "index_2021q4": 1.0974257814101651,
+        "mean_index_2022": 1.1136623814646769,
+        "theta_core_2019": 0.4421279078278947,
+        "theta_core_2021_12": 0.6101962867516381
       },
       {
         "kappa": 0.2,
-        "beta": 0.6757888266466928,
-        "rmse_log_quarterly": 0.021507167226168772,
-        "rmse_log_quarterly_holdout_2022": 0.02652924019800953,
-        "index_2020q2": 0.9433901266041175,
-        "index_2021q4": 1.0969001880171447,
-        "mean_index_2022": 1.1127395816332974,
-        "theta_core_2019": 0.4428517673146781,
-        "theta_core_2021_12": 0.6097336096692972
+        "beta": 0.6763841647711643,
+        "rmse_log_quarterly": 0.021507364742938143,
+        "rmse_log_quarterly_holdout_2022": 0.026532134880605605,
+        "index_2020q2": 0.9433886519739646,
+        "index_2021q4": 1.096904752622845,
+        "mean_index_2022": 1.1127470796085568,
+        "theta_core_2019": 0.4421279078278947,
+        "theta_core_2021_12": 0.6091769011486308
       },
       {
         "kappa": 0.3,
-        "beta": 0.6715001179472836,
-        "rmse_log_quarterly": 0.01996352370307339,
-        "rmse_log_quarterly_holdout_2022": 0.026108507897689672,
-        "index_2020q2": 0.9473269315785284,
-        "index_2021q4": 1.0963784425534377,
-        "mean_index_2022": 1.1118251523928782,
-        "theta_core_2019": 0.4428517673146781,
-        "theta_core_2021_12": 0.6087125958905987
+        "beta": 0.6720920208489332,
+        "rmse_log_quarterly": 0.01996363902295081,
+        "rmse_log_quarterly_holdout_2022": 0.02611115497918471,
+        "index_2020q2": 0.947325438340011,
+        "index_2021q4": 1.0963828348661613,
+        "mean_index_2022": 1.111832492316526,
+        "theta_core_2019": 0.4421279078278947,
+        "theta_core_2021_12": 0.6081545482804338
       },
       {
         "kappa": 0.4,
-        "beta": 0.6672402326885436,
-        "rmse_log_quarterly": 0.018492357800679222,
-        "rmse_log_quarterly_holdout_2022": 0.025711048319774922,
-        "index_2020q2": 0.9512496300602741,
-        "index_2021q4": 1.0958619381265402,
-        "mean_index_2022": 1.1109183235039146,
-        "theta_core_2019": 0.4428517673146781,
-        "theta_core_2021_12": 0.60769750116673
+        "beta": 0.6678300957828709,
+        "rmse_log_quarterly": 0.01849237372951804,
+        "rmse_log_quarterly_holdout_2022": 0.025713542782472343,
+        "index_2020q2": 0.9512481310552108,
+        "index_2021q4": 1.0958663894407734,
+        "mean_index_2022": 1.1109257635530274,
+        "theta_core_2019": 0.4421279078278947,
+        "theta_core_2021_12": 0.6071384536557807
       },
       {
         "kappa": 0.5,
-        "beta": 0.6630009621792284,
-        "rmse_log_quarterly": 0.0171080709394362,
-        "rmse_log_quarterly_holdout_2022": 0.025336829721722947,
-        "index_2020q2": 0.9551581412906758,
-        "index_2021q4": 1.0953493220673756,
-        "mean_index_2022": 1.1100175702401969,
-        "theta_core_2019": 0.4428517673146781,
-        "theta_core_2021_12": 0.6066863936698577
+        "beta": 0.6635887760413038,
+        "rmse_log_quarterly": 0.01710796749417561,
+        "rmse_log_quarterly_holdout_2022": 0.025339160712860877,
+        "index_2020q2": 0.9551566371640517,
+        "index_2021q4": 1.095353833287359,
+        "mean_index_2022": 1.1100251097502554,
+        "theta_core_2019": 0.4421279078278947,
+        "theta_core_2021_12": 0.6061263499465693
       },
       {
         "kappa": 0.6,
-        "beta": 0.65878239332148,
-        "rmse_log_quarterly": 0.015828894770880637,
-        "rmse_log_quarterly_holdout_2022": 0.024986417000525576,
-        "index_2020q2": 0.9590524731672468,
-        "index_2021q4": 1.0948406077324357,
-        "mean_index_2022": 1.1091229012983133,
-        "theta_core_2019": 0.4428517673146781,
-        "theta_core_2021_12": 0.6056793153935558
+        "beta": 0.659368153494384,
+        "rmse_log_quarterly": 0.015828649286965844,
+        "rmse_log_quarterly_holdout_2022": 0.024988573923810622,
+        "index_2020q2": 0.9590509645925587,
+        "index_2021q4": 1.0948451804795383,
+        "mean_index_2022": 1.109130540445327,
+        "theta_core_2019": 0.4421279078278947,
+        "theta_core_2021_12": 0.6051182803091862
       },
       {
         "kappa": 0.7,
-        "beta": 0.6545844495531912,
-        "rmse_log_quarterly": 0.014677484097841734,
-        "rmse_log_quarterly_holdout_2022": 0.024660330643093135,
-        "index_2020q2": 0.9629326473870954,
-        "index_2021q4": 1.0943357820791961,
-        "mean_index_2022": 1.1082342945232584,
-        "theta_core_2019": 0.4428517673146781,
-        "theta_core_2021_12": 0.6046762690673457
+        "beta": 0.6551681606715957,
+        "rmse_log_quarterly": 0.014677071997567738,
+        "rmse_log_quarterly_holdout_2022": 0.024662303375594247,
+        "index_2020q2": 0.9629311351048578,
+        "index_2021q4": 1.0943404193835895,
+        "mean_index_2022": 1.1082420350980928,
+        "theta_core_2019": 0.4421279078278947,
+        "theta_core_2021_12": 0.6041142496065313
       },
       {
         "kappa": 0.8,
-        "beta": 0.6503732617942399,
-        "rmse_log_quarterly": 0.013681022511501459,
-        "rmse_log_quarterly_holdout_2022": 0.024357401542479368,
-        "index_2020q2": 0.9667984007187131,
-        "index_2021q4": 1.0938293017279463,
-        "mean_index_2022": 1.1073455224446105,
-        "theta_core_2019": 0.4428517673146781,
-        "theta_core_2021_12": 0.6036691721712382
+        "beta": 0.6509549411868947,
+        "rmse_log_quarterly": 0.013680419221116643,
+        "rmse_log_quarterly_holdout_2022": 0.0243591800288326,
+        "index_2020q2": 0.9667968859034995,
+        "index_2021q4": 1.093834012049958,
+        "mean_index_2022": 1.107353372217316,
+        "theta_core_2019": 0.4421279078278947,
+        "theta_core_2021_12": 0.603106174387684
       },
       {
         "kappa": 0.9,
-        "beta": 0.6462142135582962,
-        "rmse_log_quarterly": 0.012870216900445824,
-        "rmse_log_quarterly_holdout_2022": 0.024081434009082137,
-        "index_2020q2": 0.9706503619856833,
-        "index_2021q4": 1.0933318738989866,
-        "mean_index_2022": 1.1064685888535553,
-        "theta_core_2019": 0.4428517673146781,
-        "theta_core_2021_12": 0.6026736808538299
+        "beta": 0.6467938910957384,
+        "rmse_log_quarterly": 0.012869401336267768,
+        "rmse_log_quarterly_holdout_2022": 0.02408300938051997,
+        "index_2020q2": 0.9706488452663928,
+        "index_2021q4": 1.09333666101558,
+        "mean_index_2022": 1.1064765506446872,
+        "theta_core_2019": 0.4421279078278947,
+        "theta_core_2021_12": 0.6021097214319655
       },
       {
         "kappa": 1.0,
-        "beta": 0.6420717809522734,
-        "rmse_log_quarterly": 0.012276426344848424,
-        "rmse_log_quarterly_holdout_2022": 0.023830962151820116,
-        "index_2020q2": 0.9744882803715064,
-        "index_2021q4": 1.0928376814228717,
-        "mean_index_2022": 1.1055969559931276,
-        "theta_core_2019": 0.4428517673146781,
-        "theta_core_2021_12": 0.6016813210991903
+        "beta": 0.6426494910453744,
+        "rmse_log_quarterly": 0.012275385910314759,
+        "rmse_log_quarterly_holdout_2022": 0.023832325050328416,
+        "index_2020q2": 0.9744867627558876,
+        "index_2021q4": 1.0928425533644694,
+        "mean_index_2022": 1.1056050372747048,
+        "theta_core_2019": 0.4421279078278947,
+        "theta_core_2021_12": 0.6011164136424687
       }
     ]
   },
@@ -219,7 +217,7 @@
   "best_cell": {
     "kappa": 1.0,
     "beta": 0.65,
-    "rmse": 0.012301158168165034
+    "rmse": 0.012296618187164876
   },
   "distribution": {
     "kappas": [

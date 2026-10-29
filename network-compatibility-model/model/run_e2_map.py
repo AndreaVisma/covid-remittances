@@ -1,11 +1,11 @@
 """E2 (first pass): behavioural compatibility map over beta x kappa (model-specification.md §6-§7).
 
-Run: python network-compatibility-model/model/run_e2_map.py   (~15 min)
-     --rule coordination: coordination rule, alphas from outputs/e1-coordination/e0_kappa_profile.csv,
-     kappa = replacement share (0..1 by 0.1, plus 1.5 and 2 for over-replacement); outputs in
-     outputs/e2-map-coordination/
+Run: python network-compatibility-model/model/run_e2_map.py   (~15 min, after run_e1_coordination.py)
+Migrant-level comparison model: coordination rule, alphas from outputs/e1-coordination/e0_kappa_profile.csv,
+kappa = replacement share (0..1 by 0.1, plus 1.5 and 2 for over-replacement). The lost-sending map was
+removed in the 29 Oct 2026 cleanup (git history up to a83b60c).
 
-pi = 0 (no benefits, user decision), rho = 0, base stepping-in rule, S_t = reported COVID
+pi = 0 (no benefits, user decision), rho = 0, S_t = reported COVID
 deaths / 10,000 (abm.salience_series). For each kappa on the E0 profile (its 2019-refitted
 alphas) and each beta on the grid: exact expected transfers 2020-01..2022-12 under observed CPS
 employment, relative to the no-COVID run, against Banxico transactions relative to their
@@ -15,7 +15,7 @@ Compatibility (count criterion only): quarterly log RMSE over 2020Q2..2021Q4 <= 
 (user decision 20 Oct 2026). The ENIGH household criterion is not implemented yet, so cells are
 'count-compatible', not compatible in the full sense. 2022 is held out (RMSE reported).
 
-Outputs in outputs/e2-map/: map.csv (one row per cell), quarterly_paths.csv (quarterly index
+Outputs in outputs/e2-map-coordination/: map.csv (one row per cell), quarterly_paths.csv (quarterly index
 per cell), run_settings.json.
 """
 from pathlib import Path
@@ -28,11 +28,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import abm
 import run_e1_job_loss as e1
 
-OUT = abm.HERE / 'outputs/e2-map'
-PROFILE = abm.HERE / 'outputs/e0-baseline/kappa_profile.csv'
 TAU_C = 0.04
 BETAS = np.round(np.arange(0.0, 0.401, 0.02), 2)
-KAPPAS = [0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0]
 RULE_SETUP = {'coordination': (abm.HERE / 'outputs/e1-coordination/e0_kappa_profile.csv',
                                [round(k, 1) for k in np.arange(0, 1.01, 0.1)] + [1.5, 2.0])}
 MONTHS = pd.date_range('2020-01-01', '2022-12-01', freq='MS')
@@ -48,9 +45,9 @@ def log_rmse(model, data, quarters):
     return float(np.sqrt(np.mean(np.log(model[quarters] / data[quarters]) ** 2)))
 
 
-def main(rule=abm.Params.rule):
-    profile_path, kappas = RULE_SETUP.get(rule, (PROFILE, KAPPAS))
-    OUT = abm.HERE / ('outputs/e2-map' + ('' if rule == abm.Params.rule else f'-{rule}'))
+def main(rule='coordination'):
+    profile_path, kappas = RULE_SETUP[rule]
+    OUT = abm.HERE / f'outputs/e2-map-{rule}'
     OUT.mkdir(parents=True, exist_ok=True)
     pop = abm.load_population()
     profile = pd.read_csv(profile_path)
@@ -101,7 +98,4 @@ def main(rule=abm.Params.rule):
 
 
 if __name__ == '__main__':
-    import argparse
-    ap = argparse.ArgumentParser()
-    ap.add_argument('--rule', default=abm.Params.rule, choices=abm.RULES)
-    main(ap.parse_args().rule)
+    main()

@@ -215,3 +215,115 @@ Tables follow. Amounts are quarterly in August 2024 MXN, and SEs are in parenthe
    - The ENIGH remittance total is only about 8% of Banxico's (a measurement gap), and the 2024 receipt fall contradicts record Banxico flows, which argues for using ENIGH for relative patterns only.
 
    **Honest summary:** ENIGH supports the claim that the 2022 rise came through larger amounts per receiving household, not more receiving households. It does not show that high-need households drove it. The best remaining handle is the rural/urban gap on the extensive margin from 2020 to 2022, and that is confounded by a trend that continues into 2024.
+
+## Pre-period (2016) and monthly profile (ingresos)
+
+`enigh_pre_and_monthly.py` adds ENIGH 2016 to the national series and builds a monthly receipt profile from the person-level `ingresos` tables of 2016, 2018 and 2020. It leaves the outputs above unchanged. Run it from the repository root (about 70 s):
+
+```
+C:/miniforge3/python.exe -I network-compatibility-model/identification/enigh/enigh_pre_and_monthly.py \
+  --c16 data/external/enigh/unzipped/enigh2016_ns_concentradohogar_csv/concentradohogar.csv \
+  --ing16 data/external/enigh/unzipped/enigh2016_ns_ingresos_csv/ingresos.csv \
+  --ing18 data/external/enigh/unzipped/enigh2018_ns_ingresos_csv/ingresos.csv \
+  --ing20 data/external/enigh/unzipped/enigh2020_ns_ingresos_csv/ingresos.csv \
+  --fx data/external/fx/fred_DEXMXUS_full.csv
+```
+
+The INEGI zips (`data/external/enigh/enigh20{16,18,20}_ns_*_csv.zip`) are extracted, each into its own folder under `data/external/enigh/unzipped/`. `data/DEXMXUS.csv` starts on 26 Sep 2016, so the script uses a full FRED download (`data/external/fx/fred_DEXMXUS_full.csv`, from 2015, identical on the overlap). Because the USD figures here average monthly means, they differ from `national_usd.csv` in the second decimal place (2018: 437.17 vs 437.08). Banxico is `oct-26/data-prep/outputs/mexico-rem-monthly-total.parquet`, with counts and USD summed over Feb-Oct, the ENIGH reference window.
+
+Outputs:
+- `pre_national.csv`: 2016-2024. It has n, recipients, receipt, the real and USD amount per recipient, the mean per household, receiving households and the ENIGH USD total, each with an SE.
+- `pre_margin_decomposition.csv`: the log changes by interval, the Banxico counts, USD and average amounts, and two implied transfers-per-receiver series.
+- `pre_excess_over_trend.csv`: the change since 2018 minus the 2016-18 trend, with SEs that account for 2018 appearing in both terms.
+- `pre_banxico_feb_oct.csv`: Banxico Feb-Oct totals, ENIGH coverage and Banxico transactions per ENIGH receiving household.
+- `pre_model_tpr.csv`: the household model's transfers per receiving household, COVID run / no-COVID run.
+- `monthly_profile.csv`: receipt, amount and per-household value by calendar month.
+- `monthly_ratio.csv`: 2020/2018 and 2018/2016 ratios for the same calendar month.
+- `monthly_month_to_month.csv`: month-to-month changes within each year (the within-year covariance is kept) and their differences across years.
+- `monthly_by_lag.csv`: receipt by recall lag.
+- `monthly_checks.csv` and `monthly_interview_months.csv`.
+- `monthly_model_receipt_2020.csv`: the model's monthly receipt index for 2020.
+- Figures: `F4_pre_period.png` and `F5_monthly_profile.png`.
+
+**Data checks.**
+- **The remittance clave.** The zips contain only the CSVs, with no catalog. P041 was therefore checked empirically: the household sum of `ing_tri` for P041 equals concentradohogar `remesas` for 100% of households in 2016, 2018 and 2020. No other clave comes close.
+- **Month mapping.** `mes_1..mes_6` give the calendar month of `ing_1..ing_6`, so no mapping is needed. `ing_1` is the month before the interview, and the interview months are Aug-Nov in roughly 10/31/32/27% shares, nearly identical in all three years.
+- **Units.** `ing_k` are nominal amounts. `ing_tri` = sum of ing_k × INPC(Aug)/INPC(month) / 2 holds to within 4%. Monthly amounts are deflated by the monthly INPC to Aug 2024 MXN and converted at the monthly mean FX rate.
+- **Interview dates.** 44-80 households per year have no dated income row, under 0.1% of the weight, and none of them receives remittances. They are dropped from the monthly tables.
+- **Consistency.** "Received in at least one of the six months" reproduces `remesas > 0` exactly: 4.75%, 4.73% and 4.38%. This is the model-equivalent measure the handoff asks for. The model's own at-least-once statistic needs household paths from a model run, which were not computed here.
+
+### A. 2016 and the margins in normal times
+
+| Year | Receipt % | Amount / recipient, Aug-2024 MXN per quarter | USD per quarter | Mean per hh (MXN) | Receiving hh (thousand) | ENIGH as % of Banxico USD, Feb-Oct |
+|---|---|---|---|---|---|---|
+| 2016 | 4.75 (0.13) | 10,978 (415) | 394 (15) | 521 (24) | 1,565 (41) | 8.9 |
+| 2018 | 4.73 (0.12) | 11,276 (339) | 437 (13) | 533 (21) | 1,627 (41) | 8.2 |
+| 2020 | 4.38 (0.10) | 11,988 (338) | 430 (12) | 525 (19) | 1,565 (36) | 6.4 |
+| 2022 | 4.57 (0.11) | 15,881 (424) | 715 (19) | 726 (26) | 1,716 (40) | 8.2 |
+| 2024 | 3.95 (0.10) | 15,149 (375) | 840 (21) | 598 (21) | 1,533 (39) | 7.8 |
+
+| Interval | dlog per hh | = dlog receipt | + dlog amount (real) | dlog amount USD | dlog receiving hh | Banxico dlog counts | Banxico dlog USD/tx | Transfers per receiving hh: counts / ENIGH hh | ENIGH USD per recipient / Banxico USD per tx |
+|---|---|---|---|---|---|---|---|---|---|
+| 2016-18 | +0.023 (0.061) | −0.004 (0.037) | +0.027 (0.048) | +0.104 (0.048) | +0.039 (0.037) | +0.133 | +0.093 | **+0.095 (0.037)** | +0.011 (0.048) |
+| 2018-20 | −0.016 (0.054) | −0.077 (0.034) | +0.061 (0.041) | −0.015 (0.041) | −0.039 (0.034) | +0.131 | +0.066 | +0.170 (0.034) | −0.081 (0.041) |
+| 2018-22 | +0.308 (0.054) | −0.034 (0.034) | +0.342 (0.040) | +0.493 (0.040) | +0.054 (0.034) | +0.336 | +0.202 | **+0.282 (0.034)** | +0.290 (0.040) |
+| 2020-22 | +0.324 (0.051) | +0.043 (0.033) | +0.281 (0.039) | +0.508 (0.039) | +0.092 (0.033) | +0.205 | +0.136 | +0.113 (0.033) | +0.372 (0.039) |
+| 2022-24 | −0.194 (0.051) | −0.146 (0.034) | −0.047 (0.036) | +0.161 (0.036) | −0.113 (0.034) | +0.098 | +0.008 | +0.211 (0.034) | +0.153 (0.036) |
+
+The implied transfers per receiving household are computed two ways, and each rests on an assumption:
+1. **Banxico counts / ENIGH receiving households.** This assumes ENIGH measures the *growth* of receiving households correctly. SEs come from ENIGH only, with Banxico treated as fixed.
+2. **ENIGH USD per recipient / Banxico USD per transaction.** This assumes ENIGH receipts have Banxico's average transfer size, or a stable ratio to it. ENIGH measures amounts, not counts.
+
+The two measures differ by the drift in ENIGH's coverage of Banxico's USD total, which falls from 8.9% to 8.2% to 6.4% and then recovers to 8.2%.
+
+**Excess over the 2016-18 trend**, extrapolated linearly in logs:
+
+| Measure | 2018-20 | 2018-22 | 2018-24 |
+|---|---|---|---|
+| Transfers per receiving hh, counts-based | +0.075 (0.062) | **+0.093 (0.095)** | +0.210 (0.131) |
+| Transfers per receiving hh, amounts-based | −0.092 (0.077) | **+0.269 (0.121)** | +0.411 (0.167) |
+| Receipt rate | −0.074 (0.062) | −0.027 (0.096) | −0.170 (0.131) |
+| Amount per recipient (real) | +0.035 (0.077) | +0.289 (0.121) | +0.215 (0.167) |
+
+Model comparison, from `quarterly_paths.csv`: index_model / index_receipt at the fitted β, using the nearest grid value. Option 6a gives transfers per receiving household relative to the no-COVID run of **+0.100 log in 2022Q1-Q3** for κ ≥ 0.3 (β = 0.65), or +0.108 for κ ≤ 0.2 (β = 0.70). The model gives +0.010 in 2020Q1-Q3. Its receipt index is about 1.00 in 2022.
+
+### B. Monthly profile (P041)
+
+Monthly receipt rates (%) and the 2020/2018 ratio for the same calendar month (SEs in parentheses):
+
+| Month | 2016 | 2018 | 2020 | 2020/2018 receipt | 2020/2018 amount per recipient (real) | Model receipt, COVID/no-COVID 2020, κ = 1 (κ = 0.8) |
+|---|---|---|---|---|---|---|
+| Feb | 2.95 | 2.94 | 2.45 | 0.84 (0.10) | 1.12 | 0.999 (0.998) |
+| Mar | 2.92 | 2.76 | 2.48 | 0.90 (0.06) | 1.07 | 0.997 (0.996) |
+| Apr | 2.82 | 2.92 | 2.66 | 0.91 (0.04) | 1.08 | 0.962 (0.953) |
+| May | 3.17 | 3.27 | 2.93 | 0.90 (0.04) | 1.09 | 0.967 (0.959) |
+| Jun | 2.90 | 3.08 | 2.80 | 0.91 (0.04) | 1.07 | 0.977 (0.971) |
+| Jul | 3.07 | 3.23 | 2.89 | 0.89 (0.04) | 1.09 | 0.983 (0.979) |
+| Aug | 3.27 | 3.43 | 3.12 | 0.91 (0.04) | 1.06 | 0.989 (0.986) |
+| Sep | 3.25 | 3.53 | 3.18 | 0.90 (0.05) | 1.14 | 0.989 (0.986) |
+| Oct | 3.36 | 3.74 | 3.43 | 0.92 (0.07) | 1.19 | 0.993 (0.991) |
+
+SEs of the receipt levels are about 0.1 pp (0.2 for Feb and Oct). Monthly amounts per recipient are about 5,500-6,500 Aug-2024 MXN, or 200-245 USD. Among recipient households, the mean is 3.9-4.1 months with receipt out of 6, and 46-50% receive in all six months.
+
+Change in log receipt from March to April: 2020 **+0.069 (0.032)**; 2018 +0.053 (0.036); 2016 −0.036 (0.034). The difference, 2020 minus 2018, is **+0.016 (0.048)**. For March to May it is −0.002 (0.053).
+
+### Reading
+
+1. **Before COVID, growth in transfers was also intensive.** From 2016 to 2018 the receipt rate is flat (−0.004 log), and the real amount per recipient is nearly flat (+0.027). Banxico Feb-Oct counts rose 0.133 log while ENIGH receiving households rose only 0.039, so 71% of count growth in normal times was already transfers per receiving household (+0.095, SE 0.037, about 4.7% a year).
+2. **The 2021-22 excess is smaller than the raw rise and of the order the model implies.** The raw 2018→22 rise in transfers per receiving household is 0.28, of which 0.19 is the 2016-18 trend. The excess is +0.09 (SE 0.10) by the counts measure, against the model's +0.10 at 2022Q1-Q3. By the amounts measure it is +0.27 (0.12).
+   - The counts-based excess is mostly Banxico's own excess count growth over trend, +0.07, which the model is fitted to. Its independent ENIGH content is that receiving households did not rise relative to trend (−0.02, SE 0.10), which supports option 6a's "receipt unchanged".
+   - The amounts-based excess is independent of the fit but depends on ENIGH's coverage of amounts. It is larger than the model's value and imprecise.
+   - **Taken together:** a 2021-22 rise in transfers per receiving household of roughly 0.1-0.25 log above the pre-trend, consistent with the model's β ≈ 0.65 but not a tight anchor (95% CIs span about −0.09 to +0.51).
+3. **There is no April 2020 dip at household level.**
+   - Receipt in 2020 is about 10% below 2018 in *every* calendar month, February and March included, so the level gap predates COVID, or is a feature of the 2020 survey; ENIGH's 2020 USD coverage is also low at 6.4%.
+   - From March to April 2020, receipt rises by 6.9%, about as in 2018 (difference +1.6%, SE 4.8%).
+   - The model predicts −3.5% (κ = 1) to −4.4% (κ = 0.8) from March to April. Both lie inside the ENIGH 95% CI (−8 to +11%). κ = 0 (−7.9%) is at its edge.
+   - This fits the Banxico reading in the handoff: the April count dip of −9% against trend is a timing payback after the March rush. Monthly household receipt does not show it, and amounts per recipient in Mar-May 2020 are 7-9% above 2018 in real pesos and 3-12% below in USD.
+4. **May peaks every year** (Mother's Day). This is a reassuring sign that the monthly breakdown carries real timing information.
+
+### Caveats
+
+- **Recall.** Receipt is about 20% higher in the month just before the interview than at lags 2-6 (2018: 3.9% vs 2.9-3.2%), and it falls slowly with lag. Calendar months near Oct therefore draw more short-lag reports, so the upward slope from Feb to Oct within each year is partly a recall artefact. Comparisons of the same month across years are protected, because the interview-month mix is the same in every year. Feb comes only from August interviews (lag 6) and Oct only from November interviews (lag 1).
+- **What P041 measures.** P041 is *any* income from other countries, which is mostly remittances but not only. It is recorded by recipient member, not by sender, and as amounts, so it gives no transfer counts.
+- **Rounding.** Respondents often report one typical monthly amount for every month (rounded and repeated values), which damps month-to-month variation in amounts.
+- **Survey design.** Survey rounds are treated as independent samples. The 2016 and 2018 weights are INEGI's November 2021 re-weighted `factor`. 2016 belongs to the same Nueva Serie (2016+) as the later rounds, so it is comparable.

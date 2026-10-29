@@ -1,5 +1,7 @@
 # Recipient-level (household) receipt logit
 
+> **Cleanup, 29 Oct 2026.** One coding is left: "Not working" migrants have unknown occupation (all-occupation CPS rate), and every migrant is eligible. `outputs/` now holds the comparison under that coding, so it matches the former `outputs/not-working-unknown/`. The `--not-working-as-unknown`, `--original-coding` and `--kappa-logit` options and their outputs were removed (git history up to `a83b60c`). The sections below that use them are a record of the 27–28 Oct results, and their numbers for the original coding no longer match `outputs/`. Rebuild everything with `python network-compatibility-model/run_all.py`.
+
 Exploratory comparison, 27 Oct 2026. The question: should the model be specified at the recipient level, with household receipt as a logit of the household's able migrants and need, instead of independent migrant-level senders?
 
 Run: `python network-compatibility-model/recipient-level/compare_household_logit.py` (~30 s). Details are in the script docstring. Outputs in `outputs/` (aggregates only): `comparison.csv`, `fits.csv`, `panel_rmse.csv`, `validation.csv`, `shock_response.csv`, `run_settings.json`.

@@ -21,23 +21,19 @@ Specifications:
                   the likelihood)
   household logit H0: linear able core and kin counts           H1: log(1 + count) terms
                   H2: H1 + eta_worker, eta_older                H3: H2 + any able core migrant
-References (not refitted): M1-e0 (E0 alphas, kappa = 0) and M2-chi2 (outputs/e0-need, lost_sending,
-kappa = 0), calibrated on cell means rather than by likelihood.
 Need features are abm.need_features (centred, incomplete rosters at the mean) in both families.
 
 Comparison: log-likelihood, AIC, BIC; 5-fold cross-validated log loss with folds by community (also on
 households with at least one eligible migrant);
-chi-square on the 12 need cells of run_e0_need; weighted RMSE (pp) on the E0 validation panels;
+chi-square on the 12 need cells (network type x resident worker x older resident); weighted RMSE (pp) on the E0 validation panels;
 and the implied 2020-21 job-loss response (household receipt index, COVID / same month of 2019,
 kappa = 0, no need response), since the household logit responds differently to losing a migrant.
 Outputs (aggregates only): outputs/fits.csv, comparison.csv, validation.csv, panel_rmse.csv,
 shock_response.csv, run_settings.json.
 
-Variant --not-working-as-unknown (outputs/not-working-unknown/): migrants whose MMP job group is
-'Not working' (1,417 of 7,999; abm treats them as never able to send) get the all-occupation CPS rate,
-like migrants with unknown occupation. Motivation: households whose core migrants are all 'Not
-working' still receive in 43% of cases, so the code likely describes the last trip, not current
-ability to send. The E0 reference calibrations are skipped (fitted under the original coding).
+'Not working' migrants (MMP job group of the last US trip) get the all-occupation CPS rate, like
+migrants with unknown occupation (abm.load_population, since 28 Oct 2026). The former
+--not-working-as-unknown variant and the E0 reference rows were removed in the 29 Oct cleanup.
 """
 from pathlib import Path
 import json
@@ -51,7 +47,6 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / 'model'))
 import abm
 import run_e0_baseline as e0
-import run_e0_need as e0n
 
 OUT = HERE / 'outputs'
 FOLDS = 5
@@ -206,7 +201,7 @@ def numerical_se(f, x, step=1e-3):
 # %% Diagnostics
 def chi2_need_cells(cells_src, p):
     known = cells_src.workers.ne('Unknown').to_numpy()
-    g = cells_src[known].assign(p=p[known]).groupby(e0n.FIT_BY)
+    g = cells_src[known].assign(p=p[known]).groupby(FIT_BY)
     m_net = cells_src.groupby('network_type').received.mean()
     t = g.agg(mmp=('received', 'mean'), model=('p', 'mean'), n=('received', 'count')).reset_index()
     m = m_net.reindex(t.network_type).to_numpy()
@@ -215,7 +210,7 @@ def chi2_need_cells(cells_src, p):
 
 def validation(cells_src, cells_sim, p, model):
     out = []
-    for panel, by in e0n.PANELS:
+    for panel, by in PANELS:
         t = e0.compare(cells_src, cells_sim, p, by)
         if 'network_type' not in by:
             t = t.assign(network_type='All')
@@ -239,27 +234,37 @@ def receipt_index(P_covid, P_cf, dates):
 
 
 # %% Main
-def load_population(not_working_as_unknown=False):
-    pop = abm.load_population()
-    if not_working_as_unknown:
-        m = pop['m']
-        nw = m.job_group.eq('Not working').to_numpy()
-        adult = m.age_years.ge(18).fillna(False).to_numpy()
-        pop['job_index'] = np.where(nw, pop['rate_columns'].index(abm.ALL_OCC), pop['job_index'])
-        pop['eligible'] = pop['eligible'] | (nw & adult)
-        pop['has_eligible_core'] = np.bincount(pop['hid'], weights=pop['core'] & pop['eligible'],
-                                               minlength=pop['H']) > 0
-    return pop
+def load_population():
+    """abm.load_population: since 28 Oct 2026 'Not working' is unknown occupation (all-occupation CPS rate)
+    and every migrant is eligible, with no age rule (MMP ages are at interview, 2010-19). The adults-only
+    recode branch that used to live here was a no-op except for 7 'Not working' migrants under 18 or of
+    unknown age; removed 29 Oct 2026."""
+    return abm.load_population()
 
 
-def main(not_working_as_unknown=False):
-    out = OUT / 'not-working-unknown' if not_working_as_unknown else OUT
+# need cells and validation panels (formerly in model/run_e0_need.py, removed 29 Oct 2026)
+FIT_BY = ['network_type', 'workers', 'older']
+PANELS = [('network_type', ['network_type']), ('workers', ['network_type', 'workers']),
+          ('older', ['network_type', 'older']), ('children', ['network_type', 'children']),
+          ('size', ['network_type', 'size_bin']), ('links', ['links']), ('survey_period', ['survey_period'])]
+
+
+def need_cells(h):
+    out = e0.household_cells(h)
+    unknown = ~(h.resident.gt(0) & h[['resident_worker', 'resident_older']].notna().all(axis=1))
+    out['workers'] = np.where(unknown, 'Unknown', out['workers'])
+    out['older'] = np.where(unknown, 'Unknown', out['older'])
+    return out
+
+
+def main():
+    out = OUT
     out.mkdir(parents=True, exist_ok=True)
-    pop = load_population(not_working_as_unknown)
+    pop = load_population()
     h = pop['h']
     ok = e0.target_mask(h)
     y = h.remus.eq(1).to_numpy(float)
-    cells_sim = e0n.cells(h).loc[ok]
+    cells_sim = need_cells(h).loc[ok]
     cells_src = cells_sim.assign(received=y[ok])
     need = pop['need_x']
     inputs = abm.make_inputs(abm.baseline_2019_dates(), pop['rate_columns'])
@@ -269,15 +274,10 @@ def main(not_working_as_unknown=False):
 
     models = {name: HouseholdLogit(pmfs, need, terms) for name, terms in HOUSEHOLD_SPECS.items()}
     models.update({name: MigrantModel(pop, inputs, names) for name, names in MIGRANT_SPECS.items()})
-    e0_row = pd.read_csv(abm.HERE / 'outputs/e0-baseline/kappa_profile.csv').query('kappa == 0').iloc[0]
-    need_row = pd.read_csv(abm.HERE / 'outputs/e0-need/fits.csv').query(
-        "rule == 'lost_sending' and kappa == 0 and model == 'need'").iloc[0]
-    starts = {'M1': np.array([e0_row.alpha_core, e0_row.alpha_kin]),
-              'M2': need_row[['alpha_core', 'alpha_kin', 'eta_worker', 'eta_older']].to_numpy(float)}
+    starts = {'M1': np.array([-0.2, -3.3]), 'M2': np.array([-0.2, -3.3, 0.0, 0.0])}      # starting values only
     starts.update(M1f=np.r_[starts['M1'], -3.0], M2f=np.r_[starts['M2'], -3.0])
     has_eligible = np.bincount(pop['hid'], weights=pop['eligible'], minlength=pop['H']) > 0
     sub = ok & has_eligible
-    references = {'M1-e0': ('M1', starts['M1']), 'M2-chi2': ('M2', starts['M2'])}
     for name, x in [(n, starts[n]) for n in ('M1', 'M2')]:
         gap = np.abs(models[name].prob(x) - abm.expected_receipt(pop, inputs, MigrantModel.params(x)).mean(0)).max()
         assert gap < 1e-10, f'closed form differs from abm.expected_receipt for {name}: {gap}'
@@ -315,10 +315,6 @@ def main(not_working_as_unknown=False):
                  'maximum likelihood')
         print(f'{label}: ' + ', '.join(f'{n} {b:.3f} ({s:.3f})' for n, b, s in zip(model.names, x, se)), flush=True)
 
-    for label, (base, x) in ({} if not_working_as_unknown else references).items():
-        evaluate(label, models[base], x, (np.nan, np.nan), len(x), 'cell means (E0 / e0-need)')
-        estimates[label] = x
-
     # Implied 2020-21 job-loss response (kappa = 0, no need response).
     covid = abm.make_inputs(SHOCK_DATES, pop['rate_columns'])
     cf = abm.make_inputs(pd.DatetimeIndex([d.replace(year=2019) for d in SHOCK_DATES]), pop['rate_columns'])
@@ -347,7 +343,7 @@ def main(not_working_as_unknown=False):
     shock.to_csv(out / 'shock_response.csv', index=False)
     settings = dict(
         experiment='Recipient-level receipt logit vs migrant-level model, 2019 MMP',
-        not_working_as_unknown=not_working_as_unknown, eligible_migrants=int(pop['eligible'].sum()),
+        eligible_migrants=int(pop['eligible'].sum()),
         households=n_obs, receiving=int(y[ok].sum()), migrants=int(pop['M']),
         households_with_eligible_migrant=int(sub.sum()),
         eligible_note='loglik_eligible / cv_logloss_eligible: households with at least one migrant who can ever send '
@@ -368,4 +364,4 @@ def main(not_working_as_unknown=False):
 
 
 if __name__ == '__main__':
-    main(not_working_as_unknown='--not-working-as-unknown' in sys.argv)
+    main()

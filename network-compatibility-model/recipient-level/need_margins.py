@@ -28,7 +28,7 @@ Every stock N*_t is scaled to peak 1 over 2020-03..2021-12, so beta is the logit
 Count mappings. Base: transfers per receiving household constant except for need-activated senders,
     index_t = sum_h P_c,h,t m_h,t / sum_h P_f,h,t,  m_h,t = r_h,t(e_c, theta(N*)) / r_h,t(e_c, theta(0)),
     r = E[able senders | any sends] = sum_j q_j / (1 - prod_j (1 - q_j)), q_j = e_j,t theta_j,t
-    (migrant-level M1 thetas, as run_household_model.transfers_per_receiver); m = 1 for H, 7, and N = 0.
+    (migrant-level M1 thetas, as run_household_model.Senders); m = 1 for H, 7, and N = 0.
 Lower bound: index_t = sum_h P_c r(e_c, theta(N*)) / sum_h P_f r(e_f, theta(0)) (as map.csv *_lower_bound).
 One free parameter per option (beta), fitted by minimising the quarterly log RMSE 2020Q2..2021Q4 at
 fixed kappa (0, 0.7, 0.8); lambda on a grid (option 8).
@@ -123,7 +123,7 @@ class Senders:
     """E[able senders | any sends] per household and month, migrant-level M1 thetas."""
 
     def __init__(self, pop, inputs):
-        fits = pd.read_csv(HERE / 'outputs/not-working-unknown/fits.csv').query("model == 'M1'").set_index('parameter')
+        fits = pd.read_csv(HERE / 'outputs/fits.csv').query("model == 'M1'").set_index('parameter')
         self.alpha = np.where(pop['core'], fits.estimate['alpha_core'], fits.estimate['alpha_kin'])
         e = abm.able_probability(pop, inputs, abm.Params(0.0, 0.0))
         self.e = e + (1 - e) * hm.stimulus_pi(inputs.dates)[:, None] * pop['eligible'][None, :]
@@ -144,7 +144,7 @@ class Senders:
 
 class Experiment:
     def __init__(self):
-        pop = self.pop = hl.load_population(not_working_as_unknown=True)
+        pop = self.pop = hl.load_population()
         h = pop['h']
         ok = e0.target_mask(h)
         y = h.remus.eq(1).to_numpy(float)
@@ -264,7 +264,7 @@ def simulate_receipt(pop, inputs, x, kappa, seed, shift):
         able = (employed | checked) & pop['eligible']
         ac = np.bincount(hid, weights=able & core, minlength=H)
         ak = np.bincount(hid, weights=able & ~core, minlength=H)
-        p = hm.household_receipt(x, kappa, 'share', ac, ak, n_core, n_kin, feats, shift=shift[t])
+        p = hm.household_receipt(x, kappa, ac, ak, n_core, n_kin, feats, shift=shift[t])
         out[t] = streams[2].random(H) < p
     return out
 

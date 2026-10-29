@@ -10,7 +10,7 @@ Fitted household logit (H3, MMP 2019, maximum likelihood). Illustrative composit
 
 ## S2_receipt_curve_households: All sample households on the fitted receipt curve
 
-Fitted household logit (H3). Each bubble is a group of households with the same expected 2019 score (able migrant counts averaged over 2019 CPS employment), drawn on the curve and sized by the number of households; colour is network type. Diamonds: observed MMP receipt in score bands of 0.5 with at least 30 households, 95% Wilson intervals. Kin-only households cluster at the flat bottom, households with core migrants in the upper half; almost none sit on the steep middle. The curve at the expected score differs from the mean fitted probability by at most 0.8% per band. 3,252 households.
+Fitted household logit (H3). Each bubble is a group of households with the same expected 2019 score (able migrant counts averaged over 2019 CPS employment), drawn on the curve and sized by the number of households; colour is network type. Diamonds: observed MMP receipt in score bands of 0.5 with at least 30 households, 95% Wilson intervals. Kin-only households cluster at the flat bottom, households with core migrants in the upper half; almost none sit on the steep middle. The curve at the expected score differs from the mean fitted probability by at most 1.0% per band. 3,252 households.
 
 ## S3_kappa_2019: In 2019 the household data cannot tell the replacement share κ apart
 

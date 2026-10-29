@@ -1,9 +1,7 @@
-"""E1a: US job loss on the real networks only (model-specification.md §6).
+"""E1a: US job loss on the real networks only (model-specification.md §6). Library.
 
-Stepping-in rule: abm.Params.rule ('lost_sending', the base model); the former rule
-is run by run_e1_rule_comparison.py.
-
-Run: python network-compatibility-model/model/run_e1_job_loss.py
+Shared by the migrant-level comparison (run_e1_coordination.py: run_experiment) and the household
+model (banxico, the target). The stand-alone E1 run under the lost-sending rule was removed in the 29 Oct 2026 cleanup (git history up to a83b60c).
 
 beta = 0 (no need response), rho = 0, pi = 0 (no benefits; E1b adds them once
 the benefit schedule, task 3, exists). For each kappa on the E0 grid, with the
@@ -29,8 +27,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import abm
 from run_e0_baseline import household_cells
 
-OUT = abm.HERE / 'outputs/e1-job-loss'
-E0_SETTINGS = abm.HERE / 'outputs/e0-baseline/run_settings.json'
 DATES = pd.date_range('2019-01-01', '2022-12-01', freq='MS')
 FIT = ('2020-04-01', '2021-12-01')           # March 2020 excluded (salience had not moved)
 FIT_Q = ('2020Q2', '2021Q4')
@@ -171,12 +167,6 @@ def household_outcomes(pop, covid, cf, params, cells):
     return pd.concat(rows, ignore_index=True), np.mean(checks, axis=0)
 
 
-def main():
-    e0 = json.loads(E0_SETTINGS.read_text())
-    run_experiment(e0['fitted'], OUT, rule=abm.Params.rule,
-                   settings_extra=dict(alphas_from=str(E0_SETTINGS.relative_to(abm.HERE))))
-
-
 def run_experiment(fitted, out, rule, settings_extra=None):
     """E1a for each fitted row (dicts with kappa, alpha_core, alpha_kin) under a stepping-in rule."""
     OUT = out                                   # local: the output folder of this run
@@ -236,6 +226,3 @@ def run_experiment(fitted, out, rule, settings_extra=None):
     print(tables['receipt_recovery'].loc[lambda d: d.kappa.isin([0, 4])].to_string(index=False))
     return tables
 
-
-if __name__ == '__main__':
-    main()

@@ -1,9 +1,10 @@
 {
   "experiment": "Recipient-level receipt logit vs migrant-level model, 2019 MMP",
+  "eligible_migrants": 7999,
   "households": 3252,
   "receiving": 756,
   "migrants": 7999,
-  "households_with_eligible_migrant": 2994,
+  "households_with_eligible_migrant": 3252,
   "eligible_note": "loglik_eligible / cv_logloss_eligible: households with at least one migrant who can ever send (not all migrants coded Not working); without a floor the migrant model gives the others P = 0",
   "employment": "2019 CPS rates by occupation, exact Poisson-binomial able counts, rho = 0",
   "receipt": "MMP remus vs mean monthly receipt probability (E0 mapping)",

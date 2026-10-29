@@ -1,0 +1,4 @@
+year,n,undated_households,undated_weighted_share,undated_with_remesas,households_inconsistent_interview_month,max_rel_error_ing_tri_rebuilt,receipt_concentradohogar,receipt_concentradohogar_se,receipt_any_of_six_months,receipt_any_of_six_months_se,mean_months_received_of_6,mean_months_received_se,share_recipients_all_6_months,share_all_6_se
+2016,70311,44,0.000413924,0,0,0.0289736,0.0474586,0.00126236,0.0474586,0.00126236,3.88954,0.0468797,0.462038,0.0105336
+2018,74647,50,0.000571532,0,0,0.0377545,0.0472855,0.00119548,0.0472855,0.00119548,4.07918,0.0442276,0.495518,0.0107501
+2020,89006,80,0.000761658,0,0,0.0427726,0.0437754,0.00101159,0.0437754,0.00101159,3.97751,0.0414927,0.470039,0.00983997
