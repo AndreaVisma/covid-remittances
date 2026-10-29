@@ -4,9 +4,10 @@ Run: python network-compatibility-model/recipient-level/need_margins.py   (~15 m
      --quick: skip the ENIGH-window simulation (heterogeneity table without the 6-month column)
      --het-only: reuse outputs/need-margins/fits.csv, redo only the heterogeneity table
 
-Not a change to the base model (run_household_model.py). Same population, 2019 calibration, kappa
-(replacement share), stimulus (pi = 1 in Jan and Mar 2021, 0 in Apr 2020), Banxico target and fit
-window. The base need term beta x S_t is switched off; each experiment puts need N*_t on one margin:
+Experiments. The base model (run_household_model.py) adopted 6a with series E and lambda = 1 on
+29 Oct 2026 (user decision); before that its need term was the household shift H with the raw S_t.
+Same population, 2019 calibration, kappa (replacement share), stimulus (pi = 1 in Jan and Mar 2021,
+0 in Apr 2020), Banxico target and fit window. Each experiment puts need N*_t on one margin:
 
   H   household shift (the base form, for reference)  logit + beta N*_t                 (all households)
   6a  more senders per receiving household            theta_j,t = expit(alpha_j + beta_s N*_t), all migrants
@@ -32,8 +33,8 @@ Lower bound: index_t = sum_h P_c r(e_c, theta(N*)) / sum_h P_f r(e_f, theta(0)) 
 One free parameter per option (beta), fitted by minimising the quarterly log RMSE 2020Q2..2021Q4 at
 fixed kappa (0, 0.7, 0.8); lambda on a grid (option 8).
 
-Check: at beta = 0 and with the raw S_t, the script reproduces outputs/household-model/map.csv
-(assertion, kappa x beta cells).
+Check: 6a with E and lambda = 1 reproduces the base model's outputs/household-model/map.csv
+(assertion, kappa x beta cells, base and lower-bound mappings).
 
 Heterogeneity predictions (kappa = 0.8, each margin at its best series and lambda): change in expected
 receipt and transfers, 2021 vs the no-COVID run (2019 conditions), by group; and the ENIGH 2020
@@ -215,21 +216,20 @@ class Experiment:
     # verification against map.csv
     def verify(self):
         grid = pd.read_csv(HERE / 'outputs/household-model/map.csv')
-        S = abm.salience_series(DATES)
+        N = need_stock('E', 1.0)
         worst = 0.0
         for kappa in KAPPAS:
-            for beta in [0.0, 0.06, 0.2]:
+            for beta in [0.0, 0.3, 0.65]:
                 row = grid[np.isclose(grid.kappa, kappa) & np.isclose(grid.beta, beta)].iloc[0]
-                s, _ = self.summary('H', kappa, beta, S)
-                s_lb, _ = self.summary('6a_lb', kappa, 0.0, S) if beta == 0 else (None, None)
+                s, _ = self.summary('6a', kappa, beta, N)
+                s_lb, _ = self.summary('6a_lb', kappa, beta, N)
                 pairs = [(s['rmse_fit'], row.rmse_log_quarterly), (s['index_2020q2'], row.index_2020q2),
                          (s['rmse_holdout_2022'], row.rmse_log_quarterly_holdout_2022),
                          (s['spike_2021_01'], row['spike_2021-01']), (s['spike_2021_03'], row['spike_2021-03']),
-                         (s['mean_index_2021'], row.mean_index_2021)]
-                if s_lb is not None:
-                    pairs += [(s_lb['rmse_fit'], row.rmse_log_quarterly_lower_bound),
-                              (s_lb['index_2020q2'], row.index_2020q2_lower_bound),
-                              (s_lb['spike_2021_01'], row['spike_2021-01_lower_bound'])]
+                         (s['mean_index_2021'], row.mean_index_2021),
+                         (s_lb['rmse_fit'], row.rmse_log_quarterly_lower_bound),
+                         (s_lb['index_2020q2'], row.index_2020q2_lower_bound),
+                         (s_lb['spike_2021_01'], row['spike_2021-01_lower_bound'])]
                 worst = max(worst, max(abs(a - b) for a, b in pairs))
         assert worst < 1e-6, f'does not reproduce map.csv: max abs difference {worst}'
         return worst

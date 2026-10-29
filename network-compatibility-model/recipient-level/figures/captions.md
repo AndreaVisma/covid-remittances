@@ -2,7 +2,7 @@
 
 ## S10_usd_accounting: USD received: counts drive the lasting rise; the real amount rise of 2020–21 fades by 2022
 
-Banxico USD relative to the same quarter of 2019 (line) = transfer counts × average amount per transfer, in log points. Counts are split as in S9 (household model, best map cell κ = 0.8, β = 0.06); the observed average amount is split into US CPI-U inflation and the real amount (2019 USD). Amounts are accounting, not modelled. 2022 held out (shaded). 2021 Q4: USD +42, counts +24, inflation +7.8, real amount +9.4 log points; 2022 Q4: real amount +3.2.
+Banxico USD relative to the same quarter of 2019 (line) = transfer counts × average amount per transfer, in log points. Counts are split as in S9 (household model, best map cell κ = 1, β = 0.65); the observed average amount is split into US CPI-U inflation and the real amount (2019 USD). Amounts are accounting, not modelled. 2022 held out (shaded). 2021 Q4: USD +42, counts +24, inflation +7.8, real amount +9.4 log points; 2022 Q4: real amount +3.2.
 
 ## S1_receipt_curve_examples: Where households sit on the receipt curve
 
@@ -20,9 +20,9 @@ Household model: H3 receipt s(able core, able kin) plus stepping-in, P = s + κ�
 
 β = 0, ρ = 0, no benefits (E1a on the household model). Household model: expected number of receiving households, COVID run / no-COVID run (2019 CPS rates of the same month), exact; read as transfers under a constant number of transfers per receiving household. κ = replacement share; coefficients refitted to 2019 for each κ. Gray: the migrant-level model, coordination rule (κ = replacement share; transfer counts, original "Not working" coding, E1a). Banxico: transactions relative to their 2017–19 trend. 2020 Q2 at κ = 0: 0.930. 2022 held out.
 
-## S5_compatibility_map: Household model: 0 of 231 (β, κ) cells fit within τ_C = 0.04
+## S5_compatibility_map: Household model: 161 of 275 (β, κ) cells fit within τ_C = 0.04
 
-E2 on the household model (π = 0, ρ = 0, S_t = reported COVID deaths / 10,000). Fit error of the quarterly receipt index against Banxico relative to its 2017–19 trend. Outlined: count-compatible cells (RMSE ≤ 0.04). Dot: best cell (κ = 0.8, β = 0.06). Coefficients refitted to 2019 for each κ. β is on the household log-odds scale, not the migrant scale of the migrant-level map (M1).
+E2 on the household model (stimulus π as in the base, ρ = 0). Need: more senders per receiving household, θ = expit(α + β N*_t), N*_t = cumulative excess deaths in Mexico (1 in Dec 2021). Fit error of the quarterly count index against Banxico relative to its 2017–19 trend. Outlined: count-compatible cells (RMSE ≤ 0.04). Dot: best cell (κ = 1, β = 0.65). Coefficients refitted to 2019 for each κ. β is on the migrant sending scale (M1 α), and need leaves receipt unchanged.
 
 ## S6_compatible_paths: Household model: the best cell still follows the death waves
 
@@ -36,6 +36,6 @@ E2 on the household model. Quarterly receipt index of the best cell, the other c
 
 β = 0, ρ = 0, no benefits; 200 paired paths, Apr 2020 – Dec 2021. Left: expected change in months with receipt by group (exact, receipt-weighted). Right: share of paths in which a household that receives in its no-COVID twin receives in no month, averaged over the group. Main occupation: the most common job group among the household’s eligible migrants ("Not working" migrants count as Other/none).
 
-## S9_decomposition: Why transfers grew despite job loss: trend, stepping-in, need and a large remainder
+## S9_decomposition: Why transfers grew despite job loss: trend, stepping-in and need; the household model leaves a small remainder
 
-Banxico transactions relative to the same quarter of 2019 (line), split in log points: the 2017–19 trend continued (log-linear with month effects); the model’s job-loss path at β = 0 with stepping-in κ (COVID / no-COVID run); the need response to COVID deaths (best map cell relative to its β = 0 path); and what remains. κ and β are each model’s best map cell (RMSE against Banxico vs trend, 2020 Q2–2021 Q4). Left: migrant-level model, coordination rule (κ = replacement share, original "Not working" coding, transfer counts). Right: household model (κ = replacement share, receipt). 2022 held out (shaded). 2021 Q4, migrant model: raw +24, trend +12, job loss -0.3, need +2.0, unexplained +10 log points.
+Banxico transactions relative to the same quarter of 2019 (line), split in log points: the 2017–19 trend continued (log-linear with month effects); the model’s job-loss path at β = 0 with stepping-in κ (COVID / no-COVID run); need, i.e. the senders that cumulative excess deaths bring in (best map cell relative to its β = 0 path; migrant model: its own need term); and what remains. κ and β are each model’s best map cell (RMSE against Banxico vs trend, 2020 Q2–2021 Q4). Left: migrant-level model, coordination rule (κ = replacement share, original "Not working" coding, transfer counts). Right: household model (κ = replacement share, receipt). 2022 held out (shaded). 2021 Q4, migrant model: raw +24, trend +12, job loss -0.3, need +2.0, unexplained +10 log points.

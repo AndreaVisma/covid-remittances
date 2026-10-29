@@ -1,4 +1,5 @@
-"""Recipient-level (household) model: E0, E1, E2 map and household distribution (28 Oct 2026).
+"""Recipient-level (household) model: E0, E1, E2 map and household distribution (28 Oct 2026;
+need as more senders per receiving household, option 6a, since 29 Oct 2026).
 
 Run: python network-compatibility-model/recipient-level/run_household_model.py   (~5 min)
      --original-coding: 'Not working' migrants never able to send (abm coding); E0 and E1 only
@@ -8,15 +9,21 @@ Run: python network-compatibility-model/recipient-level/run_household_model.py  
 
 The household logit H3 of compare_household_logit.py, extended with the two map axes:
     s(a, b) = expit(b0 + b_any [a > 0] + b_c log(1 + a) + b_k log(1 + b) + b_k0 [N_c = 0] log(1 + b)
-                    + eta' need_h + beta S_t)
+                    + eta' need_h)
 (b_k0: kin x no core migrant at all, added 29 Oct 2026)
     P(h receives in t) = E[ s(A_c, A_k) + kappa [A_c + A_k > 0] (s(N_c, N_k) - s(A_c, A_k)) ]
 over the able counts (A_c, A_k); N_c, N_k = eligible core and kin migrants (nobody out of work).
 kappa in [0, 1] is the share of the receipt probability lost to job loss that the household's able
 migrants replace: the household analogue of the migrant model's coordination rule (base since
 28 Oct 2026). 0 = no stepping-in; 1 = the household receives as if nobody had lost their job, as
-long as one linked migrant can send. It cannot over-replace. S_t = reported COVID deaths in Mexico
-/ 10,000 (abm.salience_series), 0 in 2019.
+long as one linked migrant can send. It cannot over-replace.
+Need in Mexico (user decision, 29 Oct 2026: option 6a with excess deaths): need does not change
+receipt; it brings in more senders per receiving household. Each migrant's monthly sending
+probability is theta_j,t = expit(alpha_j + beta N*_t) (migrant-level M1 alpha_core, alpha_kin), with
+N*_t the cumulative excess deaths in Mexico since Mar 2020 (World Mortality Dataset, trend baseline,
+negative months set to 0; a non-decaying stock, required by the 2022 holdout), scaled to 1 in Dec
+2021. beta is the logit rise of every migrant's sending probability at end-2021. N* = 0 in 2019 and
+in the no-COVID run. Other margins, series and decay rates: need_margins.py (experiments).
 Base population: 'Not working' migrants as unknown occupation (all-occupation CPS rate), the best
 fit in the comparison (recipient-level/README.md). rho = 0.
 Stimulus checks (user decision, 29 Oct 2026): in a stimulus month a non-employed migrant can send with
@@ -30,20 +37,24 @@ E0: for each kappa on KAPPAS, the seven receipt coefficients by maximum likeliho
     (kappa enters 2019 through ordinary unemployment): the profile likelihood of kappa.
 E1: beta = 0, exact receipt index (COVID / same calendar month of 2019, the no-COVID run) for
     2019-01..2022-12, quarterly against Banxico transactions relative to their 2017-19 trend
-    (run_e1_job_loss.banxico). Mapping to counts (user decision, 29 Oct 2026): base = Banxico
-    transfers move with the number of receiving households (transfers per receiving household
-    constant). Lower bound = receipt x expected able senders per receiving household, from the
-    migrant-level M1 sending probabilities (compare_household_logit, 'Not working' as unknown):
-    r_h,t = sum_j e_j,t theta_j / (1 - prod_j (1 - e_j,t theta_j)), exact for rho = 0. Losing one of
-    several senders then lowers counts; stepping-in (kappa) restores receipt but not the lost
-    transfers, so this bounds the count index from below. Log RMSE 2020Q2..2021Q4; 2022 held out.
+    (run_e1_job_loss.banxico). Mapping to counts (user decision, 29 Oct 2026), with
+    r_h,t(beta) = E[able senders | someone sends] = sum_j q_j / (1 - prod_j (1 - q_j)),
+    q_j = e_j,t theta_j,t (migrant-level M1, 'Not working' as unknown; exact for rho = 0):
+      base: counts_t = sum_h P_h,t r_h,t(beta) / r_h,t(0). Transfers per receiving household are
+        constant except for the senders that need brings in; at beta = 0 counts move with the
+        number of receiving households.
+      lower bound: counts_t = sum_h P_h,t r_h,t(beta). Losing one of several senders then lowers
+        counts; stepping-in (kappa) restores receipt but not the lost transfers.
+    Log RMSE 2020Q2..2021Q4; 2022 held out.
 E2: beta x kappa map, same criterion, tau_C = 0.04; plus a Gaussian log-likelihood of the quarterly
-    log residuals with the SD of the 2017-19 quarterly trend residuals (colleague feedback).
+    log residuals with the SD of the 2017-19 quarterly trend residuals (colleague feedback); and beta
+    fitted continuously for each kappa (need_fit in run_settings.json).
 Distribution (who lost out), beta = 0, kappa in DIST_KAPPAS: exact expected change in months with
     receipt, Apr 2020 - Dec 2021, per household against its no-COVID twin; and realized paths:
     SEEDS paired runs with the abm employment process (latent Gaussian AR(1), phi from CPS,
     common random numbers for employment and the receipt draw). Outcome: months with receipt
-    (the household model has no amounts; decision C pending).
+    (the household model has no amounts). Need does not change receipt (option 6a), so the
+    distribution does not depend on beta.
 Outputs (aggregates only) in outputs/household-model/.
 """
 from pathlib import Path
@@ -51,7 +62,7 @@ import json
 import sys
 import numpy as np
 import pandas as pd
-from scipy.optimize import minimize
+from scipy.optimize import minimize, minimize_scalar
 from scipy.special import expit
 from scipy.stats import norm
 
@@ -71,7 +82,11 @@ TERMS = ['any_core', 'log_core', 'log_kin', 'log_kin_no_core', 'no_worker', 'any
 KAPPAS = {'share': [round(k, 1) for k in np.arange(0, 1.01, 0.1)],
           'logit': [0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0]}
 DIST_KAPPAS = {'share': [0.0, 0.5, 1.0], 'logit': [0.0, 1.0, 2.0]}
-BETAS = np.round(np.arange(0.0, 0.401, 0.02), 2)
+BETAS = np.round(np.arange(0.0, 1.201, 0.05), 2)
+BETA_MAX = 3.0
+NEED_INPUTS = HERE.parent / 'data-prep/outputs/salience_inputs_monthly.csv'
+NEED_SERIES = 'excess_deaths_trend'
+NEED_START, NEED_SCALE_AT = '2020-03-01', '2021-12-01'
 TAU_C = 0.04
 DATES = pd.date_range('2019-01-01', '2022-12-01', freq='MS')
 FIT_Q = [str(p) for p in pd.period_range('2020Q2', '2021Q4', freq='Q')]
@@ -98,6 +113,14 @@ def spikes(index):
 PMF_TOL = 1e-12
 
 
+def need_stock(dates):
+    """(T,) N*_t: cumulative excess deaths since Mar 2020 (negative months 0), 1 in Dec 2021; 0 before."""
+    d = pd.read_csv(NEED_INPUTS, index_col='date', parse_dates=True)[NEED_SERIES].clip(lower=0)
+    d[d.index < NEED_START] = 0.0
+    cum = d.cumsum()
+    return (cum / cum[NEED_SCALE_AT]).reindex(pd.DatetimeIndex(dates)).fillna(0.0).to_numpy(float)
+
+
 def eligible_counts(pop):
     hsum = lambda w: np.bincount(pop['hid'], weights=w, minlength=pop['H'])
     return hsum(pop['core'] & pop['eligible']), hsum(~pop['core'] & pop['eligible'])
@@ -109,16 +132,27 @@ def design_features(pop):
     return np.column_stack([pop['need_x'], (n_core == 0).astype(float)])
 
 
-def transfers_per_receiver(pop, inputs):
-    """(T, H) expected able senders per receiving household, migrant-level M1 (count lower bound)."""
+def m1_alphas():
     fits = pd.read_csv(HERE / 'outputs/not-working-unknown/fits.csv').query("model == 'M1'").set_index('parameter')
-    theta = np.where(pop['core'], expit(fits.estimate['alpha_core']), expit(fits.estimate['alpha_kin']))
-    e = abm.able_probability(pop, inputs, abm.Params(0.0, 0.0))
-    e = e + (1 - e) * stimulus_pi(inputs.dates)[:, None] * pop['eligible'][None, :]
-    q = e * theta[None, :]
-    hsum = lambda Z: np.stack([np.bincount(pop['hid'], weights=z, minlength=pop['H']) for z in Z])
-    p_any = -np.expm1(hsum(np.log1p(-q)))
-    return np.divide(hsum(q), p_any, out=np.ones_like(p_any), where=p_any > 1e-12)
+    return float(fits.estimate['alpha_core']), float(fits.estimate['alpha_kin'])
+
+
+class Senders:
+    """r_h,t(beta) = E[able senders | someone sends] per household and month (T, H), migrant-level
+    M1 alphas, theta_j,t = expit(alpha_j + beta N*_t) for every migrant (option 6a)."""
+
+    def __init__(self, pop, inputs, need):
+        a_core, a_kin = m1_alphas()
+        self.alpha = np.where(pop['core'], a_core, a_kin)
+        e = abm.able_probability(pop, inputs, abm.Params(0.0, 0.0))
+        self.e = e + (1 - e) * stimulus_pi(inputs.dates)[:, None] * pop['eligible'][None, :]
+        self.need, self.hid, self.H = need, pop['hid'], pop['H']
+
+    def r(self, beta=0.0):
+        q = self.e * expit(self.alpha[None, :] + beta * self.need[:, None])
+        hsum = lambda Z: np.stack([np.bincount(self.hid, weights=z, minlength=self.H) for z in Z])
+        p_any = -np.expm1(hsum(np.log1p(-q)))
+        return np.divide(hsum(q), p_any, out=np.ones_like(p_any), where=p_any > 1e-12)
 
 
 def household_receipt(x, kappa, mode, a, b, n_core, n_kin, need, shift=0.0):
@@ -163,7 +197,8 @@ class Cells:
         return np.add.reduceat(Z, self.starts, axis=-1)
 
     def receipt(self, x, kappa=0.0, beta=0.0):
-        """(T, H) receipt probabilities."""
+        """(T, H) receipt probabilities. beta: a household logit shift beta S_t (need_margins.py, margin H);
+        the base model uses 0 (need acts on senders, option 6a)."""
         shift = beta * self.salience[:, None]
         if self.mode == 'logit':
             return self.household_sum(self.W * expit((self.X @ x + kappa * self.trigger)[None, :] + shift))
@@ -365,19 +400,49 @@ def main(original_coding=False, mode='share'):
     bx_m, trend_m, _ = e1.banxico()
     spike_bx = spikes((bx_m / trend_m).reindex(DATES))
     sigma_q = bx_info['residual_sd_quarterly']
-    covid = abm.make_inputs(DATES, pop['rate_columns'], salience=abm.salience_series(DATES))
+    covid = abm.make_inputs(DATES, pop['rate_columns'])
     cf = abm.make_inputs(pd.DatetimeIndex([pd.Timestamp(2019, d.month, 1) for d in DATES]), pop['rate_columns'])
     cc, cfc = Cells(pop, covid, mode), Cells(pop, cf, mode)
-    r_c, r_f = transfers_per_receiver(pop, covid), transfers_per_receiver(pop, cf)
+    need = need_stock(DATES)
+    snd_c, snd_f = Senders(pop, covid, need), Senders(pop, cf, np.zeros(len(DATES)))
+    r_c0, r_f = snd_c.r(0.0), snd_f.r(0.0)
     rows, paths, monthly = [], [], []
     betas = [0.0] if original_coding else BETAS
+    r_by_beta = {}
+
+    def count_paths(Pc, Pf, beta, cache=True):
+        """Monthly count series (base COVID, base no-COVID, lower-bound COVID, lower-bound no-COVID)."""
+        if not cache:
+            r_c = snd_c.r(beta)
+        else:
+            if beta not in r_by_beta:
+                r_by_beta[beta] = snd_c.r(beta)
+            r_c = r_by_beta[beta]
+        s = lambda z: pd.Series(z.sum(1), index=DATES)
+        return s(Pc * r_c / r_c0), s(Pf), s(Pc * r_c), s(Pf * r_f)
+
+    def base_index(Pc, Pf, beta):
+        c, f, _, _ = count_paths(Pc, Pf, beta, cache=False)
+        return quarterly(c) / quarterly(f)
+
+    need_fit = []
+    a_core = m1_alphas()[0]
     for kappa in kappas:
         x = x_by_kappa[kappa]
         Pf = cfc.receipt(x, kappa)
-        rf, tf = pd.Series(Pf.sum(1), index=DATES), pd.Series((Pf * r_f).sum(1), index=DATES)
+        Pc = cc.receipt(x, kappa)
+        if not original_coding:
+            res = minimize_scalar(lambda b: log_rmse(base_index(Pc, Pf, b), target, FIT_Q), bounds=(0.0, BETA_MAX),
+                                  method='bounded', options=dict(xatol=1e-4))
+            bhat = float(res.x)
+            q = base_index(Pc, Pf, bhat)
+            need_fit.append(dict(kappa=kappa, beta=bhat, rmse_log_quarterly=float(res.fun),
+                                 rmse_log_quarterly_holdout_2022=log_rmse(q, target, HOLD_Q),
+                                 index_2020q2=float(q['2020Q2']), index_2021q4=float(q['2021Q4']),
+                                 mean_index_2022=float(q[HOLD_Q].mean()),
+                                 theta_core_2019=float(expit(a_core)), theta_core_2021_12=float(expit(a_core + bhat))))
         for beta in betas:
-            Pc = cc.receipt(x, kappa, beta)
-            rc, tc = pd.Series(Pc.sum(1), index=DATES), pd.Series((Pc * r_c).sum(1), index=DATES)
+            rc, rf, tc, tf = count_paths(Pc, Pf, beta)
             model = quarterly(rc) / quarterly(rf)
             lower = quarterly(tc) / quarterly(tf)
             resid = np.log(model[FIT_Q] / target[FIT_Q])
@@ -397,8 +462,10 @@ def main(original_coding=False, mode='share'):
                              mean_index_2021_lower_bound=float(lower[[q for q in FIT_Q if q.startswith('2021')]].mean()),
                              mean_index_2020=float(model[[q for q in FIT_Q if q.startswith('2020')]].mean()),
                              mean_index_2021=float(model[[q for q in FIT_Q if q.startswith('2021')]].mean())))
+            receipt_q = quarterly(pd.Series(Pc.sum(1), index=DATES)) / quarterly(rf)
             paths.append(pd.DataFrame({'quarter': model.index, 'kappa': kappa, 'beta': beta,
                                        'index_model': model.values, 'index_model_lower_bound': lower.values,
+                                       'index_receipt': receipt_q.values,
                                        'index_banxico': target[model.index].values}))
             if beta == 0:
                 monthly.append(pd.DataFrame({'date': DATES, 'kappa': kappa, 'receipt_covid': rc.values / pop['H'],
@@ -407,6 +474,10 @@ def main(original_coding=False, mode='share'):
     grid = pd.DataFrame(rows)
     grid['delta_loglik'] = grid.loglik_gaussian - grid.loglik_gaussian.max()
     grid.to_csv(out / 'map.csv', index=False)
+    if need_fit:
+        need_fit = pd.DataFrame(need_fit)
+        need_fit.to_csv(out / 'need_fit.csv', index=False)
+        print(need_fit.round(4).to_string(index=False))
     pd.concat(paths, ignore_index=True).to_csv(out / 'quarterly_paths.csv', index=False)
     pd.concat(monthly, ignore_index=True).to_csv(out / 'e1_monthly.csv', index=False)
     print(grid[grid.beta == 0].round(3).to_string(index=False))
@@ -425,16 +496,24 @@ def main(original_coding=False, mode='share'):
         experiment='Recipient-level household model: E0 kappa profile, E1 (beta = 0), E2 map, distribution',
         not_working_as_unknown=not original_coding, households=int(ok.sum()), receiving=int(y[ok].sum()),
         kappa_mode=mode,
-        receipt=('expit(b0 + b_any [A_c>0] + b_c log(1+A_c) + b_k log(1+A_k) + eta need + beta S_t '
+        receipt=('expit(b0 + b_any [A_c>0] + b_c log(1+A_c) + b_k log(1+A_k) + eta need '
                  '+ kappa [U_c>0] log(1+A_k)), kappa = logit shift' if mode == 'logit' else
                  's(A_c, A_k) + kappa [A_c + A_k > 0] (s(N_c, N_k) - s(A_c, A_k)), s = expit(b0 + b_any [a>0] '
-                 '+ b_c log(1+a) + b_k log(1+b) + b_k0 [N_c=0] log(1+b) + eta need + beta S_t); '
+                 '+ b_c log(1+a) + b_k log(1+b) + b_k0 [N_c=0] log(1+b) + eta need); '
                  'kappa = replacement share in [0, 1]'),
+        need=dict(option='6a: more senders per receiving household, all migrants; receipt unchanged',
+                  theta='expit(alpha_j + beta N*_t), alpha_j from migrant-level M1 (alpha_core, alpha_kin)',
+                  alphas=dict(zip(['alpha_core', 'alpha_kin'], m1_alphas())),
+                  series=f'{NEED_SERIES} ({NEED_INPUTS.name}), negatives 0, from {NEED_START}, cumulative '
+                         f'(non-decaying), scaled to 1 at {NEED_SCALE_AT}',
+                  beta='logit rise of every migrant sending probability at the scaling date',
+                  fit=None if not len(need_fit) else need_fit.to_dict('records')),
         kappas=kappas, betas=list(map(float, betas)), tau_C=TAU_C, kappa_free=kappa_free,
         criterion='quarterly log RMSE 2020Q2..2021Q4, receipt index (COVID / no-COVID) vs Banxico / 2017-19 trend',
-        count_mapping=('base: transfers per receiving household constant (Banxico index = receiving-household '
-                       'index); lower bound: receipt x expected able senders per receiving household (migrant-level '
-                       'M1 thetas, no stepping-in on the number of transfers), columns *_lower_bound'),
+        count_mapping=('base: sum_h P_h,t r_h,t(beta) / r_h,t(0), transfers per receiving household constant '
+                       'except for the senders need brings in; lower bound: sum_h P_h,t r_h,t(beta), receipt x '
+                       'expected able senders per receiving household (no stepping-in on the number of '
+                       'transfers), columns *_lower_bound'),
         likelihood=f'Gaussian on quarterly log residuals 2020Q2..2021Q4, SD = 2017-19 quarterly trend residual SD '
                    f'({sigma_q:.4f}); 7 autocorrelated quarters, use ratios only',
         stimulus=dict(pi=PI_STIMULUS, margin='non-employed migrants able to send in the stimulus month',

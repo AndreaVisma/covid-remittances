@@ -1,0 +1,13 @@
+item,value
+banxico_names_identified,2456.0
+matched_exact_normalized,2437.0
+matched_manual_alias,19.0
+unmatched,0.0
+match_rate_names,1.0
+usd_2019_total_m,37250.485891
+usd_2019_no_identificado_m,20.74652
+share_2019_no_identificado,0.0005569462922096411
+share_2019_usd_matched_of_total,0.9994430537077905
+share_2019_usd_matched_of_identified,1.0
+inegi_2020_municipalities,2469.0
+inegi_municipalities_collapsed_into_parent,13.0

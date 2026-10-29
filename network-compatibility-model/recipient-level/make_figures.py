@@ -285,12 +285,14 @@ def s5_map(grid, settings):
         ax.add_patch(plt.Rectangle((c - 0.5, r - 0.5), 1, 1, fill=False, edgecolor=mf.INK, lw=1.5))
     b = np.unravel_index(np.argmin(piv.values), piv.shape)
     ax.scatter(b[1], b[0], s=50, color=mf.SURFACE, edgecolor=mf.INK, lw=1.5, zorder=5)
-    ax.annotate(f'best {piv.values[b]:.3f}', (b[1], b[0]), xytext=(8, 0), textcoords='offset points', va='center',
+    right = b[1] > piv.shape[1] / 2
+    ax.annotate(f'best {piv.values[b]:.3f}', (b[1], b[0]), xytext=(-8 if right else 8, 0), textcoords='offset points',
+                va='center', ha='right' if right else 'left',
                 fontsize=8.5, color=mf.INK, bbox=dict(boxstyle='round,pad=0.2', fc=mf.SURFACE, ec='none', alpha=0.85))
     ax.set_xticks(range(piv.shape[1]), [f'{k:g}' for k in piv.columns])
     ax.set_yticks(range(0, piv.shape[0], 2), [f'{v:.2f}' for v in piv.index[::2]])
     ax.set_xlabel('κ (replacement share of the receipt lost to job loss)')
-    ax.set_ylabel('β (household log-odds per 10,000 COVID deaths)')
+    ax.set_ylabel('β (logit rise in each migrant’s sending probability, end-2021)')
     cb = fig.colorbar(im, ax=ax, pad=0.02)
     cb.set_label('Quarterly log RMSE, 2020 Q2 – 2021 Q4', color=mf.INK2)
     cb.outline.set_visible(False)
@@ -298,10 +300,11 @@ def s5_map(grid, settings):
     n = int(ok.values.sum())
     best = grid.loc[grid.rmse_log_quarterly.idxmin()]
     save(fig, 'S5_compatibility_map', f'Household model: {n} of {ok.size} (β, κ) cells fit within τ_C = {tau}',
-         f'E2 on the household model (π = 0, ρ = 0, S_t = reported COVID deaths / 10,000). Fit error of the quarterly '
-         f'receipt index against Banxico relative to its 2017–19 trend. Outlined: count-compatible cells (RMSE ≤ '
+         f'E2 on the household model (stimulus π as in the base, ρ = 0). Need: more senders per receiving household, '
+         f'θ = expit(α + β N*_t), N*_t = cumulative excess deaths in Mexico (1 in Dec 2021). Fit error of the quarterly '
+         f'count index against Banxico relative to its 2017–19 trend. Outlined: count-compatible cells (RMSE ≤ '
          f'{tau}). Dot: best cell (κ = {best.kappa:g}, β = {best.beta:.2f}). Coefficients refitted to 2019 for each '
-         f'κ. β is on the household log-odds scale, not the migrant scale of the migrant-level map (M1).')
+         f'κ. β is on the migrant sending scale (M1 α), and need leaves receipt unchanged.')
 
 
 def s6_paths(paths, grid):
@@ -416,7 +419,7 @@ def s8_groups(g):
 
 DECOMP_PARTS = [('trend', 'Pre-COVID trend (+6.3% a year, 2017–19)', mf.GRAY_LIGHT),
                 ('job_loss', 'US job loss, net of stepping-in (κ)', mf.BLUE),
-                ('need', 'Need response to COVID deaths (β)', mf.ORANGE),
+                ('need', 'Need: more senders, cumulative excess deaths (β)', mf.ORANGE),
                 ('unexplained', 'Unexplained', mf.AQUA)]
 
 
@@ -468,10 +471,11 @@ def s9_decomposition(parts):
     fig.legend(h, l, loc='lower center', ncol=3, bbox_to_anchor=(0.5, -0.06), fontsize=8.5)
     fig.tight_layout(rect=(0, 0.08, 1, 0.92))
     a = parts[0].set_index('quarter').loc['2021Q4']
-    save(fig, 'S9_decomposition', 'Why transfers grew despite job loss: trend, stepping-in, need and a large remainder',
+    save(fig, 'S9_decomposition', 'Why transfers grew despite job loss: trend, stepping-in and need; the household model leaves a small remainder',
          'Banxico transactions relative to the same quarter of 2019 (line), split in log points: the 2017–19 trend '
          'continued (log-linear with month effects); the model’s job-loss path at β = 0 with stepping-in κ (COVID / '
-         'no-COVID run); the need response to COVID deaths (best map cell relative to its β = 0 path); and what '
+         'no-COVID run); need, i.e. the senders that cumulative excess deaths bring in (best map cell relative to its '
+         'β = 0 path; migrant model: its own need term); and what '
          'remains. κ and β are each model’s best map cell (RMSE against Banxico vs trend, 2020 Q2–2021 Q4). Left: '
          'migrant-level model, coordination rule (κ = replacement share, original "Not working" coding, transfer '
          'counts). Right: household model (κ = replacement share, receipt). 2022 held out (shaded). '
