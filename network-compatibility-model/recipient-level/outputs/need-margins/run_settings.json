@@ -1,0 +1,71 @@
+{
+  "experiment": "Need on other margins (options 6, 7, 8); experiments, not the base model",
+  "kappas": [
+    0.0,
+    0.7,
+    0.8
+  ],
+  "lambdas": [
+    0.0,
+    0.5,
+    0.8,
+    0.9,
+    0.95,
+    1.0
+  ],
+  "series": {
+    "S": "reported COVID deaths",
+    "E": "excess deaths",
+    "L": "Mexican employment loss",
+    "R": "placebo: constant flow from Mar 2020 (lambda = 1: linear ramp)"
+  },
+  "scaling": "N*_t = sum_k lambda^k N_t-k, scaled to peak 1 over 2020-03..2021-12; 0 before 2020-03",
+  "margins": {
+    "H": "household shift, all households (base form)",
+    "6a": "more senders: all migrants (base mapping)",
+    "6b": "more senders: kin only (base mapping)",
+    "6a_lb": "more senders: all migrants (lower-bound mapping)",
+    "6b_lb": "more senders: kin only (lower-bound mapping)",
+    "7a": "dormant ties: kin-only households",
+    "7b": "dormant ties: no resident worker or older resident"
+  },
+  "beta_bounds": [
+    0.0,
+    8.0
+  ],
+  "base_need_term": "beta S_t switched off (beta = 0)",
+  "criterion": "quarterly log RMSE 2020Q2..2021Q4 (beta fitted); 2022 held out",
+  "stimulus": {
+    "2020-04": 0.0,
+    "2021-01": 1.0,
+    "2021-03": 1.0
+  },
+  "spike_banxico": {
+    "2021-01": 0.04108565238817641,
+    "2021-03": 0.03603518119869308
+  },
+  "verification": {
+    "reference": "outputs/household-model/map.csv",
+    "max_abs_difference": 2.280260424925018e-10
+  },
+  "heterogeneity": {
+    "kappa": 0.8,
+    "choice": "best need series (S, E, L; not the placebo R) and lambda by fit RMSE per margin",
+    "receipt": "2021 expected receipt months, COVID / no-COVID run",
+    "transfers": "base mapping (and lower bound)",
+    "enigh": {
+      "interview_months": [
+        "2020-08-01",
+        "2020-09-01",
+        "2020-10-01",
+        "2020-11-01"
+      ],
+      "statistic": "received at least once in the 6 months before the interview month",
+      "seeds": [
+        3001,
+        3100
+      ],
+      "note": "option 6 does not change receipt: its ENIGH prediction equals none"
+    }
+  }
+}

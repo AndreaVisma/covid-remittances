@@ -1,0 +1,217 @@
+cell_a,cell_b,from_year,to_year,measure,measure_label,did,se,z
+no_worker,worker,2018,2020,p,receipt (pp),-0.0180147,0.00574437,-3.13605
+no_worker,worker,2018,2020,a,mean amount | recipient (MXN),-1401.84,1328.76,-1.055
+no_worker,worker,2018,2020,h,mean per household (MXN),-422.126,156.685,-2.69411
+no_worker,worker,2018,2020,lp,log receipt,-0.160607,0.0679165,-2.36478
+no_worker,worker,2018,2020,la,log mean amount | recipient,-0.117659,0.0843651,-1.39465
+no_worker,worker,2018,2020,lh,log mean per household,-0.278267,0.108946,-2.55417
+no_worker,worker,2020,2022,p,receipt (pp),0.0193624,0.00510721,3.79119
+no_worker,worker,2020,2022,a,mean amount | recipient (MXN),1127.79,1348.92,0.83607
+no_worker,worker,2020,2022,h,mean per household (MXN),661.548,156.45,4.22848
+no_worker,worker,2020,2022,lp,log receipt,0.213894,0.0617543,3.46363
+no_worker,worker,2020,2022,la,log mean amount | recipient,-0.0495242,0.0765357,-0.647074
+no_worker,worker,2020,2022,lh,log mean per household,0.16437,0.0974777,1.68623
+no_worker,worker,2022,2024,p,receipt (pp),-0.00997701,0.00517826,-1.92671
+no_worker,worker,2022,2024,a,mean amount | recipient (MXN),1983.74,1444.67,1.37314
+no_worker,worker,2022,2024,h,mean per household (MXN),-161.142,175.283,-0.919324
+no_worker,worker,2022,2024,lp,log receipt,-0.0168657,0.0613454,-0.274931
+no_worker,worker,2022,2024,la,log mean amount | recipient,0.127416,0.0716268,1.77889
+no_worker,worker,2022,2024,lh,log mean per household,0.110551,0.0949815,1.16392
+no_worker,worker,2018,2022,p,receipt (pp),0.00134774,0.00607955,0.221684
+no_worker,worker,2018,2022,a,mean amount | recipient (MXN),-274.047,1434.49,-0.191041
+no_worker,worker,2018,2022,h,mean per household (MXN),239.421,187.325,1.27811
+no_worker,worker,2018,2022,lp,log receipt,0.0532868,0.0659123,0.808451
+no_worker,worker,2018,2022,la,log mean amount | recipient,-0.167184,0.0810586,-2.0625
+no_worker,worker,2018,2022,lh,log mean per household,-0.113897,0.107573,-1.05879
+old,no_old,2018,2020,p,receipt (pp),-0.00937107,0.0034303,-2.73186
+old,no_old,2018,2020,a,mean amount | recipient (MXN),127.158,847.249,0.150083
+old,no_old,2018,2020,h,mean per household (MXN),-50.0062,55.7362,-0.897193
+old,no_old,2018,2020,lp,log receipt,-0.114141,0.0559675,-2.03941
+old,no_old,2018,2020,la,log mean amount | recipient,0.0348721,0.0775443,0.449705
+old,no_old,2018,2020,lh,log mean per household,-0.0792688,0.094399,-0.839721
+old,no_old,2020,2022,p,receipt (pp),-0.0111969,0.00298568,-3.75021
+old,no_old,2020,2022,a,mean amount | recipient (MXN),-3500.12,913.573,-3.83125
+old,no_old,2020,2022,h,mean per household (MXN),-252.529,55.1925,-4.57542
+old,no_old,2020,2022,lp,log receipt,-0.227546,0.0550817,-4.13107
+old,no_old,2020,2022,la,log mean amount | recipient,-0.179799,0.0707015,-2.54308
+old,no_old,2020,2022,lh,log mean per household,-0.407346,0.0884134,-4.60729
+old,no_old,2022,2024,p,receipt (pp),-0.00121626,0.00284235,-0.427904
+old,no_old,2022,2024,a,mean amount | recipient (MXN),412.276,930.131,0.443245
+old,no_old,2022,2024,h,mean per household (MXN),40.0394,54.7128,0.731812
+old,no_old,2022,2024,lp,log receipt,0.0181875,0.0581048,0.313013
+old,no_old,2022,2024,la,log mean amount | recipient,0.0103507,0.0658931,0.157084
+old,no_old,2022,2024,lh,log mean per household,0.0285383,0.0876094,0.325744
+old,no_old,2018,2022,p,receipt (pp),-0.020568,0.00341862,-6.01647
+old,no_old,2018,2022,a,mean amount | recipient (MXN),-3372.96,912.055,-3.6982
+old,no_old,2018,2022,h,mean per household (MXN),-302.535,59.6516,-5.0717
+old,no_old,2018,2022,lp,log receipt,-0.341687,0.0573818,-5.95463
+old,no_old,2018,2022,la,log mean amount | recipient,-0.144927,0.0743971,-1.94802
+old,no_old,2018,2022,lh,log mean per household,-0.486614,0.0931257,-5.22535
+rural,urban,2018,2020,p,receipt (pp),-0.00374348,0.00501935,-0.745809
+rural,urban,2018,2020,a,mean amount | recipient (MXN),1395.54,937.319,1.48886
+rural,urban,2018,2020,h,mean per household (MXN),90.4214,83.0697,1.0885
+rural,urban,2018,2020,lp,log receipt,-0.00259924,0.0691881,-0.0375676
+rural,urban,2018,2020,la,log mean amount | recipient,0.117516,0.0807103,1.45602
+rural,urban,2018,2020,lh,log mean per household,0.114916,0.106402,1.08002
+rural,urban,2020,2022,p,receipt (pp),0.0140089,0.00488978,2.86492
+rural,urban,2020,2022,a,mean amount | recipient (MXN),-829.124,1082.78,-0.765737
+rural,urban,2020,2022,h,mean per household (MXN),402.636,101.616,3.96233
+rural,urban,2020,2022,lp,log receipt,0.195208,0.0657606,2.96847
+rural,urban,2020,2022,la,log mean amount | recipient,-0.0746254,0.0774944,-0.962979
+rural,urban,2020,2022,lh,log mean per household,0.120583,0.102939,1.17141
+rural,urban,2022,2024,p,receipt (pp),0.00121745,0.00513698,0.236997
+rural,urban,2022,2024,a,mean amount | recipient (MXN),-283.126,1144.17,-0.247451
+rural,urban,2022,2024,h,mean per household (MXN),-53.9133,108.789,-0.495576
+rural,urban,2022,2024,lp,log receipt,0.141293,0.0686342,2.05864
+rural,urban,2022,2024,la,log mean amount | recipient,-0.0178232,0.0737175,-0.241777
+rural,urban,2022,2024,lh,log mean per household,0.12347,0.102339,1.20648
+rural,urban,2018,2022,p,receipt (pp),0.0102654,0.00512505,2.00298
+rural,urban,2018,2022,a,mean amount | recipient (MXN),566.412,1082.89,0.523056
+rural,urban,2018,2022,h,mean per household (MXN),493.057,99.9711,4.932
+rural,urban,2018,2022,lp,log receipt,0.192609,0.0685258,2.81075
+rural,urban,2018,2022,la,log mean amount | recipient,0.0428903,0.0797375,0.537894
+rural,urban,2018,2022,lh,log mean per household,0.235499,0.106663,2.20789
+trad,nontrad,2018,2020,p,receipt (pp),-0.00422237,0.00484421,-0.871632
+trad,nontrad,2018,2020,a,mean amount | recipient (MXN),-29.2738,954.98,-0.0306539
+trad,nontrad,2018,2020,h,mean per household (MXN),-10.8934,91.9076,-0.118526
+trad,nontrad,2018,2020,lp,log receipt,0.0106846,0.068302,0.156431
+trad,nontrad,2018,2020,la,log mean amount | recipient,-0.00824001,0.0821963,-0.100248
+trad,nontrad,2018,2020,lh,log mean per household,0.00244456,0.107463,0.022748
+trad,nontrad,2020,2022,p,receipt (pp),-0.00430283,0.00445183,-0.966531
+trad,nontrad,2020,2022,a,mean amount | recipient (MXN),-2137.21,1057.57,-2.02086
+trad,nontrad,2020,2022,h,mean per household (MXN),36.1523,92.4479,0.391056
+trad,nontrad,2020,2022,lp,log receipt,-0.108551,0.0649583,-1.67109
+trad,nontrad,2020,2022,la,log mean amount | recipient,-0.156778,0.0761146,-2.05976
+trad,nontrad,2020,2022,lh,log mean per household,-0.265329,0.101458,-2.61518
+trad,nontrad,2022,2024,p,receipt (pp),-0.0115646,0.00434118,-2.66393
+trad,nontrad,2022,2024,a,mean amount | recipient (MXN),3347.29,1130.41,2.96113
+trad,nontrad,2022,2024,h,mean per household (MXN),-22.5099,99.1122,-0.227115
+trad,nontrad,2022,2024,lp,log receipt,-0.0632438,0.0682989,-0.925985
+trad,nontrad,2022,2024,la,log mean amount | recipient,0.216772,0.0717208,3.02244
+trad,nontrad,2022,2024,lh,log mean per household,0.153528,0.100689,1.52477
+trad,nontrad,2018,2022,p,receipt (pp),-0.0085252,0.00490941,-1.7365
+trad,nontrad,2018,2022,a,mean amount | recipient (MXN),-2166.48,1064.86,-2.03451
+trad,nontrad,2018,2022,h,mean per household (MXN),25.2588,100.788,0.250613
+trad,nontrad,2018,2022,lp,log receipt,-0.0978668,0.0681533,-1.43598
+trad,nontrad,2018,2022,la,log mean amount | recipient,-0.165018,0.0790165,-2.0884
+trad,nontrad,2018,2022,lh,log mean per household,-0.262885,0.106236,-2.47454
+lab_q1,lab_q25,2018,2020,p,receipt (pp),-0.0110954,0.00442875,-2.50532
+lab_q1,lab_q25,2018,2020,a,mean amount | recipient (MXN),-210.707,951.081,-0.221545
+lab_q1,lab_q25,2018,2020,h,mean per household (MXN),-137.206,96.5617,-1.42092
+lab_q1,lab_q25,2018,2020,lp,log receipt,-0.0987144,0.0572947,-1.72292
+lab_q1,lab_q25,2018,2020,la,log mean amount | recipient,-0.0479054,0.0790977,-0.605648
+lab_q1,lab_q25,2018,2020,lh,log mean per household,-0.14662,0.0988315,-1.48353
+lab_q1,lab_q25,2020,2022,p,receipt (pp),0.0201238,0.00431081,4.66823
+lab_q1,lab_q25,2020,2022,a,mean amount | recipient (MXN),888.873,1101.18,0.807197
+lab_q1,lab_q25,2020,2022,h,mean per household (MXN),610.607,119.569,5.10674
+lab_q1,lab_q25,2020,2022,lp,log receipt,0.25772,0.0544551,4.7327
+lab_q1,lab_q25,2020,2022,la,log mean amount | recipient,-0.036382,0.0750254,-0.484929
+lab_q1,lab_q25,2020,2022,lh,log mean per household,0.221338,0.0921397,2.4022
+lab_q1,lab_q25,2022,2024,p,receipt (pp),-0.00172956,0.00446991,-0.386935
+lab_q1,lab_q25,2022,2024,a,mean amount | recipient (MXN),1027.91,1121.74,0.916353
+lab_q1,lab_q25,2022,2024,h,mean per household (MXN),-68.976,129.447,-0.532853
+lab_q1,lab_q25,2022,2024,lp,log receipt,0.129954,0.0546797,2.37664
+lab_q1,lab_q25,2022,2024,la,log mean amount | recipient,0.0930066,0.069779,1.33287
+lab_q1,lab_q25,2022,2024,lh,log mean per household,0.222961,0.0873896,2.55134
+lab_q1,lab_q25,2018,2022,p,receipt (pp),0.0090284,0.00480096,1.88054
+lab_q1,lab_q25,2018,2022,a,mean amount | recipient (MXN),678.166,1113.48,0.609052
+lab_q1,lab_q25,2018,2022,h,mean per household (MXN),473.401,126.718,3.73585
+lab_q1,lab_q25,2018,2022,lp,log receipt,0.159005,0.0570382,2.7877
+lab_q1,lab_q25,2018,2022,la,log mean amount | recipient,-0.0842874,0.0787029,-1.07096
+lab_q1,lab_q25,2018,2022,lh,log mean per household,0.074718,0.0984729,0.758767
+head_f,head_m,2018,2020,p,receipt (pp),-0.005933,0.0031492,-1.88397
+head_f,head_m,2018,2020,a,mean amount | recipient (MXN),-1454.86,908.982,-1.60054
+head_f,head_m,2018,2020,h,mean per household (MXN),-160.502,69.4364,-2.3115
+head_f,head_m,2018,2020,lp,log receipt,-0.0589193,0.0542424,-1.08622
+head_f,head_m,2018,2020,la,log mean amount | recipient,-0.160961,0.0797003,-2.01958
+head_f,head_m,2018,2020,lh,log mean per household,-0.219881,0.096677,-2.27438
+head_f,head_m,2020,2022,p,receipt (pp),0.00937527,0.00286986,3.2668
+head_f,head_m,2020,2022,a,mean amount | recipient (MXN),3931.92,1039.15,3.78377
+head_f,head_m,2020,2022,h,mean per household (MXN),471.636,81.9109,5.75792
+head_f,head_m,2020,2022,lp,log receipt,0.165002,0.0514653,3.20609
+head_f,head_m,2020,2022,la,log mean amount | recipient,0.158436,0.0732574,2.16272
+head_f,head_m,2020,2022,lh,log mean per household,0.323438,0.0892969,3.62205
+head_f,head_m,2022,2024,p,receipt (pp),-0.00400893,0.00280123,-1.43113
+head_f,head_m,2022,2024,a,mean amount | recipient (MXN),-1347.59,1066.29,-1.26381
+head_f,head_m,2022,2024,h,mean per household (MXN),-226.461,86.8175,-2.60847
+head_f,head_m,2022,2024,lp,log receipt,0.0353839,0.0520907,0.679274
+head_f,head_m,2022,2024,la,log mean amount | recipient,-0.0582585,0.0661077,-0.881267
+head_f,head_m,2022,2024,lh,log mean per household,-0.0228747,0.0844163,-0.270975
+head_f,head_m,2018,2022,p,receipt (pp),0.00344227,0.003227,1.06671
+head_f,head_m,2018,2022,a,mean amount | recipient (MXN),2477.06,1026.38,2.41339
+head_f,head_m,2018,2022,h,mean per household (MXN),311.134,87.5096,3.55542
+head_f,head_m,2018,2022,lp,log receipt,0.106083,0.0540266,1.96353
+head_f,head_m,2018,2022,la,log mean amount | recipient,-0.0025257,0.0742301,-0.0340252
+head_f,head_m,2018,2022,lh,log mean per household,0.103557,0.092279,1.12222
+age_65+,age_35-49,2018,2020,p,receipt (pp),-0.00818353,0.00402684,-2.03225
+age_65+,age_35-49,2018,2020,a,mean amount | recipient (MXN),1390.47,1114.2,1.24796
+age_65+,age_35-49,2018,2020,h,mean per household (MXN),17.3584,64.9902,0.267092
+age_65+,age_35-49,2018,2020,lp,log receipt,-0.0726895,0.0716277,-1.01482
+age_65+,age_35-49,2018,2020,la,log mean amount | recipient,0.136008,0.0967739,1.40542
+age_65+,age_35-49,2018,2020,lh,log mean per household,0.0633183,0.1173,0.539797
+age_65+,age_35-49,2020,2022,p,receipt (pp),-0.010963,0.00346808,-3.16112
+age_65+,age_35-49,2020,2022,a,mean amount | recipient (MXN),-4761.03,1228.54,-3.87535
+age_65+,age_35-49,2020,2022,h,mean per household (MXN),-266.837,65.9159,-4.04814
+age_65+,age_35-49,2020,2022,lp,log receipt,-0.220701,0.0687155,-3.21181
+age_65+,age_35-49,2020,2022,la,log mean amount | recipient,-0.26777,0.0886499,-3.02053
+age_65+,age_35-49,2020,2022,lh,log mean per household,-0.488471,0.11076,-4.41018
+age_65+,age_35-49,2022,2024,p,receipt (pp),-0.00763154,0.00329605,-2.31536
+age_65+,age_35-49,2022,2024,a,mean amount | recipient (MXN),495.786,1285.62,0.385638
+age_65+,age_35-49,2022,2024,h,mean per household (MXN),-45.2425,68.3328,-0.662091
+age_65+,age_35-49,2022,2024,lp,log receipt,-0.117898,0.0723547,-1.62945
+age_65+,age_35-49,2022,2024,la,log mean amount | recipient,0.0207075,0.0834053,0.248276
+age_65+,age_35-49,2022,2024,lh,log mean per household,-0.0971909,0.1114,-0.872449
+age_65+,age_35-49,2018,2022,p,receipt (pp),-0.0191465,0.00396251,-4.83192
+age_65+,age_35-49,2018,2022,a,mean amount | recipient (MXN),-3370.55,1289.45,-2.61396
+age_65+,age_35-49,2018,2022,h,mean per household (MXN),-249.478,72.0801,-3.46113
+age_65+,age_35-49,2018,2022,lp,log receipt,-0.293391,0.0707241,-4.14838
+age_65+,age_35-49,2018,2022,la,log mean amount | recipient,-0.131762,0.095536,-1.37918
+age_65+,age_35-49,2018,2022,lh,log mean per household,-0.425152,0.117258,-3.62578
+size_1,size_3-4,2018,2020,p,receipt (pp),-0.00106667,0.00435278,-0.245056
+size_1,size_3-4,2018,2020,a,mean amount | recipient (MXN),-1382.81,1321.12,-1.04669
+size_1,size_3-4,2018,2020,h,mean per household (MXN),-63.4548,77.5379,-0.818371
+size_1,size_3-4,2018,2020,lp,log receipt,-0.0113,0.0905988,-0.124726
+size_1,size_3-4,2018,2020,la,log mean amount | recipient,-0.120526,0.129501,-0.930695
+size_1,size_3-4,2018,2020,lh,log mean per household,-0.131826,0.157734,-0.835747
+size_1,size_3-4,2020,2022,p,receipt (pp),-0.0096397,0.0037193,-2.59181
+size_1,size_3-4,2020,2022,a,mean amount | recipient (MXN),-3061.39,1318.62,-2.32165
+size_1,size_3-4,2020,2022,h,mean per household (MXN),-238.843,71.2622,-3.35161
+size_1,size_3-4,2020,2022,lp,log receipt,-0.222125,0.0847855,-2.61985
+size_1,size_3-4,2020,2022,la,log mean amount | recipient,-0.135437,0.1095,-1.23687
+size_1,size_3-4,2020,2022,lh,log mean per household,-0.357563,0.136242,-2.62448
+size_1,size_3-4,2022,2024,p,receipt (pp),-0.00268906,0.00333854,-0.80546
+size_1,size_3-4,2022,2024,a,mean amount | recipient (MXN),2081.44,1573.4,1.3229
+size_1,size_3-4,2022,2024,h,mean per household (MXN),80.4499,76.3349,1.05391
+size_1,size_3-4,2022,2024,lp,log receipt,-0.0856763,0.0884819,-0.968291
+size_1,size_3-4,2022,2024,la,log mean amount | recipient,0.132691,0.12086,1.09789
+size_1,size_3-4,2022,2024,lh,log mean per household,0.047015,0.152896,0.307497
+size_1,size_3-4,2018,2022,p,receipt (pp),-0.0107064,0.00416187,-2.57249
+size_1,size_3-4,2018,2022,a,mean amount | recipient (MXN),-4444.2,1501.5,-2.95983
+size_1,size_3-4,2018,2022,h,mean per household (MXN),-302.298,85.214,-3.54752
+size_1,size_3-4,2018,2022,lp,log receipt,-0.233425,0.0897776,-2.60004
+size_1,size_3-4,2018,2022,la,log mean amount | recipient,-0.255963,0.131414,-1.94776
+size_1,size_3-4,2018,2022,lh,log mean per household,-0.489389,0.160986,-3.03995
+need_any,need_none,2018,2020,p,receipt (pp),-0.0125213,0.00336586,-3.7201
+need_any,need_none,2018,2020,a,mean amount | recipient (MXN),-605.053,912.165,-0.663315
+need_any,need_none,2018,2020,h,mean per household (MXN),-163.497,69.851,-2.34065
+need_any,need_none,2018,2020,lp,log receipt,-0.145121,0.0537384,-2.70052
+need_any,need_none,2018,2020,la,log mean amount | recipient,-0.0609495,0.0782306,-0.7791
+need_any,need_none,2018,2020,lh,log mean per household,-0.206071,0.0940962,-2.19
+need_any,need_none,2020,2022,p,receipt (pp),-0.000235553,0.00302489,-0.0778715
+need_any,need_none,2020,2022,a,mean amount | recipient (MXN),-481.381,1016.16,-0.473728
+need_any,need_none,2020,2022,h,mean per household (MXN),113.128,71.9289,1.57277
+need_any,need_none,2020,2022,lp,log receipt,-0.0327792,0.0520715,-0.629504
+need_any,need_none,2020,2022,la,log mean amount | recipient,-0.0595138,0.0733534,-0.81133
+need_any,need_none,2020,2022,lh,log mean per household,-0.092293,0.0892932,-1.03359
+need_any,need_none,2022,2024,p,receipt (pp),-0.00266686,0.00292209,-0.912655
+need_any,need_none,2022,2024,a,mean amount | recipient (MXN),1572.37,1059.83,1.4836
+need_any,need_none,2022,2024,h,mean per household (MXN),-0.591469,76.2442,-0.00775756
+need_any,need_none,2022,2024,lp,log receipt,0.0514687,0.0526958,0.976714
+need_any,need_none,2022,2024,la,log mean amount | recipient,0.106617,0.0676439,1.57614
+need_any,need_none,2022,2024,lh,log mean per household,0.158085,0.085566,1.84752
+need_any,need_none,2018,2022,p,receipt (pp),-0.0127569,0.00346247,-3.68432
+need_any,need_none,2018,2022,a,mean amount | recipient (MXN),-1086.43,1014.05,-1.07138
+need_any,need_none,2018,2022,h,mean per household (MXN),-50.369,81.3041,-0.619513
+need_any,need_none,2018,2022,lp,log receipt,-0.177901,0.0542505,-3.27924
+need_any,need_none,2018,2022,la,log mean amount | recipient,-0.120463,0.0747499,-1.61155
+need_any,need_none,2018,2022,lh,log mean per household,-0.298364,0.0932084,-3.20104
