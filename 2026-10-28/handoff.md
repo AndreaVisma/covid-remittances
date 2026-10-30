@@ -4,6 +4,40 @@
 
 Rule from now on: **no new experiments until the base model is fixed and every output is rebuilt from it.** A later experiment must earn a place in the paper outline below.
 
+## 0. Update 30 Oct 2026: steering to the willing-and-able model
+
+**Direction (user, 30 Oct):** the next base model follows the user's notes and is specified in `2026-10-30/model_plan.tex` (Steps 0–10). Scripts are prepared in `2026-10-30/` (map in `2026-10-30/README.md`) and **not run yet**. Until it is run and verified, the results below (option 6a, `run_household_model.py`) remain the current base, and the paper draft (`paper/main.pdf`, 29 Oct) is written on them.
+
+- **Structure:** each migrant has an *ability* to send (employment; stimulus checks for out-of-work migrants, one π for all rounds with an on/off switch per round) and a *desire* to send (expit(θ), θ = type + household need + β × cumulative excess deaths). Four states: sender, lost sender, reserve, inactive. **Stepping-in** (κ, the preferred mechanism because the qualitative literature documents it): each lost sender is replaced by a reserve migrant with probability κ, capped by who is available, the replacement taking the lost sender's role. Household **receipt** is a logit in the numbers of effective core and kin senders; **transfers** = one per effective sender in months with receipt. Receipt can now rise with desire, so the flat number of receiving households in ENIGH is a test, not an assumption.
+- **Calibration:** nine normal-times parameters from MMP 2019 (Stage 1: a_c, a_k from independent senders; Stage 2: five receipt coefficients and two need effects, per κ); κ and β from the shock years (compatibility map). The MMP migrant files (`mig174`: 1,287 valid 2010–19 records, 80% sent something on the last trip; `migother174`: 835) record whether migrants sent during a trip, not monthly sending, so they serve as a check, not a calibration target.
+- **New tests:** ENIGH margins (receiving households flat, transfers per receiving household +0.09 above trend); ENIGH monthly profile (no April 2020 dip); **persistence of receipt within households** (ENIGH: receiving households receive in 3.9–4.1 of six months, 46–50% in all six; the model draws months independently, so it may fail; fallback: a persistent household component); months with receipt 2020 vs 2018 by group (new ENIGH tabulation, `2026-10-30/enigh_months_received.py`).
+- **Colleague's specification (30 Oct, `recipient-level/robustness/colleague_spec.py`):** a two-level model with no stepping-in (core migrants willing with expit(A + B employed + C Covid), receipt = expit(α + β Keen + δ FarFam)) fits the national series as well as the base (RMSE 0.013, holdout 0.024, 2020Q2 0.976) **if out-of-work migrants keep sending at about half the employed rate (B ≈ 1)** and Covid is the cumulative excess-deaths stock. Stepping-in (κ) and continued sending by out-of-work migrants (B) are **not separable on the national series** (the stimulus spikes do not separate them either). It differs on where the 2021–22 rise lands (receiving households +10% vs ENIGH flat, about 1 s.e. off) and fits 2019 worse (ΔAIC ≈ 110, mostly the linear kin term).
+- **Consequence for the paper (decision pending):** claim 1 should become "the shock was absorbed: most sending lost to unemployment was not lost", with stepping-in as the base mechanism and continued individual sending as the observationally equivalent alternative (they differ in who loses: single-link households vs occupational exposure).
+- **Decided (30 Oct):** the kin coefficient b_k is constrained to b_k ≥ 0 in the calibration (the unconstrained 2019 estimate was −0.16, n.s.; with b_k < 0 a kin replacement in a core household would lower receipt).
+- **Decisions pending:** stimulus rounds in the base (scripts default: all three on, π = 1); replacement allocation when the reserve runs out (implemented: core roles first); claim-1 framing.
+- **Robustness 6a–6h (29 Oct)** and the colleague comparison stay valid for the current base; they will be rerun on the new model once it is verified.
+
+### How to resume (state at the end of 30 Oct)
+
+**Next actions, in order** (nothing below has been run yet):
+1. Settle the two pending decisions above (stimulus base, replacement allocation), with the user.
+2. `python 2026-10-30/check_special_cases.py`: the four checks must pass before any output is used (in particular, nesting in `run_household_model.py` at κ = 0 with full desire, max abs difference < 1e-10). Fix the library if they fail.
+3. `python 2026-10-30/calibrate_mmp.py` (then `--shift 0.5`). Stage 1 must reproduce the migrant-level M1 values (a_c ≈ −0.23, a_k ≈ −3.37; written next to them in `outputs/stage1.csv`). Runtime is unknown; try `--kappas 0 0.5 1` first.
+4. `python 2026-10-30/run_shocks.py --quick`, then the full map and the robustness switches (`--rounds 2021-01 2021-03 --tag no-april`).
+5. `python -I 2026-10-30/enigh_months_received.py ...` and `python 2026-10-30/run_households.py` (persistence test; if it fails, add a persistent household component as in the plan).
+6. Compare with the current base and report to the user; then decide whether the new model becomes the base, rerun robustness 6a–6h on it, add it to `run_all.py`, and update the paper.
+
+**Where things are:**
+- The plan (equations, parameters, calibration, tests): `2026-10-30/model_plan.tex` (not compiled; the user copies it elsewhere). Script map: `2026-10-30/README.md`.
+- Current base and its outputs: `network-compatibility-model/recipient-level/run_household_model.py`, `outputs/household-model/`; robustness 6a–6h: `recipient-level/robustness/`, `outputs/robustness/summary.csv`; colleague comparison: `recipient-level/robustness/colleague_spec.py`, `outputs/robustness/colleague_spec/README.md`.
+- Identification: `network-compatibility-model/identification/` (ENIGH incl. 2016 pre-period and monthly profile, state panel, municipal panel).
+- Paper draft: `paper/main.tex` → `paper/main.pdf` (17 pp., 29 Oct; on the current base; claim 1 to be reframed; references to verify; figure titles to strip). Figure 1: `paper/make_paper_figures.py`.
+- Full rebuild of the current base: `network-compatibility-model/run_all.py` (~75 min).
+
+**Not committed yet (as of 30 Oct):** `paper/`, `2026-10-30/`, `recipient-level/robustness/colleague_spec.py` and its outputs, the figure caption fixes in `recipient-level/make_figures.py` (S4, S6–S9) with the redrawn figures, and this handoff. Commit only when the user asks; the repository is public (never `data/` or MMP/IPUMS-derived microdata).
+
+**Working style (user):** go point by point and end every answer with a short "Still open" list; plain language; propose and wait for approval before implementing; stepping-in is the preferred coordination mechanism (qualitative literature); robustness checks run as separate agents when asked.
+
 ## 1. The paper in one paragraph
 
 Forecasts expected remittances to Mexico to collapse in 2020; they did not. We build a parsimonious agent-based model on the actual household–migrant networks of the Mexican Migration Project (MMP), drive it with observed US job losses by occupation (CPS), and ask what the mechanisms proposed by survey studies (kin stepping in, need response, US benefits) can and cannot explain. One chapter of a PhD on remittance networks in crises. Target: transfer **counts** (Banxico transactions) relative to their pre-COVID trend.

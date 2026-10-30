@@ -1,0 +1,241 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\newcommand{\expit}{\operatorname{expit}}
+
+\title{Model plan: willing and able migrants with stepping-in}
+\author{}
+\date{30 October 2026}
+
+\begin{document}
+\maketitle
+
+\noindent Notation: household $h$, migrant $j$, link type core ($c$) or kin ($k$), month $t$. $N^c_h$ and $N^k_h$ are the numbers of core and kin migrants linked to household $h$. $\expit(x) = e^x/(1+e^x)$.
+
+\section*{Step 0. The network at the outset}
+
+The model population is the set of households in the Mexican Migration Project community surveys of 2010--19 (46 communities) that are linked to at least one migrant in the United States.
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Households:} 3,405 linked households. The calibration sample has 3,252 households with complete records, of which 756 (23.2\%) report receiving remittances from the United States.
+\item \textbf{Migrants:} 7,999 links: 1,996 core (household head, spouse or child on a US trip), 3,581 close kin (the head's parents and siblings, and other members in the US) and 2,422 distant kin (uncles and aunts, cousins, nephews and nieces, in-laws, aggregated into one link per household because receipt does not rise with their number).
+\item \textbf{Network types:} core only 417, core and kin 595, kin only 2,393.
+\item \textbf{Network size:} 1 link 1,577; 2 links 723; 3--4 links 723; 5--9 links 352; 10 or more links 30.
+\item \textbf{To tabulate for the paper:} receipt by network type (households with a core migrant 63\%, with close kin but no core 8\%, with distant kin only 4\%), migrants' occupations on the last US trip (including the 1,417 coded as not working), household need features (no resident worker, older resident), and survey years.
+\end{itemize}
+
+\section*{Step 1. Ability: can this migrant send this month?}
+
+A migrant can send if employed. In a stimulus month, a migrant who is out of work can also send with probability $\pi$:
+\begin{equation}
+a_{j,t} = P(\text{able}_{j,t} = 1) = e_{o(j),t} + \big(1 - e_{o(j),t}\big)\,\pi\,S_t .
+\end{equation}
+
+\begin{itemize}[leftmargin=*]
+\item $e_{o,t}$: the monthly US employment rate of Mexican-origin workers in the migrant's occupation group $o$ (CPS). Migrants coded as not working on their last trip get the all-occupation rate.
+\item $S_t$: indicator of the stimulus months, April 2020, January 2021 and March 2021.
+\item \textbf{One $\pi$ for all three rounds, with a switch for each round.} The model has an on/off option per round. The base uses the same $\pi$ for all rounds that are switched on. A robustness run switches April 2020 off (the first round excluded mixed-status families; the April data are also distorted by the March 2020 rush to send at the weak peso). Known from the earlier runs: switching April 2020 on raises the quarterly error from 0.012 to 0.014 but is compatible with the data once March and April are pooled. \emph{Decision pending: which rounds are on in the base.}
+\item Employment is drawn independently across migrants, given the rates ($\rho = 0$).
+\end{itemize}
+
+\section*{Step 2. Desire: does this migrant want to send this month?}
+
+The probability of wanting to send is a logistic function of a desire index $\theta$, which depends on the migrant's type, the household's need and the crisis in Mexico:
+\begin{align}
+\theta_{j,t} &= a_{\text{type}(j)} + \eta_w\,[\text{no resident worker}]_h + \eta_o\,[\text{older resident}]_h + \beta\,N^*_t, \\
+d_{j,t} &= P(\text{desire}_{j,t} = 1) = \expit(\theta_{j,t}).
+\end{align}
+
+$N^*_t$ is the cumulative number of excess deaths in Mexico since March 2020 (World Mortality Dataset, trend baseline, negative months set to zero), scaled to 1 in December 2021. It is 0 before the pandemic and in the no-COVID run.
+
+\section*{Step 3. From two probabilities to four states}
+
+Each month every migrant has two independent yes/no draws: whether they \emph{can} send (probability $a_{j,t}$) and whether they \emph{want} to send (probability $d_{j,t}$). Independence means that losing a job changes whether a migrant can send, not whether they want to. The two draws give four states:
+
+\begin{center}
+\begin{tabular}{lccll}
+\toprule
+State & Can send? & Wants to send? & Probability & Role \\
+\midrule
+Sender & yes & yes & $a_{j,t}\,d_{j,t}$ & sends \\
+Lost sender & no & yes & $(1 - a_{j,t})\,d_{j,t}$ & wanted to send but cannot: a gap to fill \\
+Reserve & yes & no & $a_{j,t}\,(1 - d_{j,t})$ & could send but would not: can step in \\
+Inactive & no & no & $(1 - a_{j,t})(1 - d_{j,t})$ & plays no role \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Stimulus checks act only on ability; the crisis and household need act only on desire.
+
+For household $h$ in month $t$, let $W^c_{h,t}, W^k_{h,t}$ be the numbers of core and kin senders, $L^c_{h,t}, L^k_{h,t}$ the numbers of core and kin lost senders, and $R_{h,t}$ the number of reserve migrants (any type).
+
+\section*{Step 4. Stepping-in}
+
+When a migrant who wanted to send cannot, because they lost their job, someone else in the same household network may take over. The replacement comes from the reserve: migrants who still have an income but were not planning to send that month.
+
+The parameter $\kappa$ is the chance that a lost sender is replaced. With $\kappa = 0$ nobody ever steps in; with $\kappa = 1$ every lost sender is replaced, as long as someone in the reserve is available. A replacement takes over the role of the person they replace: if a brother sends in place of the household head, the household is treated as still receiving from its core migrant. Households with nobody in the reserve, such as those linked to a single migrant, cannot be helped, which is why they are the ones that lose out.
+
+Formally, the number of replacements is
+\begin{equation}
+X_{h,t} = \min\big(\text{Binomial}(L^c_{h,t} + L^k_{h,t},\,\kappa),\; R_{h,t}\big),
+\end{equation}
+allocated to the core and kin roles in proportion to $L^c_{h,t}$ and $L^k_{h,t}$ (core roles first if the reserve runs out). The effective numbers of senders are
+\begin{equation}
+E^c_{h,t} = W^c_{h,t} + X^c_{h,t}, \qquad E^k_{h,t} = W^k_{h,t} + X^k_{h,t}.
+\end{equation}
+
+\section*{Step 5. Household receipt}
+
+The chance that a household receives in a month depends on how many core and kin migrants actually send, counting replacements:
+\begin{equation}
+s_h(E^c, E^k) = \expit\Big(b_0 + b_{\text{any}}\,[E^c > 0] + b_c \log(1 + E^c) + b_k \log(1 + E^k) + b_{k0}\,[N^c_h = 0]\,\log(1 + E^k)\Big),
+\end{equation}
+and $P_{h,t} = \mathbb{E}\big[s_h(E^c_{h,t}, E^k_{h,t})\big]$ over the distribution of the four states and the replacements.
+
+Because receipt depends on migrants who \emph{want} to send, a rise in desire in 2021 can raise receipt; households already near the top of the curve barely move. Whether receipt stays flat, as the household survey suggests, is tested (Step 9), not assumed.
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule
+Parameter & Meaning in plain words \\
+\midrule
+$b_0$ & How likely a household is to receive when no linked migrant sends (money from other sources): the baseline. \\
+$b_{\text{any}}$ & The jump from having at least one core sender, the largest effect in the data. \\
+$b_c$ & The extra gain from each additional core sender, which shrinks as there are more of them. \\
+$b_k$ & The extra gain from kin senders when the household also has core migrants in its network (about zero in the data). \\
+$b_{k0}$ & The extra gain from kin senders when the household has no core migrant in its network at all, which is where kin matter. \\
+$a_c,\ a_k$ & How much desire core and kin migrants have to send in normal times. \\
+$\eta_w,\ \eta_o$ & How much more desire migrants have to send when the household has no resident worker, or has a resident aged 65 or older. \\
+$\beta$ & How much more desire every migrant has to send as the crisis in Mexico accumulates. \\
+$\kappa$ & How often someone steps in for a migrant who lost their job. \\
+$\pi$ & Whether a stimulus check lets an out-of-work migrant send that month. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section*{Step 6. Transfers}
+
+Each migrant who sends, original or replacement, sends one transfer that month. A household that receives without any migrant sending (money from other sources, the $b_0$ baseline) counts as one transfer. The expected number of transfers of household $h$ in month $t$ is
+\begin{equation}
+T_{h,t} = \mathbb{E}\Big[s_h(E^c_{h,t}, E^k_{h,t}) \cdot \max\big(E^c_{h,t} + E^k_{h,t},\ 1\big)\Big],
+\end{equation}
+and the national number of transfers in the model is
+\begin{equation}
+C_t = \sum_h T_{h,t}.
+\end{equation}
+
+Receipt and transfers therefore come from the same migrants. When someone steps in, both the household's receipt and its number of transfers are restored. When the crisis raises desire, transfers rise in every household with an extra sender, while receipt rises only where it was not already close to certain. Transfers per receiving household are $C_t / \sum_h P_{h,t}$.
+
+\textbf{Computation.} The expectations run over the four states of every migrant in the household and over the replacements. Because the reserve cap links migrants within a household, they are computed exactly by a recursion over the household's migrants (tracking the counts of senders, lost senders and reserve), which is cheap for small networks; the 30 households with 10 or more links are simulated.
+
+\section*{Step 7. Comparison with the data}
+
+Neither the model nor the data are compared in levels. Each is compared with its own no-COVID path, so the model needs no mechanism for the pre-pandemic growth of remittances.
+
+\paragraph{Model index.} The model is run twice: the COVID run uses the observed employment rates, the stimulus months and the crisis $N^*_t$; the no-COVID run uses the employment rates of the same calendar month of 2019, no stimulus and $N^*_t = 0$. The model index is
+\begin{equation}
+I^{\text{model}}_t = \frac{C^{\text{COVID}}_t}{C^{\text{no-COVID}}_t}, \qquad
+I^{\text{model}}_q = \frac{\sum_{t \in q} C^{\text{COVID}}_t}{\sum_{t \in q} C^{\text{no-COVID}}_t}\ \text{ for quarter } q.
+\end{equation}
+
+\paragraph{Data index.} Banco de M\'exico's monthly number of remittance transactions $B_t$ is compared with a pre-pandemic trend, log-linear with month effects, fitted on January 2017 to December 2019:
+\begin{equation}
+\log B_t = c + g\,t + \sum_{m=1}^{12} \mu_m [\text{month}(t) = m] + \varepsilon_t, \qquad \widehat{B}_t = \exp\Big(\hat c + \hat g\,t + \hat\mu_{\text{month}(t)}\Big),
+\end{equation}
+(with $\hat g$ equivalent to +6.3\% a year), extrapolated to 2020--22, and
+\begin{equation}
+I^{\text{data}}_q = \frac{\sum_{t \in q} B_t}{\sum_{t \in q} \widehat{B}_t}.
+\end{equation}
+
+\paragraph{Fit criterion.} The quarterly log root-mean-square error over the seven quarters 2020Q2--2021Q4,
+\begin{equation}
+\text{RMSE} = \Big[\tfrac{1}{7}\textstyle\sum_{q = 2020Q2}^{2021Q4} \big(\log I^{\text{model}}_q - \log I^{\text{data}}_q\big)^2\Big]^{1/2}.
+\end{equation}
+A configuration is compatible if $\text{RMSE} \le 0.04$, about three times the quarterly residual standard deviation of the trend fit in 2017--19 (0.014). 2022 is held out and its RMSE reported as an out-of-sample test.
+
+\paragraph{Stimulus spikes.} A second moment on the monthly series: for $m \in \{\text{January 2021}, \text{March 2021}\}$,
+\begin{equation}
+\text{spike}_m = \log I_m - \tfrac{1}{2}\big(\log I_{m-1} + \log I_{m+1}\big),
+\end{equation}
+computed for the model and the data (Banco de M\'exico: +4.1 and +3.6 log points).
+
+\paragraph{Assumptions to state.} (i) Pre-pandemic growth would have continued and is independent of the COVID mechanisms (it multiplies both runs alike). (ii) The 2017--19 trend is the right counterfactual. The trend window is the main sensitivity of the results (it moves $\beta$ but not $\kappa$), and is reported as robustness.
+
+\section*{Step 8. Calibration and identification}
+
+The set-up separates two sources of information. The \textbf{nine normal-times parameters} are fixed from the 2019 survey data; the \textbf{two behavioural responses}, $\kappa$ and $\beta$, are estimated from the shock years through the compatibility map and its best fit.
+
+\begin{center}
+\begin{tabularx}{\linewidth}{llXl}
+\toprule
+Parameters & Number & Identified from & How \\
+\midrule
+$a_c,\ a_k$ & 2 & Differences in receipt between households with different numbers of core and kin migrants & Stage 1 \\
+$b_0, b_{\text{any}}, b_c, b_k, b_{k0}$ & 5 & The shape of receipt against the number of senders & Stage 2 \\
+$\eta_w,\ \eta_o$ & 2 & Receipt across household need groups & Stage 2 \\
+$\kappa$ & 1 & The 2020Q2 trough and the January/March 2021 spikes & Compatibility map \\
+$\beta$ & 1 & The 2021 level; tested on the 2022 holdout & Compatibility map \\
+$\pi$, $\rho$, $N^*_t$, trend window & -- & Fixed assumptions & Robustness \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Stage 1: desire in normal times ($a_c$, $a_k$).} A migrant-level model in which each migrant sends independently, so that a household receives if at least one linked migrant sends:
+\begin{equation}
+P_h = \frac{1}{12} \sum_{t \in 2019} \Big[1 - \prod_{j \in h} \big(1 - a_{j,t}\,\expit(a_{\text{type}(j)})\big)\Big],
+\end{equation}
+fitted by maximum likelihood to the households' reported receipt with 2019 employment. The differences in receipt between households with different numbers of core and kin migrants identify how much desire each type has: $a_c = -0.23$ and $a_k = -3.37$, a monthly probability of wanting to send of 44\% for core and 3.3\% for kin migrants. These values are then fixed.
+
+\paragraph{Stage 2: receipt given desire ($b$, $\eta$).} With $a_c$ and $a_k$ fixed, the receipt coefficients and the need effects are estimated by maximum likelihood on the same households, for each value of $\kappa$ on the grid (in 2019 a few migrants are out of work, so stepping-in operates slightly even then). The receipt coefficients capture what independent senders cannot: the jump from the first core sender and the saturation after it. In the current model these coefficients barely move with $\kappa$ ($b_{\text{any}} = 4.14$ at $\kappa = 0$, 4.04 at $\kappa = 1$), because the 2019 data hardly distinguish values of $\kappa$; in practice the nine parameters are fixed.
+
+\paragraph{Why two stages.} The survey records whether a household receives, not which migrant sent. The level of desire ($a_c, a_k$) and the shape of the receipt curve ($b$) act through the same observed outcome, and estimating them jointly runs into a boundary (in the comparison with the colleague's specification, the receipt coefficient on the number of willing core migrants ran to its bound). The two-stage approach states this restriction openly: the level of desire comes from how receipt varies with network composition under independent sending, and the receipt curve is estimated given that level. As a check, $a_c$ and $a_k$ are shifted by $\pm 0.5$ and the change in $\kappa$ and $\beta$ is reported.
+
+\paragraph{Data limitations.}
+\begin{itemize}[leftmargin=*]
+\item \textbf{Receipt is reported, not monthly.} The MMP records whether the household receives remittances from the United States, not in which months. The model's average monthly receipt probability is matched to the share of households reporting receipt, which is a mapping assumption.
+\item \textbf{No sender identity.} The household survey does not say which linked migrant sends, which is why desire and the receipt curve need the two-stage restriction.
+\item \textbf{Individual migrant files.} The MMP migrant file \texttt{mig174} (household heads' last US trip) records average monthly remittances on that trip: 1,783 records in the 2010--19 surveys, 1,287 with valid information, 1,239 in the model's households (892 valid). 80\% sent something during the trip. The file \texttt{migother174} (migrants interviewed in the United States, not linked to the model's households) has the same question for 835 migrants in 2010--19. These records say whether a migrant sent \emph{at all} during a trip and how much a month, not in which months, so they cannot fix the monthly desire directly. They provide a check: independent monthly sending at 44\% implies that almost every core migrant sends at some point in a year-long trip, against 80\% observed, which points to differences in desire between migrants. The check is reported, and \texttt{migother174} serves as a rough reference for less closely tied migrants.
+\item \textbf{Survey timing and coverage.} The networks are those reported by origin households in surveys before the pandemic, pooled over 2010--19 and evaluated with 2019 employment. The MMP communities are concentrated in traditional sending regions. Kin occupations are imputed from household rosters.
+\item \textbf{Employment data.} The CPS extract identifies Mexican origin, not birthplace.
+\end{itemize}
+
+\section*{Step 9. Tests}
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{National series.} The 2020Q2--2021Q4 fit, the 2022 holdout and the January/March 2021 spikes.
+\item \textbf{Household survey margins (ENIGH).} The model's change in the share of receiving households and in transfers per receiving household, 2018 to 2022, against ENIGH: receiving households stayed on their pre-pandemic trend ($-0.02$, s.e.\ 0.10) while transfers per receiving household rose $+0.09$ above trend (s.e.\ 0.10). If the model's receipt rises too much, desire enters receipt only partly, with a weight $\omega \in [0,1]$ ($\omega = 1$: this model; $\omega = 0$: desire changes transfers only, the current option 6a), and ENIGH chooses $\omega$.
+\item \textbf{ENIGH monthly profile.} The ENIGH person-level income table records, for each income source and household member, the amount received in each of the six months before the interview. Interviews run August--November, so the 2020 survey covers February--October 2020. Money from abroad (code P041) sums exactly to the household remittance total. The profile shows no April 2020 dip in household receipt: from March to April 2020 receipt rose by 6.9\%, as in 2018 (difference $+1.6\%$, s.e.\ 4.8\%). The model's March-to-April change is compared with it. Caveat: receipt is reported about 20\% more often for the month just before the interview; same-month comparisons across years are protected because the interview months are the same each year.
+\item \textbf{Persistence of receipt within households (new).} In the ENIGH monthly profile, receiving households receive in 3.9--4.1 of the six months on average, and 46--50\% receive in all six. The model draws receipt independently each month, which may imply far fewer households receiving every month. The test compares the model's distribution of months with receipt over a six-month window (aligned with the ENIGH interview months, 2018 conditions) with ENIGH 2018. If the model fails, a persistent household component is added to the receipt equation (for example a household random effect $u_h \sim N(0, \sigma^2)$ inside $s_h$, with $\sigma$ fixed to match the 2018 persistence) and the results are rerun. This matters for who loses: with independent months, losses are spread thinly over many households; with persistence, they concentrate in fewer.
+\item \textbf{Normal times (robustness).} Calibrate on 2018 employment and run 2019 forward: the index should stay close to 1.
+\end{enumerate}
+
+\section*{Step 10. Who gained and who lost}
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Model.} 200 paired simulations, each household compared with its own no-COVID twin with common random numbers for employment, desire and receipt, April 2020 to December 2021. Outcomes: months with receipt and transfers. Groups: network type, network size, strongest tie, main migrant occupation, household need features. All are computed; the results presented are chosen from what comes out.
+\item \textbf{ENIGH check (new).} The distribution of months with receipt (0--6) among households in 2020 against 2018, by household group (need features, rural and urban, traditional sending states): for example, whether the share receiving in all six months fell more in households without a resident worker. The model's equivalent over the same window is compared with it.
+\item \textbf{Limits.} ENIGH is a repeated cross-section: it compares types of household across years but does not follow the same households, and its monthly profile follows each household for six months only. Household-level answers therefore come from the model, conditional on the compatible region, and are checked against ENIGH at group level.
+\end{itemize}
+
+\section*{Alternatives (robustness, not the base)}
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Out-of-work migrants keep sending.} Migrants out of work send with probability $s$ (savings, informal work), $a_{j,t} = e + (1 - e)\max(\pi S_t, s)$, without stepping-in. This is observationally equivalent to $\kappa$ on the national series (the comparison with the colleague's specification found out-of-work migrants sending at about half the employed rate fits as well as $\kappa \approx 1$). It is reported as the alternative; stepping-in is the base because it is what the qualitative literature documents.
+\item \textbf{Looking at other migrants (substitution).} Desire falls with the number of other senders in the household: $\theta_{j,t} = \dots - \lambda\,W_{-j,h,t}$. This addresses whether more desire produced duplicate senders or substitution between them.
+\item \textbf{Existing checks.} Trend window, decay of the crisis stock, March and April 2020 pooled, savings margin.
+\end{itemize}
+
+\section*{Decisions pending}
+
+\begin{enumerate}[leftmargin=*]
+\item Which stimulus rounds are switched on in the base (all three with one $\pi$, or April 2020 off).
+\item Allocation of replacements when the reserve runs out (proposed: in proportion to lost core and kin roles, core first).
+\end{enumerate}
+
+\end{document}

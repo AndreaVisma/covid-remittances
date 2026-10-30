@@ -11,3 +11,9 @@ __pycache__/
 __MACOSX/
 # MMP-derived household/migrant microdata
 network-compatibility-model/data-prep/population/
+# LaTeX build clutter
+*.aux
+*.bbl
+*.blg
+*.log
+*.out

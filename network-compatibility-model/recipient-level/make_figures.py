@@ -263,12 +263,12 @@ def s4_index(paths, migrant_q, grid):
     ax.text(hold - 0.3, lo - 0.025, '2022 held out', fontsize=8.5, color=mf.INK2, va='bottom')
     ax.legend(loc='upper left', ncol=2, fontsize=8)
     r0 = grid[(grid.kappa == 0) & (grid.beta == 0)].iloc[0]
-    save(fig, 'S4_receipt_index', 'Households lose less receipt than the migrant model loses transfers; 2021 is still missed',
-         'β = 0, ρ = 0, no benefits (E1a on the household model). Household model: expected number of receiving '
+    save(fig, 'S4_receipt_index', 'Job loss and stepping-in alone: 2020 is matched with strong stepping-in, 2021 is missed',
+         'β = 0 (no need), ρ = 0, stimulus π as in the base (1 in Jan and Mar 2021). Household model: expected number of receiving '
          'households, COVID run / no-COVID run (2019 CPS rates of the same month), exact; read as transfers under '
          'a constant number of transfers per receiving household. κ = replacement share; coefficients refitted to 2019 for '
-         'each κ. Gray: the migrant-level model, coordination rule (κ = replacement share; transfer counts, original '
-         '"Not working" coding, E1a). Banxico: transactions '
+         'each κ. Gray: the migrant-level model, coordination rule (κ = replacement share; transfer counts, '
+         'job loss only). Banxico: transactions '
          f'relative to their 2017–19 trend. 2020 Q2 at κ = 0: {r0.index_2020q2:.3f}. 2022 held out.')
 
 
@@ -331,7 +331,7 @@ def s6_paths(paths, grid):
     ax.set_ylabel('Relative to no-COVID path (quarterly)')
     ax.text(hold - 0.3, ax.get_ylim()[0] + 0.003, '2022 held out', fontsize=8.5, color=mf.INK2, va='bottom')
     ax.legend(loc='upper left')
-    save(fig, 'S6_compatible_paths', 'Household model: the best cell still follows the death waves',
+    save(fig, 'S6_compatible_paths', 'Household model: compatible cells and the best cell against Banxico',
          'E2 on the household model. Quarterly receipt index of the best cell, the other count-compatible cells '
          'and the best β = 0 cell, against Banxico relative to its 2017–19 trend. 2022 held out.')
 
@@ -368,7 +368,7 @@ def s7_realized(rb, ineq):
     ax.legend(handles=handles, loc='upper center', bbox_to_anchor=(0.5, -0.22), ncol=4, fontsize=8)
     k0 = ineq[ineq.kappa == 0].iloc[0]
     save(fig, 'S7_realized_losses', 'Household model: 3–8% of receiving households lose months; almost none lose every month',
-         'β = 0, ρ = 0, no benefits. Each household that receives in its no-COVID twin is compared with it (common '
+         'β = 0, ρ = 0, stimulus π as in the base. Each household that receives in its no-COVID twin is compared with it (common '
          'random numbers for employment and the receipt draw), Apr 2020 – Dec 2021: change in the number of months '
          'with receipt, pooled over 200 paths. Unlike the migrant model (H1, change in USD), every household draws its '
          'receipt each month, so luck moves months both ways; the paired draw removes most of it. About '
@@ -411,7 +411,7 @@ def s8_groups(g):
     axes[0].invert_yaxis()
     axes[1].legend(loc='lower right')
     save(fig, 'S8_who_loses', 'Household model: single links and core-only networks lose most, whatever κ',
-         'β = 0, ρ = 0, no benefits; 200 paired paths, Apr 2020 – Dec 2021. Left: expected change in months with '
+         'β = 0, ρ = 0, stimulus π as in the base; 200 paired paths, Apr 2020 – Dec 2021. Left: expected change in months with '
          'receipt by group (exact, receipt-weighted). Right: share of paths in which a household that receives in '
          'its no-COVID twin receives in no month, averaged over the group. Main occupation: the most common job '
          'group among the household’s eligible migrants ("Not working" migrants count as Other/none).')
@@ -477,7 +477,7 @@ def s9_decomposition(parts):
          'no-COVID run); need, i.e. the senders that cumulative excess deaths bring in (best map cell relative to its '
          'β = 0 path; migrant model: its own need term); and what '
          'remains. κ and β are each model’s best map cell (RMSE against Banxico vs trend, 2020 Q2–2021 Q4). Left: '
-         'migrant-level model, coordination rule (κ = replacement share, original "Not working" coding, transfer '
+         'migrant-level model, coordination rule (κ = replacement share, need β × reported COVID deaths, transfer '
          'counts). Right: household model (κ = replacement share, receipt). 2022 held out (shaded). '
          f'2021 Q4, migrant model: raw {a.raw * 100:+.0f}, trend {a.trend * 100:+.0f}, job loss {a.job_loss * 100:+.1f}, '
          f'need {a.need * 100:+.1f}, unexplained {a.unexplained * 100:+.0f} log points.')
