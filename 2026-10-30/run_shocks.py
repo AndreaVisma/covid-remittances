@@ -38,8 +38,25 @@ TAU_C = 0.04
 ENIGH = dict(receipt_vs_trend_2018_22=-0.02, tpr_vs_trend_2018_22=0.09, mar_apr_2020_minus_2018=0.016)
 
 
+NEED_LABEL = {'E': 'excess deaths (trend baseline)', 'S': 'reported COVID deaths', 'L': 'Mexican employment loss',
+              'R': 'placebo: constant flow from Mar 2020'}
+
+
+def need_series(spec, dates):
+    """N*_t for --need CODE:LAMBDA. 'E:1' (base) is run_household_model.need_stock: cumulative excess deaths, 1 in
+    Dec 2021. Otherwise need_margins.need_stock: monthly flow of series CODE (E excess deaths, S reported COVID
+    deaths, L Mexican employment loss, R placebo constant flow) accumulated with decay LAMBDA (0 = the monthly
+    flow itself, 1 = cumulative), scaled to peak 1 over Mar 2020 - Dec 2021."""
+    code, lam = spec.split(':')
+    if spec == 'E:1':
+        return hm.need_stock(dates)
+    import need_margins as nm                    # recipient-level/need_margins.py (same public monthly series)
+    assert pd.DatetimeIndex(dates).equals(nm.DATES)
+    return nm.need_stock(code, float(lam))
+
+
 class Shocks:
-    def __init__(self, pop, cal, rounds, pi):
+    def __init__(self, pop, cal, rounds, pi, need='E:1'):
         self.pop, self.cal, self.rounds, self.pi = pop, cal, rounds, pi
         dates = hm.DATES
         self.cf_dates = pd.DatetimeIndex([pd.Timestamp(2019, d.month, 1) for d in dates])
@@ -47,7 +64,7 @@ class Shocks:
         self.cf = wa.abm.make_inputs(self.cf_dates, pop['rate_columns'])
         self.a_covid = wa.ability(pop, self.covid, pi, wa.stimulus_indicator(dates, rounds))
         self.a_cf = wa.ability(pop, self.cf)
-        self.need = hm.need_stock(dates)
+        self.need = need_series(need, dates)
         self.target, self.bx_info = hm.banxico_target()
         bx_m, trend_m, _ = hm.e1.banxico()
         self.spike_bx = hm.spikes((bx_m / trend_m).reindex(dates))
@@ -121,6 +138,8 @@ def main():
     ap.add_argument('--betas', type=float, nargs='*', default=None)
     ap.add_argument('--quick', action='store_true')
     ap.add_argument('--tag', default='')
+    ap.add_argument('--need', default='E:1', help='CODE:LAMBDA, e.g. E:1 (base), E:0 monthly excess deaths, '
+                                                   'S:0, L:0, R:1 (see need_series)')
     args = ap.parse_args()
     kappas = args.kappas or ([0.0, 0.5, 0.8, 1.0] if args.quick else KAPPAS)
     betas = np.asarray(args.betas) if args.betas else (np.round(np.arange(0, 1.201, 0.1), 2) if args.quick else BETAS)
@@ -129,7 +148,7 @@ def main():
 
     pop = wa.load_population()
     cal = wa.load_calibration()
-    sh = Shocks(pop, cal, args.rounds, args.pi)
+    sh = Shocks(pop, cal, args.rounds, args.pi, args.need)
     rows, paths, monthly, fits = [], [], [], []
     for kappa in kappas:
         for beta in betas:
@@ -156,7 +175,8 @@ def main():
     settings = dict(
         plan='2026-10-30/model_plan.tex, Steps 1-7 and 9', stimulus_rounds=args.rounds, pi=args.pi,
         kappas=list(map(float, kappas)), betas=list(map(float, betas)), tau_C=TAU_C,
-        need='cumulative excess deaths since Mar 2020 (run_household_model.need_stock), 1 in Dec 2021',
+        need=args.need, need_label=(f"{NEED_LABEL[args.need.split(':')[0]]}, lambda = {args.need.split(':')[1]} "
+                                    '(1 = cumulative, 0 = monthly flow); peak 1 over Mar 2020 - Dec 2021'),
         target='Banxico transactions / 2017-19 trend (log-linear, month effects), quarterly',
         transfers='T = E[s(E) max(E^c + E^k, 1)], one transfer per effective sender',
         enigh_reference=ENIGH, banxico_trend=sh.bx_info,

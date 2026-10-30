@@ -4,9 +4,9 @@
 
 Rule from now on: **no new experiments until the base model is fixed and every output is rebuilt from it.** A later experiment must earn a place in the paper outline below.
 
-## 0. Update 30 Oct 2026: the willing-and-able model (calibrated, shock runs not yet run)
+## 0. Update 30 Oct 2026: the willing-and-able model (calibrated; quick shock map and need-series comparison run)
 
-**Direction (user, 30 Oct):** the next base model is the willing-and-able model in `2026-10-30/model_plan.tex` (Steps 0–10; script map in `2026-10-30/README.md`). **The 2019 calibration is done and verified; the shock runs have not been run.** Until they are run and compared, the results in §2–§5 (option 6a, `run_household_model.py`) remain the current base, and the paper draft (`paper/main.pdf`, 29 Oct) is written on them.
+**Direction (user, 30 Oct):** the next base model is the willing-and-able model in `2026-10-30/model_plan.tex` (Steps 0–10; script map in `2026-10-30/README.md`). **The 2019 calibration is done and verified; the quick shock map and a comparison of need series have been run (below); the full map and the robustness runs have not.** Until the new model is adopted, the results in §2–§5 (option 6a, `run_household_model.py`) remain the current base, and the paper draft (`paper/main.pdf`, 29 Oct) is written on them.
 
 - **Structure:** each migrant has an *ability* to send (employment; stimulus checks for out-of-work migrants) and a *desire* to send, d = expit(a_type + g·[core]·log N^c_h + η·need + β·N*_t). Four states: **able sender** (able and wants to send; use this term in all write-ups, user 30 Oct), lost sender, reserve, inactive. **Stepping-in** (κ): each lost sender is replaced by a reserve migrant with probability κ, capped by the reserve, core roles first, the replacement taking the lost sender's role. Receipt s_h = expit(b0 + b_any·[any able core sender] + b_c·log(1 + able core senders) + b_k0·[no core migrant]·log(1 + able kin senders)); transfers = one per effective able sender in months with receipt. Computed exactly (recursion over each household's migrants, ρ = 0).
 - **Decisions (30 Oct, user):** stimulus base = Jan and Mar 2021 on, April 2020 off, π = 1 (all three rounds as robustness, `--rounds 2020-04 2021-01 2021-03 --tag all-rounds`); replacements capped core roles first, and `run_shocks.py` reports how often the cap binds; **b_k removed** (kin matter only without core migrants; b_k was flat in the likelihood and drifted 19–84); **g added** (core desire falls with the number of core migrants; without it receipt rose far too steeply with network size and b_c went negative, making receipt *rise* when a core sender lost their job); **b_c ≥ 0** kept for its meaning; **normal times calibrated once at κ = 0** (stepping-in is a shock response; κ enters only the shock runs, in both the COVID and no-COVID run; `run_shocks.py` reports the 2019 level gap `cf_*_vs_k0`); no shared household component in desire (considered, not adopted).
@@ -15,10 +15,57 @@ Rule from now on: **no new experiments until the base model is fixed and every o
 - **Colleague's specification (30 Oct, `recipient-level/robustness/colleague_spec.py`):** a two-level model with no stepping-in fits the national series as well as the base **if out-of-work migrants keep sending at about half the employed rate**; stepping-in (κ) and continued sending (B) are not separable on the national series. Claim-1 framing pending: "the shock was absorbed", stepping-in as base, continued sending as the observationally equivalent alternative.
 - **Robustness 6a–6h (29 Oct)** stay valid for the current base; to be rerun on the new model once it is verified.
 
+### Shock years, quick map (30 Oct; `2026-10-30/outputs/shocks-quick-base/`, same as `outputs/shocks/`)
+
+`run_shocks.py --quick`: κ ∈ {0, 0.5, 0.8, 1}, β grid 0–1.2 by 0.1 plus β fitted per κ; base stimulus (Jan and Mar 2021, π = 1); need = cumulative excess deaths; normal-times parameters from the κ = 0 calibration in both runs. Runtime 6 min 51 s.
+
+| κ (β fitted) | 0 | 0.5 | 0.8 | **1** | Banxico / ENIGH | current base (κ = 1) |
+|---|---|---|---|---|---|---|
+| β | 0.18 | 0.17 | 0.16 | **0.15** | | 0.65 |
+| RMSE 2020Q2–21Q4 | 0.047 | 0.027 | 0.017 | **0.013** | | 0.012 |
+| RMSE 2022 holdout | 0.033 | 0.027 | 0.025 | **0.024** | | 0.024 |
+| 2020Q2 / 2021Q4 | 0.886 / 1.104 | 0.929 / 1.098 | 0.954 / 1.094 | **0.971 / 1.092** | 0.974 / 1.108 | 0.975 / – |
+| spikes Jan / Mar 2021 (log pts) | +13.6 / +10.1 | +8.7 / +6.3 | +5.9 / +4.2 | **+4.0 / +2.7** | +4.1 / +3.6 | +4.1 / +2.9 |
+| receipt 2022 vs no-COVID | 1.09 | 1.08 | 1.08 | **1.08** | ENIGH −0.02 (s.e. 0.10) | ≈ 1 by construction |
+| transfers per receiving hh 2022 | 1.03 | 1.03 | 1.03 | **1.03** | ENIGH +0.09 (s.e. 0.10) | +0.10 |
+| Mar→Apr 2020 receipt | −0.11 | −0.07 | −0.05 | **−0.04** | ENIGH +0.016 (s.e. 0.048) | −0.035 |
+
+- **κ ≈ 1 from two moments** (2020Q2 trough and the stimulus spikes; spike RMSE 0.006 at κ = 1). κ = 0 is rejected (2020Q2 0.886, spikes three times too large).
+- **Need is much smaller than in the current base** (β 0.15: core desire 60% → 64% by Dec 2021), because extra desire now also raises receipt.
+- **Open tension: where the 2021–22 rise lands.** The model puts it mostly on receiving households (+8%) and little on transfers per receiving household (+3%); ENIGH's point estimates are the reverse (flat, +9%). Both gaps are about 1 ENIGH s.e., so not rejected, but it is the same pattern as the colleague's specification. Prepared fallback: the ω option (Step 9, test 2: desire enters receipt only partly, ENIGH picks ω). Decision pending.
+- Reserve shortages are rare (1.4% of households in 2020Q2 at κ = 1; 29% of drawn replacements unfilled, mostly in single-migrant households with nobody to step in), so the core-first rule hardly matters. 2019 level gap of the no-COVID run at κ = 1: receipt +2.8%, transfers +3.6% relative to the κ = 0 calibration (cancels largely in the index; state it). Only 6 grid cells are compatible (τ = 0.04): the grid above β = 0.3 is wasted; the full map should use β 0–0.4 by 0.025.
+
+### Which need series (30 Oct; `run_shocks.py --quick --need CODE:λ`, outputs `2026-10-30/outputs/shocks-need-*/`)
+
+Each series is scaled to peak 1 over Mar 2020 – Dec 2021, so β is not comparable across series; the comparison is fit and shape. All at κ = 1 (best under every series):
+
+| need series | RMSE fit | RMSE 2022 | 2020Q2 | 2021Q4 | 2022 avg | spikes Jan / Mar | receipt 2022 | TPR 2022 |
+|---|---|---|---|---|---|---|---|---|
+| **excess deaths, cumulative (base, E:1)** | **0.013** | **0.024** | 0.971 | 1.092 | 1.103 | +4.0 / +2.7 | 1.076 | 1.025 |
+| reported COVID deaths, cumulative (S:1) | 0.013 | 0.024 | 0.970 | 1.092 | 1.103 | +3.8 / +2.8 | 1.076 | 1.025 |
+| excess deaths, decaying stock λ = 0.9 (E:0.9) | 0.024 | 0.065 | 0.975 | 1.063 | 1.042 | +4.4 / +2.7 | 1.035 | 1.011 |
+| excess deaths, monthly (E:0) | 0.046 | 0.092 | 0.999 | 1.011 | 1.007 | +9.6 / +1.6 | 1.007 | 1.002 |
+| reported COVID deaths, monthly (S:0) | 0.045 | 0.093 | 0.998 | 1.013 | 1.007 | +7.3 / +2.0 | 1.007 | 1.002 |
+| Mexican employment loss, monthly (L:0) | 0.060 | 0.097 | 0.995 | 0.999 | 1.001 | +3.5 / +2.8 | 1.001 | 1.000 |
+| placebo ramp from Mar 2020 (R:1) | 0.010 | 0.035 | 0.977 | 1.097 | 1.137 | +3.6 / +2.7 | 1.095 | 1.031 |
+| *Banxico* | | | *0.974* | *1.108* | *1.100* | *+4.1 / +3.6* | *ENIGH ≈ flat* | *ENIGH +0.09* |
+
+κ ≈ 1 under every series. The receipt-vs-TPR split (about 3 : 1) is the same under every series that produces a rise: it is a property of the model's structure, not of the need measure, so it cannot be fixed by choosing another series.
+
+### Why the cumulative excess-deaths series (argument for the paper)
+
+1. **The data ask for persistence, and only a stock delivers it.** Remittance counts did not rise and fall with the death waves: they stepped up through 2021 and stayed up in 2022. A monthly series (excess deaths, reported deaths, employment loss) returns the model to its baseline as soon as deaths fall, missing 2021Q4 by about 10 log points (1.01 vs 1.11) and failing the 2022 holdout (RMSE 0.09 against 0.024). Even a stock that loses 10% a month fails 2022 (1.04 vs 1.10). Only an undepreciated stock reproduces both the build-up and the plateau. The 2022 holdout is out of sample, so this is a test, not a fit.
+2. **Monthly series also get 2020 and 2021 wrong.** They lift 2020Q2 to about 1.00 (Banxico 0.974), because the first wave arrives in mid-2020, and monthly excess deaths peak in January 2021, inflating the January spike to +9.6 (Banxico +4.1). The cumulative stock is still small in spring 2020, so the 2020 trough is left to job loss and stepping-in, where the evidence puts it.
+3. **It is what a death does to a household's needs.** A death in the family is not a one-month shock: a lost earner, a widow or orphans to support, funeral and medical debts, a household that has to reorganise its income. Needs created in 2020–21 are still there in 2022. A stock that does not decay is the simplest way to say that the crisis accumulated obligations rather than producing a passing spike. Remittance commitments, once taken on, tend to be regular (monthly schedules, fixed beneficiaries), which also argues against fast decay.
+4. **It matches the national-crisis reading the cross-section supports.** The state and municipal panels show no local need gradient (§4, item 6). A national cumulative series fits that reading: migrants respond to the scale of Mexico's crisis as it builds up, as followed in the news and through their wider networks, not only to deaths in their own family. The cumulative toll is the natural measure of that scale.
+5. **It beats the placebo where it matters.** A ramp that only marks time since March 2020 fits 2020–21 slightly better (0.010) but keeps rising and overshoots 2022 (1.137 vs 1.100; holdout 0.035). The cumulative toll flattens when deaths stop, so it stops the rise where the data stop it, without being told to. Timing alone does not explain 2022; the shape of the crisis does.
+6. **Excess rather than reported deaths, although the two give the same fit.** Cumulated, the two series have nearly the same shape, so the results do not depend on the choice. Excess deaths are preferred because they count deaths that the official COVID tally misses (under-testing, deaths outside hospitals) and deaths caused indirectly by the pandemic (disrupted care), which matter for households in the same way.
+7. **Limits to state.** The time series cannot distinguish national need from other persistent forces that started in 2020 (US-side capacity, savings, the shift to digital channels); need is the interpretation the timing and the cross-section support, not an identified effect. β is small in the willing-and-able model (core desire 60% → 64%), so the claim is modest.
+
 ### How to resume (state at the end of 30 Oct)
 
 **Next actions, in order:**
-1. `python 2026-10-30/run_shocks.py --quick` (κ 0, 0.5, 0.8, 1; coarse β; runtime unknown), then the full map; robustness `--rounds 2020-04 2021-01 2021-03 --tag all-rounds`. Check `beta_fit.csv`: reserve shortage shares and the 2019 level gap `cf_*_vs_k0`.
+1. Decide (with the user) how to treat the receipt-vs-TPR tension: the ω option, or state it at about 1 ENIGH s.e. Then the full base map, `python 2026-10-30/run_shocks.py --betas 0 0.025 ... 0.4` (κ 0–1 by 0.1; the quick map took 7 min), and the robustness run `--rounds 2020-04 2021-01 2021-03 --tag all-rounds`. Need series: cumulative excess deaths (argument above); `--need CODE:λ` selects others.
 2. `python 2026-10-30/calibrate_mmp.py --shift 0.5` (a_c, a_k ± 0.5, g kept) and rerun the quick map on it: how much do κ and β move with the desire level.
 3. `python -I 2026-10-30/enigh_months_received.py ...` and `python 2026-10-30/run_households.py` (persistence test; if it fails, add a persistent component as in the plan). `run_households.py` has not been run since g and the κ = 0 calibration were added: check it first.
 4. Compare with the current base and report; then decide whether the new model becomes the base, rerun robustness 6a–6h, add it to `run_all.py`, update the paper.

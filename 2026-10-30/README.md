@@ -1,6 +1,6 @@
 # Willing-and-able model with stepping-in (30 Oct 2026)
 
-The next version of the base model, following `model_plan.tex` (the plan: Steps 0–10). **Status (30 Oct, end of day):** pre-checks pass; the 2019 calibration is done (κ = 0, with g, without b_k, b_c ≥ 0; `outputs/calibration.csv`); the shock runs and the household runs have not been run. Outputs in `outputs/` are aggregates only. Write-up: `calibration_2019.tex`; figures: `figures/calibration/`.
+The next version of the base model, following `model_plan.tex` (the plan: Steps 0–10). **Status (30 Oct, end of day):** pre-checks pass; the 2019 calibration is done (κ = 0, with g, without b_k, b_c ≥ 0; `outputs/calibration.csv`); quick shock map run (`outputs/shocks-quick-base/`) and six need series compared (`outputs/shocks-need-*/`, `--need CODE:λ`); full map and household runs not yet run. Outputs in `outputs/` are aggregates only. Write-up: `calibration_2019.tex`; figures: `figures/calibration/`.
 
 ## Files
 
