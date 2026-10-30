@@ -1,0 +1,13 @@
+{
+  "plan": "2026-10-30/model_plan.tex, Step 8",
+  "households": 3252,
+  "receiving": 756,
+  "stage1": "independent senders, P = mean_t[1 - prod(1 - a d)], d = expit(a_c + g log N^c) core, expit(a_k) kin; ML (Nelder-Mead)",
+  "stage2": "a_c, a_k, g fixed; eta by Nelder-Mead (outer), b = (b0, b_any, b_c, b_k0) by L-BFGS-B with analytic gradient (inner), per kappa; b_k removed (kin matter only without core)",
+  "kappas": [
+    1.0
+  ],
+  "shift": null,
+  "employment": "2019 CPS rates, rho = 0, no stimulus",
+  "receipt_target": "MMP remus == 1, mean monthly receipt probability (mapping assumption)"
+}

@@ -1,0 +1,288 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\newcommand{\expit}{\operatorname{expit}}
+
+\title{Calibration to 2019: method and data}
+\author{}
+\date{30 October 2026}
+
+\begin{document}
+\maketitle
+
+\noindent Notation: household $h$, migrant $j$, link type core ($c$) or kin ($k$), month $t$. $N^c_h$ and $N^k_h$ are the numbers of core and kin migrants linked to household $h$. $\expit(x) = e^x/(1+e^x)$. $[\cdot]$ is an indicator.
+
+\section*{1. Purpose}
+
+The model has eleven parameters. Nine describe migrants and households in normal times: the desire to send of core and kin migrants ($a_c$, $a_k$), the change in core desire with the number of core migrants ($g$), two effects of household need on desire ($\eta_w$, $\eta_o$), and four receipt coefficients ($b_0$, $b_{\text{any}}$, $b_c$, $b_{k0}$). These nine are fixed from household survey data for 2019 and are the subject of this note. The other two are behavioural responses to the shock: stepping-in ($\kappa$) and the response of desire to the crisis in Mexico ($\beta$). They are estimated from the 2020--21 national series and are not discussed here. The stimulus parameter $\pi$ is fixed by assumption and does not enter 2019, a year without stimulus payments.
+
+Normal times are calibrated at $\kappa = 0$, that is, without stepping-in. Stepping-in is a response to the shock, so $\kappa$ enters only the shock-year runs, both the COVID run and the no-COVID run used as its counterfactual. Two further reasons support this choice. First, the 2019 data barely distinguish values of $\kappa$: few migrants are out of work in a normal year, and in an earlier calibration that was repeated for each $\kappa$ the log-likelihood rose by only 2.5 points from $\kappa = 0$ to $\kappa = 1$. Second, with one fixed set of normal-times parameters, differences across $\kappa$ in the shock results are due to $\kappa$ alone and not to a change in the 2019 baseline.
+
+\section*{2. Data}
+
+\subsection*{2.1 Mexican Migration Project (MMP): households and their migrants}
+
+\paragraph{Surveys.} The population is built from the MMP household and person files (\texttt{house174}, \texttt{pers174}). It uses every household interviewed in Mexico in the community surveys of 2010--19: 7,154 households in 46 communities. A household enters the model if it is linked to at least one migrant in the United States. This gives 3,405 households, each used once, without resampling and without the MMP sampling weights. The interviews are spread unevenly over the decade (from 122 linked households interviewed in 2018 to 741 in 2014). All networks are evaluated with 2019 US employment, whatever the survey year.
+
+\paragraph{Links.} Each household's links to migrants in the United States are coded from the person roster and from the household questionnaire's questions on relatives in the United States:
+\begin{itemize}[leftmargin=*]
+\item \textbf{Core} (1,996 links): the household head, spouse or a child of the head, listed in the roster and on a US trip at the time of the interview.
+\item \textbf{Close kin} (3,581 links): the head's parents and siblings reported in the United States in the household questionnaire, plus any other relative in the roster who is on a US trip (non-relatives are excluded). When a relative appears both in the roster and in the questionnaire, the two sources are matched so that the person is counted once (maximum overlap within each relationship).
+\item \textbf{Distant kin} (2,422 links): the questionnaire's counts of uncles and aunts, cousins, nephews and nieces, and in-laws in the United States, net of roster overlap. All distant relatives of a household are collapsed into \emph{one} aggregated link. In the MMP, receipt rises with the number of close kin but hardly with the number of distant kin, so distant relatives are not treated as independent potential senders.
+\end{itemize}
+In the model, close kin and the aggregated distant-kin link are both of type kin. The 7,999 links give 417 households with core migrants only, 595 with core and kin, and 2,393 with kin only. The largest network has 16 links; 30 households have 10 or more.
+
+\paragraph{Calibration sample.} The calibration uses households with complete records and a known answer on receipt. A record is complete if the roster gives every member's US-trip status, none of the questionnaire's fields on relatives in the United States is unknown, and no relative is reported both as dead and as in the United States. Of the 3,405 linked households, 3,253 have complete records and 3,252 also report whether they receive remittances. These 3,252 households, with 7,501 links (1,884 core, 3,307 close kin, 2,310 distant kin), are the calibration sample. Of them, 756 (23.2\%) report receiving remittances from the United States. Table~\ref{tab:sample} gives the sample by number of core migrants.
+
+\begin{table}[ht]
+\centering
+\caption{Calibration sample by number of core migrants (MMP, 2010--19 interviews).}
+\label{tab:sample}
+\begin{tabular}{lrr}
+\toprule
+Core migrants & Households & Share receiving \\
+\midrule
+0 (kin only) & 2,280 & 0.061 \\
+1 & 520 & 0.588 \\
+2 & 215 & 0.660 \\
+3 & 130 & 0.692 \\
+4 or more & 107 & 0.748 \\
+\midrule
+All & 3,252 & 0.232 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Target: reported receipt.} The target is the household's answer to whether it receives remittances from the United States (MMP variable \texttt{remus}, yes or no). The survey does not say in which months the household receives, how often, or from which migrant. The model produces a monthly receipt probability. The calibration matches the household's average monthly receipt probability over the twelve months of 2019 to its reported receipt (Sections 4 and 5). This is a mapping assumption: a household that reports receipt is treated as one draw of a yes/no outcome whose probability is the model's average monthly probability.
+
+\paragraph{Household need.} The MMP has no usable household income for 2010--19, so need is measured from household composition. A resident is a household member who is not away on a US, domestic or other trip. Two features are used:
+\begin{itemize}[leftmargin=*]
+\item \emph{No resident worker}: no resident aged 14 or older has a working occupation code.
+\item \emph{Any older resident}: at least one resident is aged 65 or older.
+\end{itemize}
+Both are 0/1 and centred on their mean over households with a known roster, so that $a_c$ and $a_k$ refer to a household with average need. A household whose roster is incomplete (the roster count differs from the reported number of members, or a member's status is unknown) or has no resident members gets the mean, which is 0 after centring. In the calibration sample, 3,157 households have a known roster and 95 are set to the mean. Among the households with a known roster, 13.7\% have no resident worker and 24.3\% have an older resident. Receipt is higher in both groups (41.5\% without a resident worker against 20.4\% with one; 42.1\% with an older resident against 17.2\% without), but much of these raw gaps reflects network composition, which the model accounts for separately. Children were considered and left out: in the 2019 MMP data they do not predict receipt.
+
+\paragraph{Migrants' occupations.} Each migrant is assigned an occupation group, which links them to a CPS employment rate (Section 2.2). MMP occupation codes are grouped into agriculture; production, construction and transport; sales and personal services; and professional and administrative. Core migrants have their own occupation recorded in the roster. Almost all kin links come from the household questionnaire, which records no occupation, so kin profiles (age, sex and occupation) are imputed: each kin link copies the whole profile of a donor drawn at random among roster migrants aged 18 or older of the same sex (if known) and, in nearly all cases, from the same origin state. Because the roster migrants are almost all core migrants, kin occupations follow the occupational mix of core migrants in the same state. Of the 7,501 links in the calibration sample, 5,601 have imputed profiles. Migrants coded as not working on the occupation question (1,304 links in the sample, 303 of them core) and those with an unknown occupation or coded as student or pensioner are given the all-occupation employment rate. They are treated as migrants of unknown occupation, not as migrants who cannot send: households whose core migrants are all coded as not working still report receipt in 43\% of cases. All migrants are eligible to work; there is no age rule, since ages are measured at the 2010--19 interview.
+
+\subsection*{2.2 Current Population Survey (CPS): US employment}
+
+\paragraph{Employment rates.} Ability to send depends on employment (Section 3). The monthly employment rate $e_{o,t}$ of occupation group $o$ is computed from the monthly CPS basic files for January 2017 to December 2023, for workers aged 18--64 of Mexican origin. The extract has no birthplace variable, so Mexican origin (Hispanic origin codes) stands in for Mexican birth. The rate is employed over employed plus unemployed, weighted with the final CPS weights, with each person assigned the occupation of their current or last job. People outside the labour force are excluded, since the CPS records no occupation for most of them. The model uses the raw monthly rate when the cell is large enough (at least 100 labour-force observations and 5 unemployed) and a three-month centred average otherwise. The rate for all occupations is computed the same way.
+
+\paragraph{2019 months.} The calibration uses the twelve months January--December 2019. Table~\ref{tab:cps} gives the 2019 averages. Rates are high and stable except in agriculture, which is seasonal and whose raw rate is replaced by the smoothed rate in one month. Averaged over migrants and months, the probability of being able to send in 2019 is 0.953, so only about one migrant in twenty is out of work in a given month.
+
+\begin{table}[ht]
+\centering
+\caption{CPS employment rates of Mexican-origin workers aged 18--64, 2019.}
+\label{tab:cps}
+\begin{tabular}{lccc}
+\toprule
+Occupation group & Mean & Lowest month & Highest month \\
+\midrule
+Agriculture & 0.868 & 0.701 & 0.952 \\
+Production, construction, transport & 0.963 & 0.946 & 0.971 \\
+Sales, personal services & 0.960 & 0.949 & 0.971 \\
+Professional, administrative & 0.971 & 0.960 & 0.979 \\
+All occupations & 0.961 & 0.945 & 0.969 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Persistence and correlation.} In simulated household paths, each migrant's employment follows a latent Gaussian AR(1) process, and the migrant is employed in a month if the latent variable lies below the threshold implied by $e_{o,t}$. The persistence parameter $\phi = 0.913$ is matched to month-to-month labour-force transitions of the same CPS population in 2019 (37,530 linked pairs). Employment is drawn independently across migrants of the same network ($\rho = 0$). The calibration does not use $\phi$: it needs only each migrant's monthly probability of being employed, and with $\rho = 0$ these marginal probabilities determine the monthly distribution of states in each household exactly. $\phi$ matters only for the household paths over several months.
+
+\subsection*{2.3 MMP migrant files (check only)}
+
+The MMP file \texttt{mig174} covers household heads' last US trip and records their average monthly remittances on that trip: 1,783 records in the 2010--19 surveys, 1,287 with valid information, 1,239 in the model's households (892 valid); 80\% sent something during the trip. The file \texttt{migother174} has the same question for 835 migrants interviewed in the United States in 2010--19, who are not linked to the model's households. These records say whether a migrant sent at all during a trip and how much a month, not in which months, so they cannot fix monthly desire directly. They are not used in the calibration. They serve as a check: independent monthly sending at the rates of the migrant-level model implies that almost every core migrant sends at some point during a year-long trip, against 80\% observed, which points to differences in desire between migrants.
+
+\subsection*{2.4 Data limitations}
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Receipt is reported, not monthly.} The match between reported receipt and the average monthly receipt probability is an assumption (Section 2.1).
+\item \textbf{No sender identity.} The household survey does not say which linked migrant sends. The level of desire and the shape of the receipt curve both act on the same outcome, which is why the calibration has two stages (Section 4).
+\item \textbf{Timing and coverage.} The networks are those reported before the pandemic, pooled over 2010--19 and evaluated with 2019 employment. Migrants who returned or left after the interview are not tracked. The MMP communities are concentrated in traditional sending regions and the sample is unweighted, so the results describe this network population, not all Mexican households.
+\item \textbf{Imputed kin profiles.} Kin occupations are imputed from roster migrants of the same origin state, so occupational differences between kin are partly imputation noise.
+\item \textbf{Need from composition only.} There is no household income; need is proxied by two composition features measured at the interview.
+\item \textbf{Employment data.} The CPS extract identifies Mexican origin, not birthplace, and employment is a yes/no condition: wages do not enter ability.
+\end{itemize}
+
+\section*{3. The model in 2019}
+
+This section repeats the parts of the model that the calibration uses. In 2019 there is no stimulus ($S_t = 0$) and no crisis ($N^*_t = 0$).
+
+\paragraph{Ability.} Migrant $j$ can send in month $t$ if employed:
+\begin{equation}
+a_{j,t} = e_{o(j),t}.
+\end{equation}
+
+\paragraph{Desire.} The probability that migrant $j$ wants to send is
+\begin{align}
+\theta_j &= a_{\text{type}(j)} + g\,[j \text{ core}]\,\log N^c_h + \eta_w\,x^w_h + \eta_o\,x^o_h, \\
+d_j &= \expit(\theta_j),
+\end{align}
+where $x^w_h$ and $x^o_h$ are the centred need features (no resident worker, any older resident). $a_c$ is the desire of a household's only core migrant ($\log 1 = 0$) in a household of average need. With $g < 0$, each core migrant wants to send less often when the household has more core migrants. The term depends only on the size of the core network, not on who sends in a given month. Kin desire does not depend on network size.
+
+\paragraph{States.} Ability and desire are independent draws, so each migrant is in one of four states: \emph{able sender} ($a\,d$: able and wanting to send), lost sender ($(1-a)\,d$), reserve ($a\,(1-d)$) or inactive ($(1-a)(1-d)$). States are independent across migrants given the household. With $\kappa = 0$ nobody steps in, so the effective numbers of able core and kin senders are the numbers of able senders, $E^c_{h,t} = W^c_{h,t}$ and $E^k_{h,t} = W^k_{h,t}$. Lost senders and the reserve play no role in the calibration.
+
+\paragraph{Receipt.} Given the numbers of able senders, household $h$ receives in month $t$ with probability
+\begin{equation}
+s_h(E^c, E^k) = \expit\Big(b_0 + b_{\text{any}}\,[E^c > 0] + b_c \log(1 + E^c) + b_{k0}\,[N^c_h = 0]\,\log(1 + E^k)\Big).
+\label{eq:receipt}
+\end{equation}
+$b_0$ is receipt when no linked migrant sends (money from other sources), $b_{\text{any}}$ the jump from the first able core sender, $b_c$ the further gain from more able core senders, and $b_{k0}$ the gain from able kin senders in households with no core migrant, the only place where able kin senders count. The monthly receipt probability is $P_{h,t} = \mathbb{E}\big[s_h(E^c_{h,t}, E^k_{h,t})\big]$, the expectation being over the states of the household's migrants.
+
+\paragraph{Exact computation.} Because states are independent across migrants, the distribution of the numbers of able senders, lost senders and reserve migrants in each group (core, kin) is computed exactly by a recursion that adds one migrant at a time. The core and kin groups are independent, so their joint distribution is the product. The expectation in $P_{h,t}$ is then an exact finite sum over the pairs $(E^c, E^k)$. No simulation is needed.
+
+\section*{4. Stage 1: desire in normal times ($a_c$, $a_k$, $g$)}
+
+\paragraph{Why two stages.} The survey records whether a household receives, not which migrant sent. The level of desire ($a_c$, $a_k$) and the shape of the receipt curve ($b$) act through the same observed outcome. Estimating them jointly runs into a boundary: in an earlier comparison with an alternative specification, the receipt coefficient on the number of willing core migrants ran to its bound. The two stages state the restriction openly. The level of desire comes from how receipt varies with network composition when migrants send independently (Stage 1). The receipt curve is then estimated given that level (Stage 2).
+
+\paragraph{Likelihood.} Stage 1 uses a migrant-level model in which each migrant sends independently and a household receives if at least one linked migrant sends:
+\begin{equation}
+P^{(1)}_h = \frac{1}{12} \sum_{t \in 2019} \Big[1 - \prod_{j \in h} \big(1 - a_{j,t}\,d_j\big)\Big], \qquad
+d_j = \begin{cases} \expit(a_c + g \log N^c_h) & j \text{ core,} \\ \expit(a_k) & j \text{ kin.} \end{cases}
+\end{equation}
+Need does not enter Stage 1. With reported receipt $y_h \in \{0, 1\}$, the log-likelihood over the calibration sample $\mathcal{H}$ is
+\begin{equation}
+\ell_1(a_c, a_k, g) = \sum_{h \in \mathcal{H}} \Big[y_h \log P^{(1)}_h + (1 - y_h) \log\big(1 - P^{(1)}_h\big)\Big].
+\end{equation}
+It is maximised with the Nelder--Mead method from $(a_c, a_k, g) = (-0.2, -3.3, 0)$. The fit is deterministic.
+
+\paragraph{Identification.} Kin-only households identify $a_k$: their receipt depends only on how many kin they have and on kin desire. Households with one core migrant identify $a_c$. The rise in receipt from one to four or more core migrants identifies $g$: under independent sending, receipt would rise quickly with each extra core migrant, and $g$ measures how much slower the observed rise is.
+
+\paragraph{Results.} The estimates are $a_c = 0.406$, $a_k = -3.395$ and $g = -0.969$, with log-likelihood $-1139.47$. Fixing $g = 0$ gives $-1189.05$, so $g$ improves the fit by 49.6 log points for one parameter. The implied monthly desire of a core migrant is 0.60 if they are the household's only core migrant, 0.43 with two core migrants, 0.34 with three and 0.28 with four. Kin desire is 3.2\% a month. A household's chance that at least one core migrant wants to send still rises with the number of core migrants, but more slowly than under a constant desire.
+
+Table~\ref{tab:stage1} compares observed and fitted receipt by number of core migrants. With $g = 0$, the model under-predicts receipt in households with a single core migrant by 15 percentage points and over-predicts it in households with four or more by 18 points. With $g$, every group is fitted within 1.5 points.
+
+\begin{table}[ht]
+\centering
+\caption{Stage 1: observed and fitted receipt by number of core migrants (calibration sample, 2019 employment).}
+\label{tab:stage1}
+\begin{tabular}{lrccc}
+\toprule
+Core migrants & Households & Observed & Fitted & Fitted, $g = 0$ \\
+\midrule
+0 & 2,280 & 0.061 & 0.059 & 0.061 \\
+1 & 520 & 0.588 & 0.584 & 0.439 \\
+2 & 215 & 0.660 & 0.666 & 0.675 \\
+3 & 130 & 0.692 & 0.707 & 0.816 \\
+4 or more & 107 & 0.748 & 0.737 & 0.927 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Check against the migrant-level model.} With $g = 0$, Stage 1 is the migrant-level model M1 fitted earlier to the same households and employment. The Stage 1 code refits it and recovers $a_c = -0.2325$ and $a_k = -3.3672$, equal to the M1 estimates to four decimals (desire of 44\% for core and 3.3\% for kin migrants). This confirms that the population, sample and employment inputs are the same as in the earlier work.
+
+The values of $a_c$, $a_k$ and $g$ are then fixed for Stage 2 and for all shock-year runs.
+
+\section*{5. Stage 2: receipt given desire ($b$, $\eta$)}
+
+\paragraph{Likelihood.} With $a_c$, $a_k$ and $g$ fixed at their Stage 1 values and $\kappa = 0$, the six parameters $b = (b_0, b_{\text{any}}, b_c, b_{k0})$ and $\eta = (\eta_w, \eta_o)$ are estimated by maximum likelihood on the same 3,252 households. Let $q_{h,t}(e^c, e^k; \eta)$ be the exact probability that household $h$ has $e^c$ able core and $e^k$ able kin senders in month $t$ (Section 3). The household's average monthly receipt probability in 2019 is
+\begin{equation}
+P_h(b, \eta) = \frac{1}{12} \sum_{t \in 2019} \ \sum_{e^c = 0}^{N^c_h} \sum_{e^k = 0}^{N^k_h} q_{h,t}(e^c, e^k; \eta)\; s_h(e^c, e^k; b),
+\end{equation}
+and the log-likelihood is
+\begin{equation}
+\ell_2(b, \eta) = \sum_{h \in \mathcal{H}} \Big[y_h \log P_h + (1 - y_h) \log(1 - P_h)\Big].
+\end{equation}
+Since $s_h$ does not depend on $t$, the state probabilities are first averaged over the twelve months and the sum over $(e^c, e^k)$ is taken once.
+
+\paragraph{Nested optimisation.} $\eta$ changes desire and therefore the distribution of states $q_{h,t}$; $b$ only changes the receipt curve applied to that distribution. The estimation is nested accordingly.
+\begin{itemize}[leftmargin=*]
+\item \emph{Outer loop} over $\eta$: Nelder--Mead from $\eta = (0, 0)$. For each trial $\eta$, the state distributions are recomputed exactly and the inner loop returns the profile log-likelihood $\max_b \ell_2(b, \eta)$.
+\item \emph{Inner loop} over $b$, given the state distributions: L-BFGS-B with the analytic gradient. $P_h$ is linear in the $s_h$ values, so
+\begin{equation}
+\frac{\partial \ell_2}{\partial b} = \sum_{h \in \mathcal{H}} \Big(\frac{y_h}{P_h} - \frac{1 - y_h}{1 - P_h}\Big) \sum_{e^c, e^k} \bar q_h(e^c, e^k)\, s_h (1 - s_h)\, z_h(e^c, e^k),
+\end{equation}
+where $\bar q_h$ is the state distribution averaged over months and $z_h(e^c, e^k) = \big(1, [e^c > 0], \log(1 + e^c), [N^c_h = 0]\log(1 + e^k)\big)$ is the vector of regressors in \eqref{eq:receipt}.
+\item \emph{Multiple starting values.} The likelihood in $b$ has several local optima: earlier runs from different starts differed by up to 7 log points. The inner loop is therefore run from the previous solution (a warm start) and from five fixed starting vectors spread over the range of earlier estimates, and keeps the best.
+\end{itemize}
+
+\paragraph{Constraint.} $b_c \ge 0$: receipt does not fall when a household has more able core senders. The other coefficients are free. The constraint is kept for its meaning. A negative $b_c$ would make receipt rise when one of a household's able core senders loses their job, which contradicts the purpose of the model. Once $g$ is in the model, the 2019 data hardly pin down the size of $b_c$: with one able core sender receipt is already close to certain (about 97\%), and values of $b_c$ from 0 to about 8 fit within 0.5 log-likelihood points (an earlier fit with $b_c = 8.1$ had a log-likelihood 0.45 points below the final one). The value of $b_c$ is therefore weakly determined. It matters little in 2019 but should be kept in mind in the shock years, where it governs how much receipt is lost when a household goes from two able core senders to one.
+
+\paragraph{Number of parameters.} The AIC counts the six Stage 2 parameters only; $a_c$, $a_k$ and $g$ are treated as fixed.
+
+\paragraph{Results.} Table~\ref{tab:stage2} gives the estimates. The implied receipt curve is steep and saturates at once:
+\begin{itemize}[leftmargin=*]
+\item A household in which no linked migrant sends receives with probability $\expit(b_0) = 0.010$ a month.
+\item With at least one able core sender, receipt is $\expit(b_0 + b_{\text{any}} + b_c \log 2) = 0.972$. Because $b_c$ is at its bound of zero, further able core senders add nothing: receipt is 0.972 with one, two or more able core senders. In the shock years, a household that keeps at least one able core sender therefore keeps its receipt; it loses receipt only when no able core sender is left.
+\item In a household without core migrants, receipt is 0.894 with one able kin sender and 0.998 with two. Able able kin senders are rare (kin desire is 3.2\% a month), so receipt in kin-only households stays low on average.
+\end{itemize}
+The rise of receipt with the number of core migrants is therefore carried by desire ($g$), not by the receipt curve: more core migrants raise the chance that at least one of them wants to send and can, and the receipt curve turns that first able sender into receipt almost one for one. The need effects raise desire: having no resident worker multiplies a migrant's odds of wanting to send by $e^{\eta_w} = 1.39$, and having an older resident by $e^{\eta_o} = 1.21$.
+
+Table~\ref{tab:stage2fit} compares observed and fitted receipt. By number of core migrants, the fit is within 2 percentage points in every group. By need, the model fits households with core migrants reasonably but not kin-only households with an older resident (observed 13.5\%, fitted 6.4\%). One $\eta_o$ for all households cannot reproduce both the large relative gap in kin-only households and the absence of a gap in households with core migrants (63.3\% with and 63.5\% without an older resident, against 67.3\% and 58.7\% fitted). In kin-only households an older resident is often an older head whose siblings or parents are the migrants, so part of this gap may reflect who the migrants are rather than need.
+
+Calibrating at $\kappa = 0$ has one consequence for the shock-year runs. With $\kappa > 0$, the no-COVID run (2019 conditions) has slightly more receipt than the 2019 calibration, because the few migrants out of work in 2019 are partly replaced. This level gap is reported with the shock results; the comparison with the data uses the ratio of the COVID run to the no-COVID run, both at the same $\kappa$.
+
+\begin{table}[ht]
+\centering
+\caption{Stage 2 estimates at $\kappa = 0$ ($a_c$, $a_k$, $g$ fixed from Stage 1).}
+\label{tab:stage2}
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+Parameter & Estimate & Meaning \\
+\midrule
+$\eta_w$ & 0.332 & Shift in desire, no resident worker \\
+$\eta_o$ & 0.192 & Shift in desire, any older resident \\
+$b_0$ & $-4.597$ & Receipt with no able sender \\
+$b_{\text{any}}$ & 8.156 & Jump from the first able core sender \\
+$b_c$ & 0.000 & Gain from more able core senders (at the bound $b_c \ge 0$) \\
+$b_{k0}$ & 9.701 & Gain from able kin senders, households without core migrants \\
+\midrule
+Log-likelihood & $-1131.33$ & 3,252 households, 756 receiving \\
+AIC & 2274.66 & 6 parameters \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Stage 2: observed and fitted receipt (calibration sample, 2019 employment, $\kappa = 0$). The need rows exclude 95 households with an incomplete roster.}
+\label{tab:stage2fit}
+\begin{tabular}{llrcc}
+\toprule
+Network & Group & Households & Observed & Fitted \\
+\midrule
+\multicolumn{2}{l}{By number of core migrants} & & & \\
+& 0 & 2,280 & 0.061 & 0.061 \\
+& 1 & 520 & 0.588 & 0.568 \\
+& 2 & 215 & 0.660 & 0.659 \\
+& 3 & 130 & 0.692 & 0.701 \\
+& 4 or more & 107 & 0.748 & 0.758 \\
+\midrule
+\multicolumn{2}{l}{By need} & & & \\
+With core & No resident worker & 233 & 0.682 & 0.692 \\
+ & Resident worker & 710 & 0.618 & 0.606 \\
+ & Older resident & 441 & 0.633 & 0.673 \\
+ & No older resident & 502 & 0.635 & 0.587 \\
+Kin only & No resident worker & 201 & 0.104 & 0.073 \\
+ & Resident worker & 2,013 & 0.058 & 0.059 \\
+ & Older resident & 326 & 0.135 & 0.064 \\
+ & No older resident & 1,888 & 0.049 & 0.060 \\
+\midrule
+All & & 3,252 & 0.232 & 0.230 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{6. Specification choices and alternatives not adopted}
+
+\paragraph{Desire falling with the number of core migrants ($g$).} With a single core desire and independent sending, receipt rises far too steeply with the number of core migrants: 0.439, 0.675, 0.816 and 0.927 predicted for one to four or more core migrants, against 0.588, 0.660, 0.692 and 0.748 observed (Table~\ref{tab:stage1}). Without $g$, Stage 2 compensated through the receipt curve with a negative $b_c$ (about $-3.5$ to $-3.9$), which made receipt rise when a able core sender lost their job. With $g$, Stage 1 fits every group and $b_c$ no longer needs to be negative. One reading of $g < 0$ is a division of labour: in a household with several migrants, each sends less often because the others also send. The term is fixed by network size and does not react to who sends in a given month.
+
+\paragraph{Able able kin senders in households with core migrants ($b_k$, removed).} An earlier receipt equation had a term $b_k \log(1 + E^k)$ for able kin senders in households that also have core migrants. Few households inform it: at the Stage 1 values, about 35 of the 972 households with a core migrant have a able kin sender in an average month. The likelihood was flat in $b_k$ (1.5 log points between $b_k = 0$ and the unconstrained optimum), and its estimate drifted between 19 and 84 depending on the starting values. The term was removed, so able kin senders count only in households without core migrants ($b_{k0}$). This does not stop kin from replacing able core senders in the shock years: a kin migrant who steps in for a core migrant takes the core role.
+
+\paragraph{A negative $b_c$ without $g$.} As above, the model without $g$ produced $b_c$ between $-3.5$ and $-3.9$. This fits 2019 but implies that losing one of two able core senders raises receipt. The combination of $g$ and the bound $b_c \ge 0$ removes this implication.
+
+\paragraph{A shared household component in desire (not adopted).} Another way to slow the rise of receipt with network size is a desire component common to all migrants of a household, which makes their decisions correlated. It was considered and not adopted in favour of $g$. Because $g$ depends only on the number of core migrants, desire remains independent across migrants given the household, and the exact recursion of Section 3 applies unchanged; a shared component would require integrating over its distribution in every household.
+
+\paragraph{Calibration for each $\kappa$ (not adopted).} Earlier versions repeated Stage 2 for each value of $\kappa$ on a grid, since a few migrants are out of work even in 2019. The data hardly distinguish $\kappa$ (2.5 log points between $\kappa = 0$ and $\kappa = 1$), and a different 2019 baseline for each $\kappa$ would mix the effect of $\kappa$ in the shock years with changes in the baseline. The base now uses the $\kappa = 0$ calibration for every $\kappa$ (Section 1). The code still allows a calibration at other values of $\kappa$ as an option.
+
+\section*{7. Sensitivity}
+
+The two-stage approach fixes the level of desire from Stage 1. As a check on this restriction, Stage 2 is refitted with $a_c$ and $a_k$ both shifted by $+0.5$ and by $-0.5$, keeping $g$ at its Stage 1 value, and the resulting changes in the shock-year estimates of $\kappa$ and $\beta$ are reported. The check is implemented (option \texttt{--shift} of the calibration code) but has not yet been run.
+
+\end{document}

@@ -1,11 +1,12 @@
 """Willing-and-able model under the COVID shocks: compatibility map and best fit (plan Steps 7 and 9; 30 Oct 2026).
 
 Run (after calibrate_mmp.py; not run yet):
-    python 2026-10-30/run_shocks.py                          all three stimulus rounds on, pi = 1
-    python 2026-10-30/run_shocks.py --rounds 2021-01 2021-03 April 2020 switched off (robustness)
+    python 2026-10-30/run_shocks.py                          base: Jan and Mar 2021 on, April 2020 off, pi = 1 (user, 30 Oct)
+    python 2026-10-30/run_shocks.py --rounds 2020-04 2021-01 2021-03 --tag all-rounds   all three rounds (robustness)
     python 2026-10-30/run_shocks.py --pi 0                   no stimulus effect
     --kappas / --betas  subsets of the grids;  --quick  kappa {0, 0.5, 0.8, 1}, beta step 0.1;  --tag NAME
-Reads outputs/calibration.csv. For each kappa (with its 2019 parameters) and each beta:
+Reads outputs/calibration.csv (normal times calibrated at kappa = 0; kappa enters only here, in both runs). For each
+kappa and each beta (beta_fit.csv also reports cf_*_vs_k0: the no-COVID level at kappa vs kappa = 0):
     COVID run: CPS employment 2019-01..2022-12, stimulus in the rounds switched on, crisis N*_t (cumulative
                excess deaths, run_household_model.need_stock); no-COVID run: same calendar month of 2019,
                no stimulus, N* = 0.
@@ -17,7 +18,8 @@ ENIGH comparisons (Step 9 tests 2-3), per cell:
     transfers per receiving household index 2022 (ENIGH +0.09 vs trend),
     Mar->Apr 2020 log change in receipt, COVID minus no-COVID (ENIGH 2020 minus 2018: +0.016, s.e. 0.048).
 Outputs (aggregates) in outputs/shocks[-TAG]/: map.csv, beta_fit.csv, quarterly_paths.csv, monthly_paths.csv,
-run_settings.json.
+run_settings.json. beta_fit.csv also reports, at the fitted beta, how often the reserve runs out (share of
+households short of reserve migrants, share of drawn replacements left unfilled; 2020Q2 and Apr 2020-Dec 2021).
 """
 from pathlib import Path
 import argparse
@@ -55,14 +57,14 @@ class Shocks:
         """No-COVID run (independent of beta): (T, H) receipt and transfers."""
         if kappa not in self._cf:
             p = wa.params_for(self.cal, kappa)
-            d = wa.desire(self.pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'])
+            d = wa.desire(self.pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'], g=p['g'])
             self._cf[kappa] = wa.receipt_and_transfers(self.pop, wa.StateTables(self.pop, self.a_cf, d).pairs(kappa),
                                                        p['b'])
         return self._cf[kappa]
 
     def run(self, kappa, beta):
         p = wa.params_for(self.cal, kappa)
-        d = wa.desire(self.pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'], beta, self.need)
+        d = wa.desire(self.pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'], beta, self.need, p['g'])
         Pc, Tc = wa.receipt_and_transfers(self.pop, wa.StateTables(self.pop, self.a_covid, d).pairs(kappa), p['b'])
         Pf, Tf = self.counterfactual(kappa)
         s = lambda z: pd.Series(z.sum(1), index=hm.DATES)
@@ -91,10 +93,29 @@ class Shocks:
                                 'index_receipt': (rc / rf).values})
         return row, paths, monthly
 
+    def level_gap(self, kappa):
+        """No-COVID run at kappa vs kappa = 0: how far stepping-in for normal 2019 job losers moves the level away
+        from the kappa = 0 calibration (the index is a ratio, so most of it cancels)."""
+        rf, tf = (self.counterfactual(kappa)[i].sum() for i in (0, 1))
+        r0, t0 = (self.counterfactual(0.0)[i].sum() for i in (0, 1))
+        return dict(cf_receipt_vs_k0=float(rf / r0), cf_transfers_vs_k0=float(tf / t0))
+
+    def shortage(self, kappa, beta):
+        """How often stepping-in is capped by the reserve (decision 2: core roles first), COVID run."""
+        p = wa.params_for(self.cal, kappa)
+        d = wa.desire(self.pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'], beta, self.need, p['g'])
+        drawn, unfilled, short = wa.StateTables(self.pop, self.a_covid, d).shortage(kappa)
+        out = {}
+        for name, m in (('2020q2', (hm.DATES >= '2020-04-01') & (hm.DATES <= '2020-06-01')),
+                        ('2020_21', (hm.DATES >= '2020-04-01') & (hm.DATES <= '2021-12-01'))):
+            out[f'share_households_short_{name}'] = float(short[m].mean() / self.pop['H'])
+            out[f'share_replacements_unfilled_{name}'] = float(unfilled[m].sum() / max(drawn[m].sum(), 1e-12))
+        return out
+
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--rounds', nargs='*', default=list(wa.STIMULUS_ROUNDS))
+    ap.add_argument('--rounds', nargs='*', default=['2021-01', '2021-03'])   # base: April 2020 off (user, 30 Oct)
     ap.add_argument('--pi', type=float, default=1.0)
     ap.add_argument('--kappas', type=float, nargs='*', default=None)
     ap.add_argument('--betas', type=float, nargs='*', default=None)
@@ -119,7 +140,9 @@ def main():
         res = minimize_scalar(lambda b: sh.summary(kappa, b)[0]['rmse_fit'], bounds=(0.0, BETA_MAX),
                               method='bounded', options=dict(xatol=1e-3))
         r, p, m = sh.summary(kappa, float(res.x))
-        fits.append(dict(r, theta_core_2019=float(wa.expit(wa.params_for(cal, kappa)['a_c'])),
+        # theta_core_*: desire of a core migrant who is the household's only core migrant (g log 1 = 0)
+        fits.append(dict(r, **sh.level_gap(kappa), **sh.shortage(kappa, float(res.x)),
+                         theta_core_2019=float(wa.expit(wa.params_for(cal, kappa)['a_c'])),
                          theta_core_2021_12=float(wa.expit(wa.params_for(cal, kappa)['a_c'] + res.x))))
         paths.append(p.assign(fitted=True)), monthly.append(m.assign(fitted=True))
         print(f'kappa {kappa}: beta {res.x:.3f}, rmse {res.fun:.4f}', flush=True)

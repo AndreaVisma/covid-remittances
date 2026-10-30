@@ -37,7 +37,7 @@ def simulate(pop, inputs, p, kappa, beta, need, pi, stim, seed):
     T, M, H, hid, core = len(inputs.dates), pop['M'], pop['H'], pop['hid'], pop['core']
     streams = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(6)]
     phi = wa.abm.employment_phi()
-    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need)
+    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['g'])
     nc, nk = pop['n_core'], pop['n_kin']
     rec, trans = np.zeros((T, H), bool), np.zeros((T, H), int)
     z = streams[0].standard_normal(M)
@@ -56,9 +56,8 @@ def simulate(pop, inputs, p, kappa, beta, need, pi, stim, seed):
         xc = np.minimum(Xc, R)
         xk = np.minimum(Xk, R - xc)
         Ec, Ek = Wc + xc, Wk + xk
-        b0, b_any, b_c, b_k, b_k0 = p['b']
-        s = wa.expit(b0 + b_any * (Ec > 0) + b_c * np.log1p(Ec) + b_k * np.log1p(Ek)
-                     + b_k0 * (nc == 0) * np.log1p(Ek))
+        b0, b_any, b_c, b_k0 = p['b']
+        s = wa.expit(b0 + b_any * (Ec > 0) + b_c * np.log1p(Ec) + b_k0 * (nc == 0) * np.log1p(Ek))
         rec[t] = streams[5].random(H) < s
         trans[t] = rec[t] * np.maximum(Ec + Ek, 1)
     return rec, trans

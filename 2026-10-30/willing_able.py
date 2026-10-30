@@ -5,14 +5,15 @@ map) and run_households.py (household paths: persistence test, who gained and lo
 
 Per migrant j and month t (plan Steps 1-3):
     ability   a_j,t = e_o(j),t + (1 - e_o(j),t) * pi * S_t          S_t: stimulus months switched on
-    desire    theta_j,t = a_type(j) + eta_w no_worker_h + eta_o older_h + beta N*_t,   d_j,t = expit(theta)
+    desire    theta_j,t = a_type(j) + g [core] log N^c_h + eta_w no_worker_h + eta_o older_h + beta N*_t,
+              d_j,t = expit(theta)   (g: core desire falls with the number of core migrants; user, 30 Oct)
     states    sender a d | lost sender (1-a) d | reserve a (1-d) | inactive (1-a)(1-d), independent draws
 Per household h (Steps 4-6):
     replacements  X^c ~ Bin(L^c, kappa), X^k ~ Bin(L^k, kappa); capped by the reserve R, core roles first:
                   X^c' = min(X^c, R), X^k' = min(X^k, R - X^c')
     effective     E^c = W^c + X^c', E^k = W^k + X^k'
-    receipt       s_h(E^c, E^k) = expit(b0 + b_any [E^c>0] + b_c log(1+E^c) + b_k log(1+E^k)
-                                        + b_k0 [N^c_h = 0] log(1+E^k))
+    receipt       s_h(E^c, E^k) = expit(b0 + b_any [E^c>0] + b_c log(1+E^c) + b_k0 [N^c_h = 0] log(1+E^k))
+                  (kin matter only in households without core migrants; b_k removed, user, 30 Oct)
     transfers     T_h,t = E[ s_h(E) * max(E^c + E^k, 1) ]
 Exact for rho = 0: per household, a recursion over its core migrants gives the distribution of (W^c, L^c, R^c)
 and over its kin migrants that of (W^k, L^k, R^k); the two groups are independent; the binomial replacement
@@ -35,7 +36,7 @@ import run_e0_baseline as e0                # noqa: E402
 import compare_household_logit as hl        # noqa: E402
 
 OUT = HERE / 'outputs'
-B_NAMES = ['b0', 'b_any', 'b_c', 'b_k', 'b_k0']
+B_NAMES = ['b0', 'b_any', 'b_c', 'b_k0']
 ETA_NAMES = ['eta_w', 'eta_o']
 STIMULUS_ROUNDS = ('2020-04', '2021-01', '2021-03')      # the three US stimulus rounds (benefit schedule)
 
@@ -71,10 +72,12 @@ def ability(pop, inputs, pi=0.0, stim=None):
     return e + (1 - e) * pi * np.asarray(stim, float)[:, None] * pop['eligible'][None, :]
 
 
-def desire(pop, T, a_c, a_k, eta=(0.0, 0.0), beta=0.0, need_stock=None):
-    """(T, M) d_j,t = expit(a_type + eta' need_h + beta N*_t). need_x: centred household need features."""
+def desire(pop, T, a_c, a_k, eta=(0.0, 0.0), beta=0.0, need_stock=None, g=0.0):
+    """(T, M) d_j,t = expit(a_type + g [core] log N^c_h + eta' need_h + beta N*_t). need_x: centred household
+    need features. a_c is the desire of a core migrant who is the household's only core migrant."""
     need = pop['need_x'] @ np.asarray(eta, float)                         # (H,)
-    base = np.where(pop['core'], a_c, a_k) + need[pop['hid']]               # (M,)
+    core_size = np.log(np.maximum(pop['n_core'][pop['hid']], 1))            # (M,) log N^c_h, used for core only
+    base = np.where(pop['core'], a_c + g * core_size, a_k) + need[pop['hid']]   # (M,)
     stock = np.zeros(T) if need_stock is None else np.asarray(need_stock, float)
     return expit(base[None, :] + beta * stock[:, None])
 
@@ -150,6 +153,24 @@ class StateTables:
         joint = (Pc[:, :, None] * Pk[:, None, :]).reshape(self.T, Kc * Kk)    # (T, Kc*Kk)
         return np.asarray(joint @ M)                                          # (T, n_out)
 
+    def household_shortage(self, h, kappa):
+        """(3, T) for household h: expected replacements drawn (X^c + X^k before the cap), expected replacements
+        unfilled because the reserve ran out, and the probability that the cap binds."""
+        (nc, cw, cl, cr, Pc), (nk, kw, kl, kr, Pk) = self.groups[h]
+        R = cr[:, None] + kr[None, :]                                        # (Kc, Kk)
+        out = np.zeros((3,) + R.shape)
+        for xc in range(cl.max() + 1 if len(cl) else 1):
+            bc = binom.pmf(xc, cl, kappa)
+            for xk in range(kl.max() + 1 if len(kl) else 1):
+                w = bc[:, None] * binom.pmf(xk, kl, kappa)[None, :]
+                out += w * np.stack([np.full(R.shape, xc + xk), np.maximum(xc + xk - R, 0), xc + xk > R])
+        joint = (Pc[:, :, None] * Pk[:, None, :]).reshape(self.T, -1)
+        return out.reshape(3, -1) @ joint.T
+
+    def shortage(self, kappa):
+        """(3, T) totals over households of household_shortage: replacements drawn, unfilled, households short."""
+        return sum(self.household_shortage(h, kappa) for h in range(self.pop['H']))
+
     def pairs(self, kappa):
         key = round(float(kappa), 10)
         if key not in self._cache:
@@ -161,8 +182,8 @@ class StateTables:
 def receipt_grid(b, nc, nk):
     """(nc+1, nk+1) s_h(E^c, E^k) for a household with nc core and nk kin migrants; b in B_NAMES order."""
     ec, ek = np.meshgrid(np.arange(nc + 1), np.arange(nk + 1), indexing='ij')
-    b0, b_any, b_c, b_k, b_k0 = b
-    z = b0 + b_any * (ec > 0) + b_c * np.log1p(ec) + b_k * np.log1p(ek) + b_k0 * (nc == 0) * np.log1p(ek)
+    b0, b_any, b_c, b_k0 = b
+    z = b0 + b_any * (ec > 0) + b_c * np.log1p(ec) + b_k0 * (nc == 0) * np.log1p(ek)
     return expit(z)
 
 
@@ -179,9 +200,9 @@ def flatten(pop, pairs, months=None):
 
 
 def design(pop, hh, ec, ek):
-    """(n, 5) receipt design for flattened pairs (B_NAMES order)."""
+    """(n, 4) receipt design for flattened pairs (B_NAMES order)."""
     no_core = (pop['n_core'][hh] == 0).astype(float)
-    return np.column_stack([np.ones(len(hh)), (ec > 0), np.log1p(ec), np.log1p(ek), no_core * np.log1p(ek)])
+    return np.column_stack([np.ones(len(hh)), (ec > 0), np.log1p(ec), no_core * np.log1p(ek)])
 
 
 def receipt_and_transfers(pop, pairs, b):
@@ -199,11 +220,14 @@ def receipt_and_transfers(pop, pairs, b):
 
 # %% Calibration records
 def load_calibration(path=None):
-    """outputs/calibration.csv (calibrate_mmp.py): one row per kappa with a_c, a_k, eta_*, b_*."""
+    """outputs/calibration.csv (calibrate_mmp.py): one row per kappa with a_c, a_k, g, eta_*, b_*."""
     return pd.read_csv(path or OUT / 'calibration.csv')
 
 
 def params_for(cal, kappa):
-    row = cal.loc[np.isclose(cal.kappa, kappa)].iloc[0]
-    return dict(a_c=float(row.a_c), a_k=float(row.a_k), eta=row[ETA_NAMES].to_numpy(float),
+    """Normal-times parameters used at this kappa: the row calibrated at kappa if there is one, otherwise the
+    kappa = 0 calibration (the base since 30 Oct: stepping-in enters only the shock runs)."""
+    rows = cal.loc[np.isclose(cal.kappa, kappa)]
+    row = (rows if len(rows) else cal.loc[np.isclose(cal.kappa, 0.0)]).iloc[0]
+    return dict(a_c=float(row.a_c), a_k=float(row.a_k), g=float(row.g), eta=row[ETA_NAMES].to_numpy(float),
                 b=row[B_NAMES].to_numpy(float))

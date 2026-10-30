@@ -18,7 +18,8 @@ import willing_able as wa
 import run_household_model as hm
 import run_households as rh
 
-B = np.array([-3.9, 4.0, 0.5, 0.0, 1.3])               # illustrative receipt coefficients (b_k >= 0, as calibrated)
+B = np.array([-3.9, 4.0, 0.5, 1.3])                    # illustrative receipt coefficients (b0, b_any, b_c, b_k0)
+G = -0.5                                               # illustrative g (core desire falls with N^c)
 
 
 def main():
@@ -28,7 +29,7 @@ def main():
     a = wa.ability(pop, inputs)
 
     # 1. probabilities
-    d = wa.desire(pop, T, -0.23, -3.37, (0.3, 0.3))
+    d = wa.desire(pop, T, -0.23, -3.37, (0.3, 0.3), g=G)
     tables = wa.StateTables(pop, a, d)
     for kappa in (0.0, 0.5, 1.0):
         worst = max(np.abs(P.sum(1) - 1).max() for P in tables.pairs(kappa))
@@ -43,13 +44,13 @@ def main():
     d1 = wa.desire(pop, T, 30.0, 30.0)
     P_new, _ = wa.receipt_and_transfers(pop, wa.StateTables(pop, a, d1).pairs(0.0), B)
     cells = hm.Cells(pop, inputs)
-    x = np.r_[B, 0.0, 0.0]          # hm TERMS: intercept, any_core, log_core, log_kin, log_kin_no_core, no_worker, any_older
+    x = np.r_[B[:3], 0.0, B[3], 0.0, 0.0]   # hm TERMS: intercept, any_core, log_core, log_kin, log_kin_no_core, no_worker, any_older
     P_old = cells.receipt(x, kappa=0.0)
     gap = np.abs(P_new - P_old).max()
     assert gap < 1e-10, gap
     print(f'2. nesting in run_household_model at kappa = 0: max abs difference {gap:.2e}')
 
-    # 3. stepping-in monotone (holds because the calibration constrains b_k >= 0), single links unaffected
+    # 3. stepping-in monotone (holds for b_c >= 0, as in B; no kin term in households with core), single links unaffected
     prev = None
     single = (pop['n_core'] + pop['n_kin']) == 1
     for kappa in (0.0, 0.25, 0.5, 0.75, 1.0):
@@ -61,7 +62,7 @@ def main():
     print('3. stepping-in: monotone in kappa, single links unaffected')
 
     # 4. exact vs simulated
-    p = dict(a_c=-0.23, a_k=-3.37, eta=np.array([0.3, 0.3]), b=B)
+    p = dict(a_c=-0.23, a_k=-3.37, g=G, eta=np.array([0.3, 0.3]), b=B)
     P_exact, _ = wa.receipt_and_transfers(pop, tables.pairs(0.8), B)
     sims = np.array([rh.simulate(pop, inputs, p, 0.8, 0.0, None, 0.0, np.zeros(T), s)[0].mean(1) for s in range(400)])
     mc_se = sims.std(0, ddof=1) / np.sqrt(len(sims))
