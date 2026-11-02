@@ -1,0 +1,24 @@
+{
+  "plan": "2026-10-30/model_plan.tex, Step 9 test 4 and Step 10",
+  "kappas": [
+    1.0,
+    0.8
+  ],
+  "seeds": 200,
+  "stimulus_rounds": [
+    "2021-01",
+    "2021-03"
+  ],
+  "pi": 1.0,
+  "interview_shares": {
+    "8": 0.1,
+    "9": 0.31,
+    "10": 0.32,
+    "11": 0.27
+  },
+  "window": [
+    "2020-04-01",
+    "2021-12-01"
+  ],
+  "employment": "latent Gaussian AR(1), phi from CPS (abm.employment_phi), rho = 0"
+}

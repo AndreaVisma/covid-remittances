@@ -1,0 +1,20 @@
+{
+  "rho": 0.98,
+  "rho_kin": 0.0,
+  "kappas": [
+    1.0,
+    0.8
+  ],
+  "seeds": 200,
+  "window": [
+    "2020-04-01",
+    "2021-12-01"
+  ],
+  "interview_shares": {
+    "8": 0.1,
+    "9": 0.31,
+    "10": 0.32,
+    "11": 0.27
+  },
+  "note": "who_gains_loses_realised: per seed and household, months with receipt Apr 2020-Dec 2021 in the COVID run minus its no-COVID twin (common random numbers); shares averaged over seeds. months_distribution: 2018 from a 2018 run, 2020/2022 from the COVID run (Jan 2019 start), cf = no-COVID twin."
+}

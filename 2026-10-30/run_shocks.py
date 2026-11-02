@@ -138,6 +138,8 @@ def main():
     ap.add_argument('--betas', type=float, nargs='*', default=None)
     ap.add_argument('--quick', action='store_true')
     ap.add_argument('--tag', default='')
+    ap.add_argument('--calibration', default='calibration.csv',
+                    help='calibration file in outputs/ (e.g. calibration_shift_+0.5_shift.csv for the desire-level check)')
     ap.add_argument('--need', default='E:1', help='CODE:LAMBDA, e.g. E:1 (base), E:0 monthly excess deaths, '
                                                    'S:0, L:0, R:1 (see need_series)')
     args = ap.parse_args()
@@ -147,7 +149,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     pop = wa.load_population()
-    cal = wa.load_calibration()
+    cal = wa.load_calibration(wa.OUT / args.calibration)
     sh = Shocks(pop, cal, args.rounds, args.pi, args.need)
     rows, paths, monthly, fits = [], [], [], []
     for kappa in kappas:
@@ -173,7 +175,8 @@ def main():
     pd.concat(monthly, ignore_index=True).to_csv(out / 'monthly_paths.csv', index=False)
     best = grid.loc[grid.rmse_fit.idxmin()]
     settings = dict(
-        plan='2026-10-30/model_plan.tex, Steps 1-7 and 9', stimulus_rounds=args.rounds, pi=args.pi,
+        plan='2026-10-30/model_plan.tex, Steps 1-7 and 9', calibration=args.calibration,
+        stimulus_rounds=args.rounds, pi=args.pi,
         kappas=list(map(float, kappas)), betas=list(map(float, betas)), tau_C=TAU_C,
         need=args.need, need_label=(f"{NEED_LABEL[args.need.split(':')[0]]}, lambda = {args.need.split(':')[1]} "
                                     '(1 = cumulative, 0 = monthly flow); peak 1 over Mar 2020 - Dec 2021'),

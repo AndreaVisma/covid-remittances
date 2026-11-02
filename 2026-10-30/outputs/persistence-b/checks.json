@@ -1,0 +1,15 @@
+{
+  "lambda0_identical_to_run_households": true,
+  "lambda_check": 0.8,
+  "seeds": 200,
+  "clipped_cells": 0,
+  "core_desire_max_abs_z": 1.9997333174328695,
+  "core_desire_mean_sim_2019": 0.4213249415497662,
+  "core_desire_d_2019": 0.42105643833516826,
+  "core_desire_mean_sim_2021_12": 0.45609218436873755,
+  "core_desire_d_2021_12": 0.45571552377261637,
+  "receipt_exact_vs_sim_max_abs_z": 2.509493160396838,
+  "transfers_exact_vs_sim_max_abs_z": 2.5452938536656506,
+  "receipt_exact_mean": 831.7096708473558,
+  "receipt_sim_mean": 832.0186458333334
+}

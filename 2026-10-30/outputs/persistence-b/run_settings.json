@@ -1,0 +1,15 @@
+{
+  "option": "B: regular and occasional core senders (persistence_b.py, run_persistence_b.py; 2 Nov 2026)",
+  "spec": "core migrant regular with prob lambda*d_j0 (2019 desire, kappa=0 calibration, beta=0), else occasional with iid monthly desire q=(d_jt-lambda d_j0)/(1-lambda d_j0); kin iid d; types from a 7th random stream",
+  "commands": [
+    "run_persistence_b.py checks --seeds 200",
+    "run_persistence_b.py calibrate --seeds 100",
+    "run_persistence_b.py calibrate --seeds 100 --grid 0.8 0.85 0.95 0.975 0.99 1.0 --tag refine",
+    "run_persistence_b.py mig174 --lam 0.5 0.8 0.9 1.0 --seeds 20",
+    "run_persistence_b.py national --lam 1.0 --seeds 200",
+    "run_persistence_b.py households --lam 0.8 1.0 --seeds 200"
+  ],
+  "seeds_households": "ENIGH-aligned and who gains/loses: 9000+s (as enigh_aligned.py); 2018/2020 months: 5000+s (as run_households.py)",
+  "beta": "outputs/shocks/beta_fit.csv per kappa; stimulus Jan and Mar 2021, pi = 1",
+  "calibrated_lambda": "1.0 (corner: share all six rises monotonically in lambda and stays below ENIGH 0.496)"
+}

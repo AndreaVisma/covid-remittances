@@ -1,0 +1,13 @@
+{
+  "kappa": 1.0,
+  "beta": 0.1532198004828865,
+  "exact_max_abs_diff_vs_beta_fit": 1.1102230246251565e-16,
+  "lam": 1.0,
+  "seeds": 200,
+  "sim_index_2020q2": 0.9705675551701393,
+  "exact_index_2020q2": 0.9706910551108111,
+  "sim_index_2021q4": 1.091272680850492,
+  "exact_index_2021q4": 1.0916100854652493,
+  "sim_vs_exact_max_abs_z": 2.3980492372991,
+  "sim_vs_exact_max_abs_log_diff": 0.0007490495828384849
+}

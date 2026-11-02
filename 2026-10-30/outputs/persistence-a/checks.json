@@ -1,0 +1,16 @@
+{
+  "rho0_marginal_equals_desire": true,
+  "rho0_simulate_identical": true,
+  "constant_d_m_equals_d_rho0.9": true,
+  "markov_marginal_max_abs_z": 2.0588942659579854,
+  "markov_marginal_max_abs_diff": 0.0014564249958254338,
+  "m_core_jan2019": 0.4210564383351667,
+  "m_core_dec2021": 0.7062673086843512,
+  "d_core_dec2021": 0.7442013792529036,
+  "lag1_autocorr_core_sim_rho0.8": 0.7988229350250236,
+  "lag1_autocorr_core_sim_se": 0.001196178824276134,
+  "exact_vs_sim_receipt_max_abs_z": 2.237946050980949,
+  "exact_vs_sim_transfers_max_abs_z": 2.143484562248852,
+  "exact_vs_sim_pass_4se": true,
+  "seeds": 200
+}
