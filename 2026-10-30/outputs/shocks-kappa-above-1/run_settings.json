@@ -1,0 +1,54 @@
+{
+  "plan": "2026-10-30/model_plan.tex, Steps 1-7 and 9",
+  "stimulus_rounds": [
+    "2021-01",
+    "2021-03"
+  ],
+  "pi": 1.0,
+  "kappas": [
+    1.0,
+    1.25,
+    1.5,
+    1.75,
+    2.0
+  ],
+  "betas": [
+    0.0,
+    0.05,
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3,
+    0.4
+  ],
+  "tau_C": 0.04,
+  "need": "E:1",
+  "need_label": "excess deaths (trend baseline), lambda = 1 (1 = cumulative, 0 = monthly flow); peak 1 over Mar 2020 - Dec 2021",
+  "target": "Banxico transactions / 2017-19 trend (log-linear, month effects), quarterly",
+  "transfers": "T = E[s(E) max(E^c + E^k, 1)], one transfer per effective sender",
+  "enigh_reference": {
+    "receipt_vs_trend_2018_22": -0.02,
+    "tpr_vs_trend_2018_22": 0.09,
+    "mar_apr_2020_minus_2018": 0.016
+  },
+  "banxico_trend": {
+    "trend_window": [
+      "2017-01-01",
+      "2019-12-01"
+    ],
+    "trend_growth_per_year": 0.06318574356523146,
+    "residual_sd_monthly": 0.01947960600115106,
+    "residual_sd_quarterly": 0.014291824381905507
+  },
+  "spike_banxico": {
+    "2021-01": 0.0411,
+    "2021-03": 0.036
+  },
+  "best_cell": {
+    "kappa": 1.25,
+    "beta": 0.15,
+    "rmse": 0.012186492224892684
+  },
+  "n_compatible": 18
+}

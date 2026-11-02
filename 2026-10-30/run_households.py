@@ -50,12 +50,13 @@ def simulate(pop, inputs, p, kappa, beta, need, pi, stim, seed):
         able = (employed | checked) & pop['eligible']
         wants = streams[3].random(M) < d[t]
         lost = wants & ~able
-        cand = lost & (streams[4].random(M) < kappa)
+        u = streams[4].random(M)
+        cand = lost * ((u < kappa).astype(int) if kappa <= 1 else 1 + (u < kappa - 1))   # replacements drawn per lost sender
         Wc, Wk = hsum(wants & able & core), hsum(wants & able & ~core)
-        Xc, Xk, R = hsum(cand & core), hsum(cand & ~core), hsum(able & ~wants)
+        Xc, Xk, R = hsum(cand * core), hsum(cand * ~core), hsum(able & ~wants)
         xc = np.minimum(Xc, R)
         xk = np.minimum(Xk, R - xc)
-        Ec, Ek = Wc + xc, Wk + xk
+        Ec, Ek = wa.relabel(Wc + xc, Wk + xk, nc, nk)
         b0, b_any, b_c, b_k0 = p['b']
         s = wa.expit(b0 + b_any * (Ec > 0) + b_c * np.log1p(Ec) + b_k0 * (nc == 0) * np.log1p(Ek))
         rec[t] = streams[5].random(H) < s

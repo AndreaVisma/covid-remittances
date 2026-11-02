@@ -52,6 +52,24 @@ Each series is scaled to peak 1 over Mar 2020 – Dec 2021, so β is not compara
 
 κ ≈ 1 under every series. The receipt-vs-TPR split (about 3 : 1) is the same under every series that produces a rise: it is a property of the model's structure, not of the need measure, so it cannot be fixed by choosing another series.
 
+### κ above 1: full replacement, not overcompensation (2 Nov; `run_shocks.py --kappas 1 1.25 1.5 1.75 2 --tag kappa-above-1`, outputs `2026-10-30/outputs/shocks-kappa-above-1/`)
+
+Exploratory extension (`willing_able.replacement_pmf`, `relabel`; `run_households.py` follows): for 1 < κ ≤ 2 every lost sender is replaced for sure and a second reserve migrant also sends with probability κ − 1 (so κ able senders replace each lost one on average), still capped by the reserve, core roles first. Core roles cannot exceed the household's core migrants (overflow counts as kin); this never binds for κ ≤ 1, so all κ ≤ 1 results are unchanged. Checks passed: probabilities sum to 1, drawn − unfilled = added senders, monotone in κ, exact vs simulated at κ = 1.5 (max |z| 1.37). Reading of κ > 1: a job loss mobilises more than one replacement (an alarm in the wider family, or replacement split across several smaller transfers). Runtime 17 min.
+
+| κ (β fitted) | 1.00 | 1.25 | 1.50 | 1.75 | 2.00 | Banxico |
+|---|---|---|---|---|---|---|
+| RMSE 2020Q2–21Q4 | 0.013 | 0.012 | 0.014 | 0.018 | 0.022 | |
+| RMSE 2022 holdout | 0.024 | 0.023 | 0.024 | 0.024 | 0.025 | |
+| 2020Q2 | 0.971 | 0.983 | 0.996 | 1.008 | 1.020 | 0.974 |
+| spikes Jan / Mar 2021 | +4.0 / +2.7 | +2.5 / +1.6 | +1.1 / +0.4 | −0.3 / −0.7 | −1.7 / −1.8 | +4.1 / +3.6 |
+| spike RMSE | 0.006 | 0.018 | 0.031 | 0.043 | 0.056 | |
+| receipt / TPR 2022 | 1.076 / 1.025 | 1.074 / 1.024 | 1.072 / 1.023 | 1.070 / 1.022 | 1.068 / 1.021 | ENIGH ≈ flat / +0.09 |
+
+- **κ is bounded at about 1 from both sides.** Below 1 the 2020Q2 dip is too deep and the spikes too large (κ = 0.8: 0.954, +5.9 / +4.2); above 1 the dip disappears (2020Q2 passes Banxico's 0.974 at about κ = 1.05; from κ = 1.75 job loss would *raise* remittances) and the spikes shrink and then turn negative (with κ > 1 a lost sender generates more than one transfer, so a stimulus check that restores the migrant's ability removes the extra replacements). Spike RMSE is minimal at κ = 1. The quarterly fit is flat between 1 and 1.5 (0.0122 at 1.25 vs 0.0128 at 1), too small a difference to matter.
+- **Claim for the paper:** lost sending was covered about one for one by others in the network: full replacement, not overcompensation.
+- κ > 1 does not move the 2022 receipt-vs-TPR split (it acts only while migrants are out of work; employment had recovered by 2022).
+- The option stays in the code as a robustness check.
+
 ### Why the cumulative excess-deaths series (argument for the paper)
 
 1. **The data ask for persistence, and only a stock delivers it.** Remittance counts did not rise and fall with the death waves: they stepped up through 2021 and stayed up in 2022. A monthly series (excess deaths, reported deaths, employment loss) returns the model to its baseline as soon as deaths fall, missing 2021Q4 by about 10 log points (1.01 vs 1.11) and failing the 2022 holdout (RMSE 0.09 against 0.024). Even a stock that loses 10% a month fails 2022 (1.04 vs 1.10). Only an undepreciated stock reproduces both the build-up and the plateau. The 2022 holdout is out of sample, so this is a test, not a fit.

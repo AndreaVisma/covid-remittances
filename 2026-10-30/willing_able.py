@@ -10,6 +10,8 @@ Per migrant j and month t (plan Steps 1-3):
     states    sender a d | lost sender (1-a) d | reserve a (1-d) | inactive (1-a)(1-d), independent draws
 Per household h (Steps 4-6):
     replacements  X^c ~ Bin(L^c, kappa), X^k ~ Bin(L^k, kappa); capped by the reserve R, core roles first:
+                  (kappa in (1, 2]: X = L + Bin(L, kappa - 1), each lost sender replaced for sure and a second
+                  reserve migrant also sends with probability kappa - 1; exploratory, 2 Nov 2026)
                   X^c' = min(X^c, R), X^k' = min(X^k, R - X^c')
     effective     E^c = W^c + X^c', E^k = W^k + X^k'
     receipt       s_h(E^c, E^k) = expit(b0 + b_any [E^c>0] + b_c log(1+E^c) + b_k0 [N^c_h = 0] log(1+E^k))
@@ -106,6 +108,27 @@ def _triples(n):
     return w[keep], l[keep], r[keep]
 
 
+def replacement_pmf(x, L, kappa):
+    """P(X = x) for the number of replacements drawn for L lost senders: Bin(L, kappa) for kappa <= 1;
+    L + Bin(L, kappa - 1) for 1 < kappa <= 2 (before the reserve cap)."""
+    assert 0.0 <= kappa <= 2.0, kappa
+    if kappa <= 1.0:
+        return binom.pmf(x, L, kappa)
+    return binom.pmf(x - L, L, kappa - 1.0)
+
+
+def relabel(ec, ek, nc, nk):
+    """Keep the total number of able senders, with at most nc in core roles and nk in kin roles (overflow moves to
+    the other role). Only binds for kappa > 1, when two replacements can take the role of one lost sender."""
+    tot = ec + ek
+    ec2 = np.clip(ec, tot - nk, nc)
+    return ec2, tot - ec2
+
+
+def max_replacements(L, kappa):
+    return (L.max() * (2 if kappa > 1.0 else 1)) if len(L) else 0
+
+
 class StateTables:
     """Per-household distributions of (W, L, R) for core and kin, given ability a and desire d (T, M).
     pairs(kappa) -> list over households of (T, (n_c+1)(n_k+1)) probabilities of (E^c, E^k)."""
@@ -131,18 +154,19 @@ class StateTables:
         R = cr[:, None] + kr[None, :]                                        # (Kc, Kk)
         n_out = (nc + 1) * (nk + 1)
         rows, cols, vals = [], [], []
-        for xc in range(cl.max() + 1 if len(cl) else 1):
-            bc = binom.pmf(xc, cl, kappa)                                     # (Kc,)
+        for xc in range(max_replacements(cl, kappa) + 1):
+            bc = replacement_pmf(xc, cl, kappa)                               # (Kc,)
             if not bc.any():
                 continue
             xc_eff = np.minimum(xc, R)
-            for xk in range(kl.max() + 1 if len(kl) else 1):
-                bk = binom.pmf(xk, kl, kappa)                                 # (Kk,)
+            for xk in range(max_replacements(kl, kappa) + 1):
+                bk = replacement_pmf(xk, kl, kappa)                           # (Kk,)
                 w = bc[:, None] * bk[None, :]
                 if not w.any():
                     continue
                 xk_eff = np.minimum(xk, R - xc_eff)
-                out = (cw[:, None] + xc_eff) * (nk + 1) + (kw[None, :] + xk_eff)
+                ec, ek = relabel(cw[:, None] + xc_eff, kw[None, :] + xk_eff, nc, nk)
+                out = ec * (nk + 1) + ek
                 nz = w > 0
                 rows.append(np.flatnonzero(nz.ravel()))
                 cols.append(out[nz])
@@ -159,10 +183,10 @@ class StateTables:
         (nc, cw, cl, cr, Pc), (nk, kw, kl, kr, Pk) = self.groups[h]
         R = cr[:, None] + kr[None, :]                                        # (Kc, Kk)
         out = np.zeros((3,) + R.shape)
-        for xc in range(cl.max() + 1 if len(cl) else 1):
-            bc = binom.pmf(xc, cl, kappa)
-            for xk in range(kl.max() + 1 if len(kl) else 1):
-                w = bc[:, None] * binom.pmf(xk, kl, kappa)[None, :]
+        for xc in range(max_replacements(cl, kappa) + 1):
+            bc = replacement_pmf(xc, cl, kappa)
+            for xk in range(max_replacements(kl, kappa) + 1):
+                w = bc[:, None] * replacement_pmf(xk, kl, kappa)[None, :]
                 out += w * np.stack([np.full(R.shape, xc + xk), np.maximum(xc + xk - R, 0), xc + xk > R])
         joint = (Pc[:, :, None] * Pk[:, None, :]).reshape(self.T, -1)
         return out.reshape(3, -1) @ joint.T
