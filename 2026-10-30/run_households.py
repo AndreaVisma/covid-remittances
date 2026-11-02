@@ -32,8 +32,11 @@ INTERVIEW = {8: 0.10, 9: 0.31, 10: 0.32, 11: 0.27}       # ENIGH interview-month
 WINDOW = ('2020-04-01', '2021-12-01')
 
 
-def simulate(pop, inputs, p, kappa, beta, need, pi, stim, seed):
-    """One path: (T, H) receipt (bool) and transfers (int). Same seed -> same random numbers (twins)."""
+def simulate(pop, inputs, p, kappa, beta, need, pi, stim, seed, rho=0.0):
+    """One path: (T, H) receipt (bool) and transfers (int). Same seed -> same random numbers (twins).
+    rho: habit in desire, average-preserving (2 Nov 2026): P(want_t | wanted) = d_t - rho d_t-1 + rho,
+    P(want_t | did not) = d_t - rho d_t-1, so every migrant's monthly mean desire is exactly d_t (national
+    results unchanged) and rho only sets who sends from month to month. rho = 0: independent months (identical draws)."""
     T, M, H, hid, core = len(inputs.dates), pop['M'], pop['H'], pop['hid'], pop['core']
     streams = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(6)]
     phi = wa.abm.employment_phi()
@@ -48,7 +51,13 @@ def simulate(pop, inputs, p, kappa, beta, need, pi, stim, seed):
         employed = norm.cdf(z) < inputs.rates[t, pop['job_index']]
         checked = streams[2].random(M) < pi * stim[t]
         able = (employed | checked) & pop['eligible']
-        wants = streams[3].random(M) < d[t]
+        u_d = streams[3].random(M)
+        if rho and t > 0:
+            p01 = d[t] - rho * d[t - 1]
+            assert p01.min() >= -1e-12 and p01.max() + rho <= 1 + 1e-12, 'desire moves too fast for this rho'
+            wants = u_d < np.where(wants, p01 + rho, p01)
+        else:
+            wants = u_d < d[t]
         lost = wants & ~able
         u = streams[4].random(M)
         cand = lost * ((u < kappa).astype(int) if kappa <= 1 else 1 + (u < kappa - 1))   # replacements drawn per lost sender

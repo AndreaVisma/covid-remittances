@@ -1,0 +1,8 @@
+{
+  "rho": 0.9278,
+  "kappa": 1.0,
+  "beta": 0.1532198004828865,
+  "seeds": 200,
+  "target": "ENIGH 2018 all-six share 0.496 (s.e. 0.011)",
+  "spec": "average-preserving habit, same rho for core and kin; national results = base model"
+}

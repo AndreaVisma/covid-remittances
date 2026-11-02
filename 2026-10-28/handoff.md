@@ -131,6 +131,16 @@ Shape between 1 and 6 months still off (too many 5-month households; mean 4.31 v
 
 **Decision (user, 2 Nov): stop the persistence work here.** No further variants (e.g. need acting only on core desire, or a mean-preserving habit, were proposed and declined). The base model stays as it is (desire drawn each month, ρ = 0). The habit (A/A2) and types (B) are documented as a tested extension; the more regular receipt of 2022 in ENIGH is reported as a finding the model does not explain. `2026-10-30/data_methodology.tex` was rewritten (2 Nov) to describe the base model with all equations, the calibration (tables and figures C2–C5) and this extension; test-compiled (9 pp.) with `paper/refs.bib`.
 
+### Household layer: one average-preserving habit (2 Nov, user decision; `household_layer.py`, outputs `outputs/household-layer/`)
+
+**Speed-up first (commit abf3567):** `willing_able.StateTables` groups households by size, works on valid cells only and caches the replacement mapping: quick map 6m51s → 1m08s, results identical.
+
+**Spec:** every migrant's desire follows P(keep sending) = d_t − ρ d_{t−1} + ρ, P(start) = d_t − ρ d_{t−1} (`run_households.simulate(..., rho)`; ρ = 0 gives identical paths). Each migrant's monthly mean desire is exactly d_t, so the exact national computation is untouched: **national results = base model by construction** (simulated national index matches the exact one within MC error). Feasibility needs Δd_t ≤ (1 − ρ)(1 − d_{t−1}); slack 0.018 at the fitted β (asserted in the simulator). One ρ for core and kin, calibrated to ONE target, the ENIGH 2018 all-six share: **ρ = 0.928**.
+
+**Out-of-sample results (κ = 1, β = 0.153, 200 paired seeds):** 2018 one-month 17.9% (ENIGH 20.3%), mean 4.44 (4.08; too many 5-month households, 15% vs 3%); 2020 change in all-six −1.8 pp (ENIGH −2.5, s.e. 1.5), mean −0.06 (−0.10); 2022 all-six +1.4 pp and one-month −1.2 pp (ENIGH +7.8 / −5.3: right direction, far too small); ENIGH-aligned 2022 receiving +0.056, TPR +0.041 (ENIGH −0.027 / +0.093, s.e. 0.095). Who loses (Apr 2020–Dec 2021): households losing 3+ months 0.3% → 0.6%, share of lost months borne by them 30% → 52% (core-only 41% → 56%); households gaining 17% → 3.7%. mig174: 0.43 / 0.48 / 0.57 / 0.69 / 0.87 for 3–60 months vs 0.70–0.93 (short trips too low; a limitation of one parameter).
+
+**Status:** adopted as the household layer of the base model (national claims from the exact monthly model, household claims from the same model with ρ = 0.928). `data_methodology.tex` still describes the habit as an extension and needs updating.
+
 ### Why the cumulative excess-deaths series (argument for the paper)
 
 1. **The data ask for persistence, and only a stock delivers it.** Remittance counts did not rise and fall with the death waves: they stepped up through 2021 and stayed up in 2022. A monthly series (excess deaths, reported deaths, employment loss) returns the model to its baseline as soon as deaths fall, missing 2021Q4 by about 10 log points (1.01 vs 1.11) and failing the 2022 holdout (RMSE 0.09 against 0.024). Even a stock that loses 10% a month fails 2022 (1.04 vs 1.10). Only an undepreciated stock reproduces both the build-up and the plateau. The 2022 holdout is out of sample, so this is a test, not a fit.
@@ -144,8 +154,8 @@ Shape between 1 and 6 months still off (too many 5-month households; mean 4.31 v
 ### How to resume (state at the end of 30 Oct)
 
 **Next actions, in order (state at the end of 2 Nov):**
-1. Adopt the willing-and-able model (ρ = 0, κ = 0 calibration, cumulative excess deaths, base stimulus Jan + Mar 2021) as the base for the national claims: run the full map (κ 0–1 by 0.1, β 0–0.4 by 0.025), the all-rounds stimulus robustness, and robustness 6a–6h on it; add it to `run_all.py`. Optional first: vectorise the exact household computation (`willing_able.StateTables`), the main runtime cost (quick map 7–17 min).
-2. Then update `model_plan.tex`, `calibration_2019.tex` and the paper (`paper/main.tex`) with the shock-year results; `data_methodology.tex` already describes the model.
+1. Full national map on the base (κ 0–1 by 0.1, β 0–0.4 by 0.025; now minutes), the all-rounds stimulus robustness and robustness 6a–6h; add the willing-and-able model and `household_layer.py` to `run_all.py`.
+2. Update `data_methodology.tex` (habit as household layer, average-preserving form, results), `model_plan.tex`, `calibration_2019.tex` and the paper.
 3. Optional: Mexican price level as a need series.
 
 **Where things are:**
