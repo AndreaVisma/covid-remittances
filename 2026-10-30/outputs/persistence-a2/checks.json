@@ -1,0 +1,21 @@
+{
+  "rho_c_check": 0.8,
+  "rho_k_check": 0.9,
+  "seeds": 200,
+  "rho0_simulate_identical": true,
+  "constant_d_m_equals_d": true,
+  "marginal_core_max_abs_z": 2.0588942659579854,
+  "marginal_core_max_abs_diff": 0.0014564249958254338,
+  "marginal_kin_max_abs_z": 2.3843812729477376,
+  "marginal_kin_max_abs_diff": 0.0004844228577248755,
+  "lag1_autocorr_core_sim": 0.7988229350250236,
+  "lag1_autocorr_core_se": 0.001196178824276134,
+  "lag1_autocorr_kin_sim": 0.896824478590454,
+  "lag1_autocorr_kin_se": 0.0082846586717577,
+  "exact_vs_sim_E1_beta0.3_receipt_max_abs_z": 3.2303472068937222,
+  "exact_vs_sim_E1_beta0.3_transfers_max_abs_z": 2.643890560893327,
+  "exact_vs_sim_E1_pass_4se": true,
+  "exact_vs_sim_E0_beta2.0_receipt_max_abs_z": 2.1407047147436806,
+  "exact_vs_sim_E0_beta2.0_transfers_max_abs_z": 2.320017639855059,
+  "exact_vs_sim_E0_pass_4se": true
+}

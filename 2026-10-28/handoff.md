@@ -4,7 +4,7 @@
 
 Rule from now on: **no new experiments until the base model is fixed and every output is rebuilt from it.** A later experiment must earn a place in the paper outline below.
 
-## 0. Update 30 Oct 2026: the willing-and-able model (calibrated; quick shock map and need-series comparison run)
+## 0. Update 30 Oct–2 Nov 2026: the willing-and-able model (calibrated; quick shock map, need series, persistence tested)
 
 **Direction (user, 30 Oct):** the next base model is the willing-and-able model in `2026-10-30/model_plan.tex` (Steps 0–10; script map in `2026-10-30/README.md`). **The 2019 calibration is done and verified; the quick shock map and a comparison of need series have been run (below); the full map and the robustness runs have not.** Until the new model is adopted, the results in §2–§5 (option 6a, `run_household_model.py`) remain the current base, and the paper draft (`paper/main.pdf`, 29 Oct) is written on them.
 
@@ -113,6 +113,24 @@ Exploratory extension (`willing_able.replacement_pmf`, `relabel`; `run_household
 - **No never-sender type** (overspecification, hard to justify); mig174 reported as a limitation.
 - Next: option A2 = habit for core and kin (ρ calibrated to ENIGH 2018), need cumulative vs monthly; tests: ENIGH 2022 change, national map and holdout, ENIGH-aligned margins, who loses.
 
+### Persistence round 2: option A2 and decision (2 Nov)
+
+**Option A2** (`persistence_a2.py`, using `persistence_a.py`; outputs `outputs/persistence-a2/`): habit for core and kin, ρ_c and ρ_k fixed in normal times; the crisis acts only through ability, stepping-in and desire d_t. Calibrated to ENIGH 2018 all-six and one-month shares: **ρ_c = 0.9725, ρ_k = 0.79** (common ρ 0.923 fits less well). Results (κ = 1 best throughout):
+
+| | base (ρ = 0) | A2, cumulative need (E:1) | A2, monthly need (E:0) | data |
+|---|---|---|---|---|
+| 2018 all-six / one-month | 5.5% / 35.5% | 49.4% / 20.3% | same | 49.6% / 20.3% |
+| 2020 change in all-six | +0.2 pp | −2.3 pp | −3.0 pp | −2.5 pp (1.5) |
+| 2022 change in all-six | +1.8 pp | −1.8 pp | +0.4 pp | **+7.8 pp (1.4)** |
+| β | 0.153 | 0.398 | 0.607 | |
+| RMSE 2020Q2–21Q4 / 2022 holdout | 0.013 / **0.024** | 0.011 / 0.049 | 0.025 / 0.060 | |
+| 2022 average | 1.103 | 1.153 | 1.045 | 1.100 |
+| mig174: core sending at least once in 60 months | 1.00 | 0.68 | 0.68 | 0.91 |
+
+Shape between 1 and 6 months still off (too many 5-month households; mean 4.31 vs 4.08). The habit makes desire lag need (double accumulation with the cumulative stock), implies multi-year spells without wanting to send (against mig174), and does not reproduce the 2022 regularisation (a general rise in desire adds new occasional senders as well as steadier ones). Losses concentrate: households losing 3+ months bear about half of lost months (base 30%).
+
+**Decision (user, 2 Nov): stop the persistence work here.** No further variants (e.g. need acting only on core desire, or a mean-preserving habit, were proposed and declined). The base model stays as it is (desire drawn each month, ρ = 0). The habit (A/A2) and types (B) are documented as a tested extension; the more regular receipt of 2022 in ENIGH is reported as a finding the model does not explain. `2026-10-30/data_methodology.tex` was rewritten (2 Nov) to describe the base model with all equations, the calibration (tables and figures C2–C5) and this extension; test-compiled (9 pp.) with `paper/refs.bib`.
+
 ### Why the cumulative excess-deaths series (argument for the paper)
 
 1. **The data ask for persistence, and only a stock delivers it.** Remittance counts did not rise and fall with the death waves: they stepped up through 2021 and stayed up in 2022. A monthly series (excess deaths, reported deaths, employment loss) returns the model to its baseline as soon as deaths fall, missing 2021Q4 by about 10 log points (1.01 vs 1.11) and failing the 2022 holdout (RMSE 0.09 against 0.024). Even a stock that loses 10% a month fails 2022 (1.04 vs 1.10). Only an undepreciated stock reproduces both the build-up and the plateau. The 2022 holdout is out of sample, so this is a test, not a fit.
@@ -125,10 +143,10 @@ Exploratory extension (`willing_able.replacement_pmf`, `relabel`; `run_household
 
 ### How to resume (state at the end of 30 Oct)
 
-**Next actions, in order (2 Nov):**
-1. Option A2 (habit for core and kin; ρ calibrated to ENIGH 2018 all-six and one-month shares; need cumulative vs monthly excess deaths). Compare with the base and A/B; report to the user.
-2. If A2 holds: make it the base (update willing_able / run_shocks / run_households rather than side modules), rerun the full map, robustness 6a–6h, update `model_plan.tex`, `calibration_2019.tex`, `data_methodology.tex` and the paper.
-3. Pending: the all-rounds stimulus robustness run; Mexican price level as a need series (optional).
+**Next actions, in order (state at the end of 2 Nov):**
+1. Adopt the willing-and-able model (ρ = 0, κ = 0 calibration, cumulative excess deaths, base stimulus Jan + Mar 2021) as the base for the national claims: run the full map (κ 0–1 by 0.1, β 0–0.4 by 0.025), the all-rounds stimulus robustness, and robustness 6a–6h on it; add it to `run_all.py`. Optional first: vectorise the exact household computation (`willing_able.StateTables`), the main runtime cost (quick map 7–17 min).
+2. Then update `model_plan.tex`, `calibration_2019.tex` and the paper (`paper/main.tex`) with the shock-year results; `data_methodology.tex` already describes the model.
+3. Optional: Mexican price level as a need series.
 
 **Where things are:**
 - Plan: `2026-10-30/model_plan.tex` (Step 8 has the calibration results; "Decisions taken (30 Oct)"). Calibration write-up for the user to copy: `2026-10-30/calibration_2019.tex` (10 pp., data and method, "able senders" throughout; figures not included yet). Neither is compiled in the repo (test-compiled in the scratchpad).

@@ -1,0 +1,31 @@
+{
+  "option": "A2: habit persistence in desire, core and kin (Markov marginal m_t)",
+  "rho_c": 0.9725,
+  "rho_k": 0.79,
+  "stimulus_rounds": [
+    "2021-01",
+    "2021-03"
+  ],
+  "pi": 1.0,
+  "kappas": [
+    0.0,
+    0.5,
+    0.8,
+    1.0
+  ],
+  "betas": [
+    0.0,
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8,
+    0.9,
+    1.0
+  ],
+  "need": "E:1",
+  "calibration": "calibration.csv"
+}
