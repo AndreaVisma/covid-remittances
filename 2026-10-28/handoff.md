@@ -141,6 +141,14 @@ Shape between 1 and 6 months still off (too many 5-month households; mean 4.31 v
 
 **Status:** adopted as the household layer of the base model (national claims from the exact monthly model, household claims from the same model with ρ = 0.928). `data_methodology.tex` still describes the habit as an extension and needs updating.
 
+### Paper draft (3 Nov; `2026-10-30/paper_draft.tex`)
+
+Full paper rewritten in the style of the user's second template (accessible language, short subsections, biblatex with `bibliography.bib`): abstract; introduction (problem / what we know / what we do not know / what we do / what we find); Methods and Data (10 short subsections with the key equations, parameter table); Results in three sections (calibration; families replacing lost senders and need lifting 2021; household losses); Discussion (5 paragraphs); Supplementary (C4, C1, C6, fit table). The user copies it into their own paper project. Test-compiled (18 pp.) against the user's `bibliography.bib` (28 keys cited) plus `2026-10-30/paper_draft_new_refs.bib`, which holds the five data sources missing from it (`mmp`, `ipumscps`, `banxico`, `enigh`, `karlinsky2021`; IPUMS version and Banxico series to CHECK). `Barcaglioni2008` not cited (content not verified). Biber warns about `month = {October}` / `{May}` in the user's bib (use `oct`, `may`).
+
+New results figures (`2026-10-30/make_paper_results_figures.py` → `figures/paper/`): R1 national fit (job loss only; κ 0 / 0.5 / 1 with fitted β; Banxico; 2022 shaded) and the stimulus spikes by κ; R2 need measures (cumulative, monthly, placebo ramp) at κ = 1; R3 household layer (months with receipt 2018: ENIGH vs model without and with habit; share of lost months borne by households losing 3+ months, by network type).
+
+Numbers in the draft come from the quick map (κ 0, 0.5, 0.8, 1); key ones: job loss only 2020Q2 0.879 (−12%); κ = 1, β 0.153: 2020Q2 0.971 (data 0.974), RMSE 0.013, holdout 0.024, 2022 average 1.103 (1.100), spikes +4.0 / +2.7 (+4.1 / +3.6); κ = 0 / 0.5 fitted: 2020Q2 0.886 / 0.929; core desire 60% → 64% by Dec 2021. To be refreshed after the full map.
+
 ### Why the cumulative excess-deaths series (argument for the paper)
 
 1. **The data ask for persistence, and only a stock delivers it.** Remittance counts did not rise and fall with the death waves: they stepped up through 2021 and stayed up in 2022. A monthly series (excess deaths, reported deaths, employment loss) returns the model to its baseline as soon as deaths fall, missing 2021Q4 by about 10 log points (1.01 vs 1.11) and failing the 2022 holdout (RMSE 0.09 against 0.024). Even a stock that loses 10% a month fails 2022 (1.04 vs 1.10). Only an undepreciated stock reproduces both the build-up and the plateau. The 2022 holdout is out of sample, so this is a test, not a fit.
@@ -153,10 +161,11 @@ Shape between 1 and 6 months still off (too many 5-month households; mean 4.31 v
 
 ### How to resume (state at the end of 30 Oct)
 
-**Next actions, in order (state at the end of 2 Nov):**
-1. Full national map on the base (κ 0–1 by 0.1, β 0–0.4 by 0.025; now minutes), the all-rounds stimulus robustness and robustness 6a–6h; add the willing-and-able model and `household_layer.py` to `run_all.py`.
-2. Update `data_methodology.tex` (habit as household layer, average-preserving form, results), `model_plan.tex`, `calibration_2019.tex` and the paper.
-3. Optional: Mexican price level as a need series.
+**Next actions, in order (state on 10 Nov):**
+1. Full national map on the base (κ 0–1 by 0.1, β 0–0.4 by 0.025; minutes now), the all-rounds stimulus robustness and robustness 6a–6h; add the willing-and-able model and `household_layer.py` to `run_all.py`.
+2. Refresh the numbers and figures in `paper_draft.tex` from the full map; update `data_methodology.tex` (habit as household layer), `model_plan.tex` and `calibration_2019.tex`.
+3. User to check the data bibliography entries (IPUMS CPS version, Banxico series) and decide on `Barcaglioni2008`.
+4. Optional: Mexican price level as a need series.
 
 **Where things are:**
 - Plan: `2026-10-30/model_plan.tex` (Step 8 has the calibration results; "Decisions taken (30 Oct)"). Calibration write-up for the user to copy: `2026-10-30/calibration_2019.tex` (10 pp., data and method, "able senders" throughout; figures not included yet). Neither is compiled in the repo (test-compiled in the scratchpad).
