@@ -22,7 +22,7 @@ import willing_able as wa
 
 def base_desire(pop, p):
     """(M,) d_j0: 2019 desire, no crisis (beta = 0)."""
-    return wa.desire(pop, 1, p['a_c'], p['a_k'], p['eta'], 0.0, None, p['g'])[0]
+    return wa.desire(pop, 1, p['a_c'], p['a_k'], p['eta'], 0.0, None, p['delta'])[0]
 
 
 def occasional_rate(d, d0, lam):
@@ -37,7 +37,7 @@ def simulate(pop, inputs, p, kappa, beta, need, pi, stim, seed, lam, return_extr
     T, M, H, hid, core = len(inputs.dates), pop['M'], pop['H'], pop['hid'], pop['core']
     streams = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(7)]
     phi = wa.abm.employment_phi()
-    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['g'])
+    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['delta'])
     d0 = base_desire(pop, p)
     regular = core & (streams[6].random(M) < lam * d0)
     q, n_clip = occasional_rate(d, d0, lam)
@@ -63,8 +63,7 @@ def simulate(pop, inputs, p, kappa, beta, need, pi, stim, seed, lam, return_extr
         xc = np.minimum(Xc, R)
         xk = np.minimum(Xk, R - xc)
         Ec, Ek = wa.relabel(Wc + xc, Wk + xk, nc, nk)
-        b0, b_any, b_c, b_k0 = p['b']
-        s = wa.expit(b0 + b_any * (Ec > 0) + b_c * np.log1p(Ec) + b_k0 * (nc == 0) * np.log1p(Ek))
+        s = wa.receipt_prob(p['b'], Ec, Ek)
         rec[t] = streams[5].random(H) < s
         trans[t] = rec[t] * np.maximum(Ec + Ek, 1)
     if return_extra:

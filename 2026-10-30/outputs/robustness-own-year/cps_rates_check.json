@@ -1,0 +1,11 @@
+{
+  "population": "Mexican origin (fallback: extract has no BPL)",
+  "months": 132,
+  "overlap_cells": 240,
+  "max_abs_diff_rate_model_2017_2020": 1.1102230246251565e-16,
+  "max_abs_diff_2019": 1.1102230246251565e-16,
+  "cells_differing": 0,
+  "differing": [],
+  "unreliable_raw_cells_2010_2019": 1,
+  "unreliable_smooth_cells_2010_2019": 0
+}

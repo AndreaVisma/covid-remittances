@@ -1,6 +1,8 @@
 """Figures that give a flavour of the 2019 calibration of the willing-and-able model (30 Oct 2026).
 
-Run: python 2026-10-30/make_calibration_figures.py      (reads outputs/calibration.csv; no estimation)
+Run: python 2026-10-30/make_calibration_figures.py      (reads outputs/calibration_simple.csv; no estimation)
+Simplified forms since 13 Nov 2026 (one desire equation with delta x other core migrants; receipt expit(b0 + b E)).
+C3 also shows the fit of the earlier log form (outputs/stage1_by_core.csv) as a grey reference line.
 Writes figures/calibration/C1..C6 (PNG) and figures/calibration/captions.md. Aggregates only.
 
 C1 Households by network type, including MMP households with no linked migrant (not used in the calibration):
@@ -8,7 +10,8 @@ C1 Households by network type, including MMP households with no linked migrant (
 C2 Migrants across the able x willing dimensions: the four states in an average month of 2019 and in April
    2020 (CPS employment only; desire unchanged), core and kin migrants.
 C3 Desire and the number of core migrants: each core migrant's monthly desire, the chance that at least one is
-   an able sender, and observed vs fitted receipt by number of core migrants (with g, and the Stage 1 fit g = 0).
+   an able sender, and observed vs fitted receipt by number of core migrants (with delta, and the Stage 1 fit
+   delta = 0).
 C4 Where households sit on the receipt curve: illustrative compositions (not MMP households), job loss and
    stepping-in (kappa = 1).
 C5 All households on the receipt curve by network type, including households with no linked migrant, with
@@ -56,7 +59,15 @@ def wilson(k, n, z=1.96):
 
 def save(fig, name, title, caption):
     fig.suptitle(title, x=0.01, ha='left', fontsize=12.5, fontweight='semibold', color=mf.INK)
-    fig.savefig(FIG / f'{name}.png', dpi=mf.DPI, bbox_inches='tight')
+    import time
+    for attempt in range(10):                       # the PNG can be briefly locked (viewer or sync); retry
+        try:
+            fig.savefig(FIG / f'{name}.png', dpi=mf.DPI, bbox_inches='tight')
+            break
+        except OSError:
+            if attempt == 9:
+                raise
+            time.sleep(1.0)
     plt.close(fig)
     CAPTIONS[name] = (title, caption)
     print('saved', name)
@@ -64,13 +75,13 @@ def save(fig, name, title, caption):
 
 # %% Data
 def load():
-    cal = pd.read_csv(wa.OUT / 'calibration.csv')
+    cal = wa.load_calibration()
     p = wa.params_for(cal, 0.0)
     pop = wa.load_population()
     ok, y = wa.target(pop)
     inputs = wa.abm.make_inputs(wa.abm.baseline_2019_dates(), pop['rate_columns'])
     a = wa.ability(pop, inputs)
-    d = wa.desire(pop, a.shape[0], p['a_c'], p['a_k'], p['eta'], g=p['g'])
+    d = wa.desire(pop, a.shape[0], p['a_c'], p['a_k'], p['eta'], delta=p['delta'])
     P, _ = wa.receipt_and_transfers(pop, wa.StateTables(pop, a, d).pairs(0.0), p['b'])
     h = pop['h'].assign(P=P.mean(0), observed=y, ok=ok, n_core=pop['n_core'], n_kin=pop['n_kin'])
     h['type'] = np.select([h.n_core.gt(0) & h.n_kin.eq(0), h.n_core.gt(0)], ['Core only', 'Core + kin'], 'Kin only')
@@ -118,7 +129,7 @@ def c1_types(D):
         ax2.scatter(row.observed, y_, marker='D', s=36, color=mf.INK, zorder=4)
         ax2.scatter(row.model, y_ - 0.22, s=60, facecolor=mf.SURFACE if row.type == NONE else c,
                     edgecolor=mf.INK2 if row.type == NONE else mf.SURFACE, linewidth=1.3, zorder=4)
-        ax2.text(max(row.hi, row.model) + 0.03, y_, f'{row.observed:.0%} observed · {row.model:.0%} model',
+        ax2.text(max(row.hi, row.model) + 0.03, y_, f'{row.observed:.{1 if row.observed < 0.1 else 0}%} observed · {row.model:.{1 if row.model < 0.1 else 0}%} model',
                  va='center', fontsize=8, color=mf.INK2)
     mf.pct_axis(ax2, 'x')
     ax2.set_xlim(0, 1.0)
@@ -193,15 +204,16 @@ def c2_able_willing(D):
          'a lost sender wanted to send but is out of work, the gap that stepping-in can fill; the reserve (able, not '
          'planning to send) is who can step in. April 2020 uses that month\'s CPS employment with 2019 desire (no '
          'crisis response, no stimulus) to show where lost senders come from. Kin migrants rarely want to send '
-         '(3% a month), so nearly all of them are in the reserve.')
+         f'({D["d"][:, ~pop["core"]].mean():.1%} a month on average), so nearly all of them are in the reserve.')
 
 
 # %% C3 desire and network size
 def c3_desire(D):
     h, p, pop = D['h'], D['p'], D['pop']
-    s1 = pd.read_csv(wa.OUT / 'stage1_by_core.csv')
+    s1 = pd.read_csv(wa.OUT / 'stage1_by_core_simple.csv')
+    s1_old = pd.read_csv(wa.OUT / 'stage1_by_core.csv')                    # earlier form, g log N^c (reference)
     ncs = np.arange(1, 5)
-    desire = expit(p['a_c'] + p['g'] * np.log(ncs))
+    desire = expit(p['a_c'] + p['delta'] * (ncs - 1))
     able = D['a'][:, pop['core']].mean()
     at_least_one = 1 - (1 - able * desire) ** ncs
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8.8, 3.7))
@@ -229,9 +241,11 @@ def c3_desire(D):
     ax2.scatter(xs, obs.k / obs.n, marker='D', s=36, color=mf.INK, zorder=4, label='MMP (95% CI)')
     ax2.plot(xs + 0.12, obs.model, color=mf.BLUE, lw=2, marker='o', markersize=7, markeredgecolor=mf.SURFACE,
              zorder=5, label='Calibrated model')
-    ax2.plot(s1.n_core + 0.12, s1.fitted_g0, color=mf.ORANGE, lw=2, ls='--', marker='o', markersize=7,
-             markeredgecolor=mf.SURFACE, zorder=3, label='Same desire for all (g = 0)')
-    ax2.text(4.2, s1.fitted_g0.iloc[-1], f'{s1.fitted_g0.iloc[-1]:.0%}', va='center', fontsize=8, color=mf.INK2)
+    ax2.plot(s1.n_core + 0.12, s1.fitted_delta0, color=mf.ORANGE, lw=2, ls='--', marker='o', markersize=7,
+             markeredgecolor=mf.SURFACE, zorder=3, label='Same desire for all (δ = 0)')
+    ax2.plot(s1_old.n_core + 0.12, s1_old.fitted, color=mf.MUTED, lw=1.4, ls=':', zorder=2,
+             label='Desire falling with log(core migrants)')
+    ax2.text(4.2, s1.fitted_delta0.iloc[-1], f'{s1.fitted_delta0.iloc[-1]:.0%}', va='center', fontsize=8, color=mf.INK2)
     ax2.text(4.2, obs.model.iloc[-1], f'{obs.model.iloc[-1]:.0%}', va='center', fontsize=8, color=mf.INK2)
     ax2.set_xticks(xs, ['0', '1', '2', '3', '4+'])
     ax2.set_xlabel('Core migrants in the household')
@@ -242,13 +256,16 @@ def c3_desire(D):
     ax2.legend(loc='lower right', frameon=False, fontsize=8)
     ax2.grid(axis='x', visible=False)
     save(fig, 'C3_desire_network_size', 'Desire and the number of core migrants',
-         f'Left: monthly probability that a core migrant wants to send, expit(a_c + g·log N), with a_c = '
-         f'{p["a_c"]:.2f} and g = {p["g"]:.2f} (household of average need), and the chance that at least one of '
-         f'them is an able sender (employment {able:.0%}). Right: share of households receiving, MMP 2019 (95% '
-         'Wilson CI), the calibrated model, and the Stage 1 fit with the same desire for every core migrant '
-         '(g = 0). With the same desire for all, receipt rises far too steeply with the number of core migrants; '
-         'a desire that falls with each extra core migrant (one reading: a division of labour among them) fits '
-         'every group.')
+         f'Left: monthly probability that a core migrant wants to send, expit(α_c + δ·(N − 1)), with α_c = '
+         f'{p["a_c"]:.2f} and δ = {p["delta"]:.2f} (household of average need), and the chance that at least one '
+         f'of them is an able sender (employment {able:.0%}). Kin desire falls with the same δ per core migrant '
+         f'({expit(p["a_k"]):.1%} a month without core migrants, {expit(p["a_k"] + p["delta"]):.1%} with one). '
+         'Right: share of households receiving, MMP 2019 (95% Wilson CI), the calibrated model, and the Stage 1 '
+         'fit with the same desire for every migrant (δ = 0). With the same desire for all, receipt rises far too '
+         'steeply with the number of core migrants; a desire that falls with each extra core migrant (one reading: '
+         'a division of labour among them) removes most of the gap. A linear δ cannot bend as fast as the data: '
+         'households with one core migrant are underpredicted and those with two or three overpredicted. Dotted '
+         'grey: Stage 1 fit with desire falling with log(core migrants), the earlier form, for reference.')
 
 
 # %% C4 receipt curve examples
@@ -258,7 +275,7 @@ def c4_examples(D):
         ('Two cousins in the US;\nworkers at home', 'Kin only', (0, 2, 0, 0), (-2.2, 0.27), None),
         ('Two cousins; no worker,\na grandparent at home', 'Kin only', (0, 2, 1, 1), (-1.2, 0.08), None),
         ('One son in the US; workers at home', 'Core only', (1, 0, 0, 0), (0.55, 0.30), ('core', 'he loses his job')),
-        ('Three children and two cousins;\nno worker, a grandparent', 'Core + kin', (3, 2, 1, 1), (-1.75, 0.92),
+        ('Three children and two cousins;\nno worker, a grandparent', 'Core + kin', (3, 2, 1, 1), (0.95, 0.56),
          ('core', 'one child loses their job')),
     ]
     fig, ax = plt.subplots(figsize=(7.6, 4.8))
@@ -281,7 +298,7 @@ def c4_examples(D):
             if abs(P2 - P1) > 0.005:
                 ax.annotate('', (logit(P2), P2), (logit(P1), P1), arrowprops=dict(arrowstyle='-|>', color=mf.K4,
                             lw=1.4, ls='--', shrinkA=5, shrinkB=5, connectionstyle='arc3,rad=-0.9'))
-                text += f'\n{what}: {P1:.0%}; someone steps in: {P2:.0%}'
+                text += f'\n{what}: {P1:.0%};\nsomeone steps in: {P2:.0%}'
             else:
                 text += f'\n{what}: {P1:.0%}; nobody can step in'
         mf.ring_dot(ax, s0, P0, TYPE_COLORS[net], size=70, zorder=6)
@@ -294,13 +311,12 @@ def c4_examples(D):
     handles += [Line2D([], [], color=mf.RED, lw=1.6, marker='>', markersize=5, label='One migrant loses their job'),
                 Line2D([], [], color=mf.K4, lw=1.4, ls='--', marker='>', markersize=5, label='Someone steps in (κ = 1)')]
     ax.legend(handles=handles, loc='upper left', frameon=False)
-    b0, b_any, b_c, b_k0 = p['b']
-    ax.text(0.0, -0.17,
-            f"receipt given able senders = expit({b0:.2f} + {b_any:.2f}·[any able core sender] + {b_c:.2f}·log(1 + able "
-            f"core senders) + {b_k0:.2f}·[no core migrant]·log(1 + able kin senders))\n"
-            f"desire: core expit({p['a_c']:.2f} {p['g']:+.2f}·log(core migrants) + need), kin expit({p['a_k']:.2f} + "
-            f"need);  need = {p['eta'][0]:.2f}·no worker + {p['eta'][1]:.2f}·older (centred)",
-            transform=ax.transAxes, fontsize=7, color=mf.MUTED, va='top')
+    b0, b1 = p['b']
+    terms = (f"receipt given effective senders E = expit({b0:.2f} + {b1:.2f}·E)\n"
+             f"desire: core expit({p['a_c']:.2f} {p['delta']:+.2f}·other core migrants + need), "
+             f"kin expit({p['a_k']:.2f} {p['delta']:+.2f}·core migrants + need);  "
+             f"need = {p['eta'][0]:.2f}·no worker + {p['eta'][1]:.2f}·older (centred)\n")
+    ax.text(0.0, -0.17, terms, transform=ax.transAxes, fontsize=7, color=mf.MUTED, va='top')
     save(fig, 'C4_receipt_curve_examples', 'Where households sit on the receipt curve',
          'Illustrative compositions (not MMP households), all migrants employed, 2019 calibration (κ = 0). A '
          'household\'s score is the log-odds of its expected monthly receipt, averaged over which migrants are '
@@ -412,8 +428,9 @@ def c6_need(D):
 
 
 def write_captions():
-    lines = ['# Calibration figures (2019, willing-and-able model)', '',
-             'Made by `2026-10-30/make_calibration_figures.py` from `outputs/calibration.csv` (κ = 0 calibration).', '']
+    lines = ['# Calibration figures (2019, willing-and-able model, simplified forms of 13 Nov 2026)', '',
+             'Made by `2026-10-30/make_calibration_figures.py` from `outputs/calibration_simple.csv` (κ = 0 '
+             'calibration).', '']
     for name, (title, cap) in CAPTIONS.items():
         lines += [f'## {name}: {title}', '', cap, '']
     (FIG / 'captions.md').write_text('\n'.join(lines), encoding='utf-8')

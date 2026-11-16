@@ -3,10 +3,17 @@
 Not a script. Used by calibrate_mmp.py (MMP 2019 calibration), run_shocks.py (shock years, compatibility
 map) and run_households.py (household paths: persistence test, who gained and lost).
 
+SIMPLIFIED FORMS (13 Nov 2026, user, after feedback; handoff §0 "Simplified functional forms"). Earlier forms:
+desire with g [core] log N^c_h (kin: no coordination term); receipt with b_any [E^c>0] + b_c log(1+E^c) +
+b_k0 [N^c=0] log(1+E^k). Their calibration is kept in outputs/calibration.csv; the simplified one goes to
+outputs/calibration_simple.csv (load_calibration reads it by default).
+
 Per migrant j and month t (plan Steps 1-3):
     ability   a_j,t = e_o(j),t + (1 - e_o(j),t) * pi * S_t          S_t: stimulus months switched on
-    desire    theta_j,t = a_type(j) + g [core] log N^c_h + eta_w no_worker_h + eta_o older_h + beta N*_t,
-              d_j,t = expit(theta)   (g: core desire falls with the number of core migrants; user, 30 Oct)
+              (base pi = 1, i.e. a_j,t = max(e_o(j),t, S_t): every migrant is able in a check month)
+    desire    theta_j,t = a_role(j) + delta M_j + eta_w no_worker_h + eta_o older_h + beta N*_t,
+              d_j,t = expit(theta);  M_j = core migrants of j's household other than j
+              (N^c_h - 1 for a core migrant, N^c_h for kin): one equation for both roles, linear, one delta
     states    sender a d | lost sender (1-a) d | reserve a (1-d) | inactive (1-a)(1-d), independent draws
 Per household h (Steps 4-6):
     replacements  X^c ~ Bin(L^c, kappa), X^k ~ Bin(L^k, kappa); capped by the reserve R, core roles first:
@@ -14,8 +21,11 @@ Per household h (Steps 4-6):
                   reserve migrant also sends with probability kappa - 1; exploratory, 2 Nov 2026)
                   X^c' = min(X^c, R), X^k' = min(X^k, R - X^c')
     effective     E^c = W^c + X^c', E^k = W^k + X^k'
-    receipt       s_h(E^c, E^k) = expit(b0 + b_any [E^c>0] + b_c log(1+E^c) + b_k0 [N^c_h = 0] log(1+E^k))
-                  (kin matter only in households without core migrants; b_k removed, user, 30 Oct)
+    receipt       s_h = expit(b0 + b E),  E = E^c + E^k   (one b for every sender; user, 13 Nov 2026: the b_c = b_k
+                  LR test does not reject, p = 0.42, but has little power, so one b is a normalisation that puts all
+                  core-kin differences in desire). Receipt then depends only on the total, so the role bookkeeping
+                  of the replacements below no longer matters: capping the total, min(Bin(L, kappa), R), gives the
+                  same distribution of E as capping core roles first and then kin. The code keeps the role split.
     transfers     T_h,t = E[ s_h(E) * max(E^c + E^k, 1) ]
 Exact for rho = 0: per household, a recursion over its core migrants gives the distribution of (W^c, L^c, R^c)
 and over its kin migrants that of (W^k, L^k, R^k); the two groups are independent; the binomial replacement
@@ -38,7 +48,10 @@ import run_e0_baseline as e0                # noqa: E402
 import compare_household_logit as hl        # noqa: E402
 
 OUT = HERE / 'outputs'
-B_NAMES = ['b0', 'b_any', 'b_c', 'b_k0']
+B_NAMES = ['b0', 'b']                              # one b (13 Nov 2026)
+B_ROLE_NAMES = ['b0', 'b_c', 'b_k']                # separate b by role: only for the test in calibrate_mmp
+CAL_FILE = 'calibration_simple.csv'
+SHOCKS = HERE / 'outputs' / 'shocks-simple'          # base shock map on the simplified forms (16 Nov 2026)                    # simplified forms (13 Nov 2026)
 ETA_NAMES = ['eta_w', 'eta_o']
 STIMULUS_ROUNDS = ('2020-04', '2021-01', '2021-03')      # the three US stimulus rounds (benefit schedule)
 
@@ -74,12 +87,18 @@ def ability(pop, inputs, pi=0.0, stim=None):
     return e + (1 - e) * pi * np.asarray(stim, float)[:, None] * pop['eligible'][None, :]
 
 
-def desire(pop, T, a_c, a_k, eta=(0.0, 0.0), beta=0.0, need_stock=None, g=0.0):
-    """(T, M) d_j,t = expit(a_type + g [core] log N^c_h + eta' need_h + beta N*_t). need_x: centred household
-    need features. a_c is the desire of a core migrant who is the household's only core migrant."""
+def other_core(pop):
+    """(M,) M_j: core migrants in j's household other than j (N^c_h - 1 for core, N^c_h for kin)."""
+    return pop['n_core'][pop['hid']] - pop['core'].astype(int)
+
+
+def desire(pop, T, a_c, a_k, eta=(0.0, 0.0), beta=0.0, need_stock=None, delta=0.0, delta_k=None):
+    """(T, M) d_j,t = expit(a_role + delta M_j + eta' need_h + beta N*_t). need_x: centred household need
+    features. a_c: desire of a household's only core migrant; a_k: desire of kin in a household without core
+    migrants. delta_k: separate coordination coefficient for kin (only for the equality test in calibrate_mmp)."""
     need = pop['need_x'] @ np.asarray(eta, float)                         # (H,)
-    core_size = np.log(np.maximum(pop['n_core'][pop['hid']], 1))            # (M,) log N^c_h, used for core only
-    base = np.where(pop['core'], a_c + g * core_size, a_k) + need[pop['hid']]   # (M,)
+    dk = delta if delta_k is None else delta_k
+    base = np.where(pop['core'], a_c + delta * other_core(pop), a_k + dk * other_core(pop)) + need[pop['hid']]
     stock = np.zeros(T) if need_stock is None else np.asarray(need_stock, float)
     return expit(base[None, :] + beta * stock[:, None])
 
@@ -264,12 +283,17 @@ class StateTables:
 
 
 # %% Steps 5-6: receipt and transfers
+def receipt_prob(b, ec, ek):
+    """s_h = expit(b0 + b (E^c + E^k)), elementwise; b in B_NAMES order. The one place the receipt curve is written
+    (simulators call it too)."""
+    b0, b1 = b
+    return expit(b0 + b1 * (np.asarray(ec) + np.asarray(ek)))
+
+
 def receipt_grid(b, nc, nk):
     """(nc+1, nk+1) s_h(E^c, E^k) for a household with nc core and nk kin migrants; b in B_NAMES order."""
     ec, ek = np.meshgrid(np.arange(nc + 1), np.arange(nk + 1), indexing='ij')
-    b0, b_any, b_c, b_k0 = b
-    z = b0 + b_any * (ec > 0) + b_c * np.log1p(ec) + b_k0 * (nc == 0) * np.log1p(ek)
-    return expit(z)
+    return receipt_prob(b, ec, ek)
 
 
 def flatten(pop, pairs, months=None):
@@ -285,9 +309,13 @@ def flatten(pop, pairs, months=None):
 
 
 def design(pop, hh, ec, ek):
-    """(n, 4) receipt design for flattened pairs (B_NAMES order)."""
-    no_core = (pop['n_core'][hh] == 0).astype(float)
-    return np.column_stack([np.ones(len(hh)), (ec > 0), np.log1p(ec), no_core * np.log1p(ek)])
+    """(n, 2) receipt design for flattened pairs (B_NAMES order: 1, E^c + E^k)."""
+    return np.column_stack([np.ones(len(hh)), ec + ek]).astype(float)
+
+
+def design_by_role(pop, hh, ec, ek):
+    """(n, 3) design with separate role coefficients (B_ROLE_NAMES order: 1, E^c, E^k); test only."""
+    return np.column_stack([np.ones(len(hh)), ec, ek]).astype(float)
 
 
 def receipt_and_transfers(pop, pairs, b):
@@ -305,8 +333,9 @@ def receipt_and_transfers(pop, pairs, b):
 
 # %% Calibration records
 def load_calibration(path=None):
-    """outputs/calibration.csv (calibrate_mmp.py): one row per kappa with a_c, a_k, g, eta_*, b_*."""
-    return pd.read_csv(path or OUT / 'calibration.csv')
+    """outputs/calibration_simple.csv (calibrate_mmp.py): one row per kappa with a_c, a_k, delta, eta_*, b_*.
+    A file from the earlier forms (columns g, b_any, b_k0) fails loudly in params_for."""
+    return pd.read_csv(path or OUT / CAL_FILE)
 
 
 def params_for(cal, kappa):
@@ -314,5 +343,6 @@ def params_for(cal, kappa):
     kappa = 0 calibration (the base since 30 Oct: stepping-in enters only the shock runs)."""
     rows = cal.loc[np.isclose(cal.kappa, kappa)]
     row = (rows if len(rows) else cal.loc[np.isclose(cal.kappa, 0.0)]).iloc[0]
-    return dict(a_c=float(row.a_c), a_k=float(row.a_k), g=float(row.g), eta=row[ETA_NAMES].to_numpy(float),
+    assert 'delta' in row.index and 'b' in row.index, 'calibration from earlier forms; rerun calibrate_mmp.py'
+    return dict(a_c=float(row.a_c), a_k=float(row.a_k), delta=float(row.delta), eta=row[ETA_NAMES].to_numpy(float),
                 b=row[B_NAMES].to_numpy(float))

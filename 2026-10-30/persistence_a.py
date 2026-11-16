@@ -61,7 +61,7 @@ def marginal(d, core, rho, rho_kin=0.0):
 
 
 def desire_m(pop, T, p, rho, beta=0.0, need=None, rho_kin=0.0):
-    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['g'])
+    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['delta'])
     return marginal(d, pop['core'], rho, rho_kin)
 
 
@@ -72,7 +72,7 @@ def simulate(pop, inputs, p, kappa, beta, need, pi, stim, seed, rho=0.0, return_
     T, M, H, hid, core = len(inputs.dates), pop['M'], pop['H'], pop['hid'], pop['core']
     streams = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(6)]
     phi = wa.abm.employment_phi()
-    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['g'])
+    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['delta'])
     nc, nk = pop['n_core'], pop['n_kin']
     rec, trans = np.zeros((T, H), bool), np.zeros((T, H), int)
     W = np.zeros((T, M), bool) if return_wants else None
@@ -101,8 +101,7 @@ def simulate(pop, inputs, p, kappa, beta, need, pi, stim, seed, rho=0.0, return_
         xc = np.minimum(Xc, R)
         xk = np.minimum(Xk, R - xc)
         Ec, Ek = wa.relabel(Wc + xc, Wk + xk, nc, nk)
-        b0, b_any, b_c, b_k0 = p['b']
-        s = wa.expit(b0 + b_any * (Ec > 0) + b_c * np.log1p(Ec) + b_k0 * (nc == 0) * np.log1p(Ek))
+        s = wa.receipt_prob(p['b'], Ec, Ek)
         rec[t] = streams[5].random(H) < s
         trans[t] = rec[t] * np.maximum(Ec + Ek, 1)
     return (rec, trans, W) if return_wants else (rec, trans)
@@ -173,7 +172,7 @@ def run_checks(pop, cal, seeds=200):
     T = len(hm.DATES)
     res = {}
     # (a) rho = 0: marginal is d; simulate identical to run_households.simulate
-    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['g'])
+    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['delta'])
     res['rho0_marginal_equals_desire'] = bool(np.array_equal(marginal(d, pop['core'], 0.0), d))
     d18, in18 = inputs_2018(pop)
     same = True
@@ -184,7 +183,7 @@ def run_checks(pop, cal, seeds=200):
             same &= np.array_equal(r0, r1) and np.array_equal(t0, t1)
     res['rho0_simulate_identical'] = bool(same)
     # (a') stationarity: with constant d, m = d for any rho
-    d19 = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], g=p['g'])
+    d19 = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], delta=p['delta'])
     res['constant_d_m_equals_d_rho0.9'] = bool(np.allclose(marginal(d19, pop['core'], 0.9), d19))
     # (b) rho = 0.8 with a strongly moving d (beta = 1.5): simulated mean core desire vs m_t
     rho, beta_b = 0.8, 1.5
@@ -204,7 +203,7 @@ def run_checks(pop, cal, seeds=200):
     res['markov_marginal_max_abs_diff'] = float(np.abs(mean - m[:, core].mean(1)).max())
     res['m_core_jan2019'], res['m_core_dec2021'], res['d_core_dec2021'] = (
         float(m[0, core].mean()), float(m[hm.DATES.get_loc(pd.Timestamp('2021-12-01')), core].mean()),
-        float(wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta_b, need, p['g'])[
+        float(wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta_b, need, p['delta'])[
             hm.DATES.get_loc(pd.Timestamp('2021-12-01')), core].mean()))
     # lag-1 autocorrelation of core wants in 2019 (constant d): should be rho
     dd = d19[0, core]
@@ -323,7 +322,7 @@ def run_mig174(pop, cal, rho_cal, reps=200, lengths=(3, 6, 12, 24, 60)):
     and being able in at least one month over L consecutive months; also of wanting in at least one month."""
     p = wa.params_for(cal, 0.0)
     core = np.flatnonzero(pop['core'])
-    d = wa.desire(pop, 1, p['a_c'], p['a_k'], p['eta'], g=p['g'])[0, core]            # (C,)
+    d = wa.desire(pop, 1, p['a_c'], p['a_k'], p['eta'], delta=p['delta'])[0, core]            # (C,)
     d19 = pd.date_range('2019-01-01', '2019-12-01', freq='MS')
     rates = wa.abm.make_inputs(d19, pop['rate_columns']).rates[:, pop['job_index'][core]]   # (12, C)
     phi = wa.abm.employment_phi()

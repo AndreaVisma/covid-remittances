@@ -85,7 +85,7 @@ def checks(S, args):
     want = np.array(want)
     z_want = (want.mean(0) - dexp) / (want.std(0, ddof=1) / np.sqrt(n))
     a = wa.ability(pop, S.covid, S.pi, S.stim_c)
-    d = wa.desire(pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'], beta, S.need_c, p['g'])
+    d = wa.desire(pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'], beta, S.need_c, p['delta'])
     P, Tr = wa.receipt_and_transfers(pop, wa.StateTables(pop, a, d).pairs(1.0), p['b'])
     recs, trs = np.array(recs), np.array(trs)
     z_rec = (recs.mean(0) - P.sum(1)) / (recs.std(0, ddof=1) / np.sqrt(n))

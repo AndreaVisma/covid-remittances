@@ -1,0 +1,33 @@
+{
+  "kappa": 1.0,
+  "beta": 0.1531739885693038,
+  "rho": 0.8992,
+  "pi": 1.0,
+  "stimulus_rounds": [
+    "2021-01",
+    "2021-03"
+  ],
+  "seeds": 200,
+  "origin_month": "2020-02",
+  "dest_months": [
+    "2020-04",
+    "2020-05",
+    "2020-12",
+    "2021-01",
+    "2021-12"
+  ],
+  "seed_base": 9000,
+  "migrants": {
+    "core": 1996,
+    "kin": 6003
+  },
+  "households": 3405,
+  "who_steps_in": "last month's replacements first if still in the reserve, then other reserve migrants of the household at random (core and kin alike); does not change counts, receipt or transfers",
+  "states": [
+    "Steps in",
+    "Able sender",
+    "Lost sender",
+    "Reserve",
+    "Inactive"
+  ]
+}

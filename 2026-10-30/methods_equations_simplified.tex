@@ -1,0 +1,69 @@
+% Methods: equations affected by the simplified functional forms (13 Nov 2026; handoff §0a).
+% Values from 2026-10-30/outputs/calibration_simple.csv and stage1_simple.csv.
+% rho = 0.90 calibrated at kappa = 1 (the fitted value); kappa and beta from outputs/shocks-simple/beta_fit.csv (16 Nov 2026).
+
+% ---------------------------------------------------------------- Ability (replaces eq. 3)
+A migrant can send in a month if they are employed, which happens with probability given by the
+employment rate of their occupation, $e_{o(j),t}$. In the months of the stimulus checks of January and
+March 2021 ($S_t = 1$), every migrant can send:
+\begin{equation}
+a_{j,t} = \max\big(e_{o(j),t},\, S_t\big) .
+\end{equation}
+
+% ---------------------------------------------------------------- Desire (replaces eq. 4)
+\begin{equation}
+d_{j,t} = \operatorname{expit}\big(\alpha_{r(j)} + \delta\, M_j
+  + \eta_w\, \mathrm{NoWorker}_h + \eta_o\, \mathrm{Older}_h + \beta N^*_t\big),
+\end{equation}
+where $r(j) \in \{c, k\}$ is the migrant's role (core or kin) and $M_j$ is the number of core migrants in
+$j$'s household other than $j$ itself ($N^c_h - 1$ for a core migrant, $N^c_h$ for a kin migrant).
+Core and kin migrants differ in how often they want to send ($\alpha_c$, $\alpha_k$): $\alpha_c$ describes
+a household's only core migrant, $\alpha_k$ a kin migrant in a household without core migrants. With
+$\delta < 0$, every migrant wants to send less often when the household has more core migrants: core
+migrants share the task among themselves, and kin leave it to them.
+
+% ---------------------------------------------------------------- Effective senders (replaces eq. 6)
+\begin{equation}
+E_{h,t} = W_{h,t} + \min\big(X_{h,t},\, R_{h,t}\big), \qquad X_{h,t} \sim \mathrm{Binomial}\big(L_{h,t}, \kappa\big),
+\end{equation}
+where $W_{h,t}$, $L_{h,t}$ and $R_{h,t}$ are the household's able senders, lost senders and reserve in
+month $t$. Each lost sender is replaced with probability $\kappa$, and the number of replacements
+cannot exceed the reserve.
+
+% ---------------------------------------------------------------- Receipt (replaces eq. 7)
+\begin{equation}
+s_{h,t} = \operatorname{expit}\big(b_0 + b\, E_{h,t}\big) .
+\end{equation}
+A household with no effective sender receives in 0.6\% of months, one with a single effective sender in
+96\%. The survey records receipt but not who sent, so it cannot separate how often a migrant wants to
+send from how reliably their sending reaches the household. We place all differences between core and
+kin migrants in desire and let every sender raise receipt equally; a model with separate coefficients for
+core and kin senders fits no better (likelihood-ratio test, $p = 0.42$).
+
+% ---------------------------------------------------------------- Transfers (replaces eq. 8)
+\begin{equation}
+T_{h,t} = s_{h,t}\,\max\big(E_{h,t},\, 1\big), \qquad T_t = \sum_h \mathbb{E}\big[T_{h,t}\big].
+\end{equation}
+
+% ---------------------------------------------------------------- Parameter table (replaces Table 2)
+\begin{table}[ht]
+\centering
+\caption{\textbf{Parameters of the model.}}
+\label{tab:params}
+\begin{tabularx}{\linewidth}{lXrl}
+\toprule
+Parameter & Meaning & Value & Set from \\
+\midrule
+$\alpha_c$ & Desire of a household's only core migrant & 0.26 & 2010--19 survey \\
+$\alpha_k$ & Desire of a kin migrant in a household without core migrants & $-3.38$ & 2010--19 survey \\
+$\delta$ & Change in desire with each other core migrant & $-0.35$ & 2010--19 survey \\
+$\eta_w$, $\eta_o$ & Desire shift: no resident worker; older resident & 0.33, 0.16 & 2010--19 survey \\
+$b_0$, $b$ & Receipt curve & $-5.04$, 8.25 & 2010--19 survey \\
+\midrule
+$\rho$ & Habit in sending, month to month & 0.90 & ENIGH 2018 \\  % at the fitted kappa = 1 (0.92 at kappa = 0)
+\midrule
+$\kappa$ & Share of lost senders replaced & 1 & 2020--21 transfers \\
+$\beta$ & Response of desire to the crisis in Mexico & 0.15 & 2020--21 transfers \\
+\bottomrule
+\end{tabularx}
+\end{table}

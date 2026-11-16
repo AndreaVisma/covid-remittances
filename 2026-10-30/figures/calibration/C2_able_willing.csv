@@ -1,17 +1,17 @@
 group,period,state,share,migrants
-Core migrants,average month of 2019,Able sender,0.40091983572752304,800.235992112136
-Core migrants,average month of 2019,Reserve,0.5520634559798,1101.9186581356807
-Core migrants,average month of 2019,Inactive,0.026880105685033292,53.65269094732645
-Core migrants,average month of 2019,Lost sender,0.02013660260764359,40.192658804856606
-Core migrants,"April 2020, employment only",Able sender,0.3438083684299723,686.2415033862247
-Core migrants,"April 2020, employment only",Reserve,0.47228098712111466,942.6728502937449
-Core migrants,"April 2020, employment only",Inactive,0.1066625745437186,212.8984987892623
-Core migrants,"April 2020, employment only",Lost sender,0.07724806990519442,154.18714753076807
-Kin migrants,average month of 2019,Able sender,0.030774770023950255,184.74094445377338
-Kin migrants,average month of 2019,Reserve,0.9224641484944872,5537.552283412407
-Kin migrants,average month of 2019,Inactive,0.04524967066598741,271.6337730079224
-Kin migrants,average month of 2019,Lost sender,0.0015114108155750482,9.072999125897015
-Kin migrants,"April 2020, employment only",Able sender,0.026391913033549378,158.43065394039692
-Kin migrants,"April 2020, employment only",Reserve,0.7910084326424894,4748.423621152864
-Kin migrants,"April 2020, employment only",Inactive,0.17670538651798512,1060.7624352674648
-Kin migrants,"April 2020, employment only",Lost sender,0.0058942678059759265,35.383289639273485
+Core migrants,average month of 2019,Able sender,0.4044943947370668,807.3708118951853
+Core migrants,average month of 2019,Reserve,0.5484888969702564,1094.7838383526316
+Core migrants,average month of 2019,Inactive,0.02673089757450684,53.35487155871566
+Core migrants,average month of 2019,Lost sender,0.020285810718170042,40.4904781934674
+Core migrants,"April 2020, employment only",Able sender,0.3468549319353615,692.3224441429816
+Core migrants,"April 2020, employment only",Reserve,0.4692344236157255,936.591909536988
+Core migrants,"April 2020, employment only",Inactive,0.10598537092903776,211.54680037435938
+Core migrants,"April 2020, employment only",Lost sender,0.07792527351987528,155.53884594567106
+Kin migrants,average month of 2019,Able sender,0.02812497517382822,168.8342259684908
+Kin migrants,average month of 2019,Reserve,0.9251139433446095,5553.4590018976905
+Kin migrants,average month of 2019,Inactive,0.045376479235465506,272.39500485049945
+Kin migrants,average month of 2019,Lost sender,0.0013846022460969637,8.311767283320073
+Kin migrants,"April 2020, employment only",Able sender,0.024120421490087963,144.79489020499804
+Kin migrants,"April 2020, employment only",Reserve,0.793279924185951,4762.059384888264
+Kin migrants,"April 2020, employment only",Inactive,0.17721049839412384,1063.7946218599254
+Kin migrants,"April 2020, employment only",Lost sender,0.005389155929837216,32.35110304681281

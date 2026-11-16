@@ -1,6 +1,7 @@
 """Sample figure: where households sit on the receipt curve, willing-and-able model (30 Oct 2026).
 
-Run: python 2026-10-30/sample_receipt_figure.py      (reads outputs/calibration.csv, the kappa = 0 calibration; no estimation)
+Run: python 2026-10-30/sample_receipt_figure.py      (reads outputs/calibration_simple.csv, the kappa = 0 calibration;
+     no estimation; simplified forms since 13 Nov 2026)
 Same illustrative households as recipient-level S1 (made-up compositions, not MMP households), all migrants
 working. A household's position is the log-odds of its expected monthly receipt, averaged exactly over
 which migrants want to send (Steps 2-5 of model_plan.tex). Job loss: the migrant can no longer send
@@ -31,40 +32,33 @@ STEP_IN = mf.K4                                                  # stepping-in m
 
 
 def household_receipt(p, n_core, n_kin, no_worker, older, need_mean, lost=None, kappa=0.0):
-    """Exact expected receipt of one household. lost: 'core' or 'kin' migrant who cannot send (ability 0)."""
+    """Exact expected receipt of one household (simplified forms). lost: 'core' or 'kin' migrant who cannot send
+    (ability 0). Desire expit(a_role + delta M_j + need), M_j = other core migrants; effective senders
+    E = W + min(X, R), X ~ Bin(L, kappa); receipt expit(b0 + b E)."""
     need = p['eta'] @ (np.array([no_worker, older], float) - need_mean)
-    d_core = expit(p['a_c'] + p['g'] * np.log(max(n_core, 1)) + need)
-    d_kin = expit(p['a_k'] + need)
+    d_core = expit(p['a_c'] + p['delta'] * (n_core - 1) + need)
+    d_kin = expit(p['a_k'] + p['delta'] * n_core + need)
     migrants = [(True, d_core)] * n_core + [(False, d_kin)] * n_kin
     able = [1.0] * len(migrants)
     if lost is not None:
         able[[i for i, (c, _) in enumerate(migrants) if c == (lost == 'core')][0]] = 0.0
-    b0, b_any, b_c, b_k0 = p['b']
     P = 0.0
     for wants in product((0, 1), repeat=len(migrants)):          # ability is 0/1 here, so desire is the only draw
         pr = np.prod([d if w else 1 - d for (_, d), w in zip(migrants, wants)])
-        Wc = sum(w * a for (c, _), w, a in zip(migrants, wants, able) if c)
-        Wk = sum(w * a for (c, _), w, a in zip(migrants, wants, able) if not c)
-        Lc = sum(w * (1 - a) for (c, _), w, a in zip(migrants, wants, able) if c)
-        Lk = sum(w * (1 - a) for (c, _), w, a in zip(migrants, wants, able) if not c)
+        W = sum(w * a for w, a in zip(wants, able))
+        L = sum(w * (1 - a) for w, a in zip(wants, able))
         R = sum((1 - w) * a for w, a in zip(wants, able))
-        for xc in range(int(Lc) + 1):
-            for xk in range(int(Lk) + 1):
-                q = binom.pmf(xc, Lc, kappa) * binom.pmf(xk, Lk, kappa)
-                if q == 0:
-                    continue
-                xc_eff = min(xc, R)
-                xk_eff = min(xk, R - xc_eff)
-                Ec, Ek = Wc + xc_eff, Wk + xk_eff
-                z = b0 + b_any * (Ec > 0) + b_c * np.log1p(Ec) + b_k0 * (n_core == 0) * np.log1p(Ek)
-                P += pr * q * expit(z)
+        for x in range(int(L) + 1):
+            q = binom.pmf(x, L, kappa)
+            if q > 0:
+                P += pr * q * wa.receipt_prob(p['b'], W + min(x, R), 0)
     return P
 
 
 def main():
     mf.style()
     FIG.mkdir(exist_ok=True)
-    cal = pd.read_csv(wa.OUT / 'calibration.csv')
+    cal = wa.load_calibration()
     p = wa.params_for(cal, 0.0)
     pop = wa.load_population()
     h = pop['h']
@@ -121,12 +115,12 @@ def main():
                 Line2D([], [], color=STEP_IN, lw=1.4, ls='--', marker='>', markersize=5,
                        label='Someone steps in (κ = 1)')]
     ax.legend(handles=handles, loc='upper left', frameon=False)
-    b0, b_any, b_c, b_k0 = p['b']
-    terms = (f"receipt given senders = expit({b0:.2f} + {b_any:.2f}·[any core sender] + {b_c:.2f}·log(1 + core senders) "
-             f"+ {b_k0:.2f}·[no core migrant]·log(1 + kin senders))\n"
-             f"desire: core expit({p['a_c']:.2f} {p['g']:+.2f}·log(core migrants) + need), "
-             f"kin expit({p['a_k']:.2f} + need);  need = {p['eta'][0]:.2f}·no worker + {p['eta'][1]:.2f}·older "
-             f"(centred)\nκ = 0 calibration (MMP 2019); score = log-odds of receipt averaged over who wants to send")
+    b0, b1 = p['b']
+    terms = (f"receipt given effective senders E = expit({b0:.2f} + {b1:.2f}·E)\n"
+             f"desire: core expit({p['a_c']:.2f} {p['delta']:+.2f}·other core migrants + need), "
+             f"kin expit({p['a_k']:.2f} {p['delta']:+.2f}·core migrants + need);  "
+             f"need = {p['eta'][0]:.2f}·no worker + {p['eta'][1]:.2f}·older (centred)\n"
+             f"κ = 0 calibration (MMP 2019); score = log-odds of receipt averaged over who wants to send")
     ax.text(0.0, -0.17, terms, transform=ax.transAxes, fontsize=7, color=mf.MUTED, va='top')
     fig.suptitle('Where households sit on the receipt curve (willing-and-able model, sample)', x=0.01, ha='left',
                  fontsize=12.5, fontweight='semibold', color=mf.INK)

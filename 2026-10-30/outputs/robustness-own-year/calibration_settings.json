@@ -1,0 +1,23 @@
+{
+  "check": "robustness: own interview year employment",
+  "households": 3252,
+  "receiving": 756,
+  "employment": "CPS rate_model of the migrant occupation group, 12 months of the household survey year (MMP surveyyr; no interview month in house174), derived by robustness/cps_rates_2010_2020.py with the definitions of cps_employment_rates.py; rho = 0, no stimulus",
+  "stage1": "as calibrate_mmp.stage1",
+  "stage2": "as calibrate_mmp.stage2, kappa = 0",
+  "loglik_base": -1131.327505767692,
+  "loglik_base_params_own_year_employment": -1131.9562680694748,
+  "loglik_own_year": -1131.1984848495626,
+  "households_by_survey_year": {
+    "2010": 124,
+    "2011": 125,
+    "2012": 464,
+    "2013": 193,
+    "2014": 663,
+    "2015": 388,
+    "2016": 579,
+    "2017": 307,
+    "2018": 116,
+    "2019": 293
+  }
+}

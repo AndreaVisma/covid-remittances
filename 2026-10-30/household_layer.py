@@ -1,6 +1,8 @@
 """Household layer: one habit parameter rho, average-preserving (2 Nov 2026).
 
 Run: python 2026-10-30/household_layer.py [--seeds 200] [--rho R]   (without --rho: calibrate rho first)
+     --calibrate-only --kappa K   calibrate rho at kappa K and stop (2018 conditions need no beta and no shock map;
+                                  13 Nov 2026); writes outputs/household-layer/calibration_rho_simple_k{K}.csv
 Desire of every migrant (core and kin) follows a two-state chain with persistence rho that keeps each migrant's
 monthly mean desire at exactly d_t (run_households.simulate, rho argument):
     P(want_t | wanted) = d_t - rho d_{t-1} + rho,   P(want_t | did not) = d_t - rho d_{t-1}.
@@ -13,7 +15,7 @@ receive in all six months before an Aug-Nov interview (0.496). Everything else i
     4. who gains and loses, realised paths Apr 2020 - Dec 2021 vs the no-COVID twin, by network type
     5. national check: simulated national index = exact index (base model)
     6. mig174: share of core migrants wanting and able in at least one of L months (MMP heads 0.70-0.93)
-Base settings: kappa and beta from outputs/shocks/beta_fit.csv (best fit), base stimulus, cumulative excess deaths.
+Base settings: kappa and beta from outputs/shocks-simple/beta_fit.csv (best fit), base stimulus, cumulative excess deaths.
 Outputs (aggregates) in outputs/household-layer/.
 """
 import argparse
@@ -48,13 +50,14 @@ def calibrate(pop, p, kappa, seeds):
         return rh.distribution(m)
 
     rows = []
-    for rho in (0.0, 0.8, 0.85, 0.9, 0.92, 0.94, 0.96):
+    for rho in (0.0, 0.8, 0.85, 0.9, 0.92, 0.94, 0.96, 0.98):
         r = all_six(rho)
         rows.append(dict(rho=rho, **r))
         print(f'rho {rho}: all six {r["share_all_six"]:.3f}, one month {r["share_1"]:.3f}, mean {r["mean"]:.2f}', flush=True)
     grid = pd.DataFrame(rows)
     lo = grid.loc[grid.share_all_six < TARGET, 'rho'].max()
     hi = grid.loc[grid.share_all_six >= TARGET, 'rho'].min()
+    assert np.isfinite(lo) and np.isfinite(hi), 'target outside the rho grid'
     for _ in range(6):                                         # bisection on the one target
         mid = round((lo + hi) / 2, 4)
         r = all_six(mid)
@@ -71,7 +74,7 @@ def mig174(pop, rho, seeds=20, Ls=(3, 6, 12, 24, 60)):
     p = wa.params_for(wa.load_calibration(), 0.0)
     dates = pd.date_range('2015-01-01', periods=max(Ls), freq='MS')
     rates = wa.abm.make_inputs(pd.DatetimeIndex([pd.Timestamp(2019, d.month, 1) for d in dates]), pop['rate_columns']).rates
-    d = wa.desire(pop, 1, p['a_c'], p['a_k'], p['eta'], g=p['g'])[0]
+    d = wa.desire(pop, 1, p['a_c'], p['a_k'], p['eta'], delta=p['delta'])[0]
     core = pop['core']
     phi = wa.abm.employment_phi()
     hit = {L: [] for L in Ls}
@@ -95,12 +98,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--seeds', type=int, default=200)
     ap.add_argument('--rho', type=float, default=None)
+    ap.add_argument('--calibrate-only', action='store_true')
+    ap.add_argument('--kappa', type=float, default=None)
     args = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     pop = wa.load_population()
     cal = wa.load_calibration()
-    fits = pd.read_csv(wa.OUT / 'shocks' / 'beta_fit.csv')
-    settings = json.loads((wa.OUT / 'shocks' / 'run_settings.json').read_text())
+    if args.calibrate_only:
+        assert args.kappa is not None, '--calibrate-only needs --kappa'
+        rho, grid = calibrate(pop, wa.params_for(cal, args.kappa), args.kappa, 100)
+        grid.to_csv(OUT / f'calibration_rho_simple_k{args.kappa:g}.csv', index=False)
+        print(f'kappa {args.kappa:g}: rho = {rho}')
+        return
+    fits = pd.read_csv(wa.SHOCKS / 'beta_fit.csv')
+    settings = json.loads((wa.SHOCKS / 'run_settings.json').read_text())
     best = fits.loc[fits.rmse_fit.idxmin()]
     kappa, beta = float(best.kappa), float(best.beta)
     p = wa.params_for(cal, kappa)

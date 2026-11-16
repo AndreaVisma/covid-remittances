@@ -3,9 +3,9 @@
 Run: python 2026-10-30/make_paper_results_figures.py  -> figures/paper/R1_national_fit.png, R2_need_series.png,
 R3_household_losses.png
 R1 national index vs Banco de Mexico (job loss only; stepping-in kappa 0 / 0.5 / 1 with fitted need response) and the
-   January/March 2021 stimulus spikes by kappa (outputs/shocks).
+   January/March 2021 stimulus spikes by kappa (outputs/shocks-simple; simplified forms since 16 Nov 2026).
 R2 need measured as cumulative excess deaths, monthly excess deaths, and a placebo ramp, kappa = 1, beta fitted
-   (outputs/shocks-quick-base, shocks-need-E0, shocks-need-R1).
+   (outputs/shocks-simple, shocks-simple-need-E0, shocks-simple-need-R1).
 R3 household layer: months with receipt among receiving households (ENIGH 2018 vs model without and with the habit)
    and how concentrated losses are (outputs/household-layer).
 Colours: kappa as an ordinal blue ramp (project palette K0/K2/K4); need series and model variants use the first three
@@ -40,8 +40,8 @@ def qaxis(ax):
 
 
 def r1():
-    q = pd.read_csv(O / 'shocks/quarterly_paths.csv')
-    f = pd.read_csv(O / 'shocks/beta_fit.csv')
+    q = pd.read_csv(O / 'shocks-simple/quarterly_paths.csv')
+    f = pd.read_csv(O / 'shocks-simple/beta_fit.csv')
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(10, 3.9), gridspec_kw=dict(width_ratios=[1.7, 1]))
     x = qaxis(ax)
     bx = q[(q.kappa == 1.0) & (q.fitted == True)].set_index('quarter').index_banxico.reindex(QS)
@@ -77,8 +77,9 @@ def r1():
 
 
 def r2():
-    series = [('shocks-quick-base', 'cumulative excess deaths', mf.BLUE), ('shocks-need-E0', 'monthly excess deaths', mf.ORANGE),
-              ('shocks-need-R1', 'placebo: steady ramp', mf.AQUA)]
+    series = [('shocks-simple', 'cumulative excess deaths', mf.BLUE),
+              ('shocks-simple-need-E0', 'monthly excess deaths', mf.ORANGE),
+              ('shocks-simple-need-R1', 'placebo: steady ramp', mf.AQUA)]
     fig, ax = plt.subplots(figsize=(7.2, 3.9))
     x = qaxis(ax)
     for d, lab, c in series:

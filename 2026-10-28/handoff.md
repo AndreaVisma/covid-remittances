@@ -4,6 +4,189 @@
 
 Rule from now on: **no new experiments until the base model is fixed and every output is rebuilt from it.** A later experiment must earn a place in the paper outline below.
 
+## Start here (state on 16 Nov 2026)
+
+**The base model is the willing-and-able model in the simplified forms (§0a), fully recalibrated and rerun.**
+
+- **Model:**
+  - desire d = expit(α_role + δ·(other core migrants) + η·need + β·N*_t);
+  - effective senders E = W + min(Bin(L, κ), R), which equals min(D, A) at κ = 1;
+  - receipt s = expit(b0 + b·E);
+  - transfers s·max(E, 1);
+  - ability a = max(e, S_t).
+- **Parameters:**
+  - survey 2010–19: α_c 0.26, α_k −3.38, δ −0.35, η_w 0.33, η_o 0.16, b0 −5.04, b 8.25;
+  - ENIGH 2018: ρ = 0.90;
+  - COVID years: κ = 1, β = 0.153 (`outputs/shocks-simple/`).
+- **The national results are the same as with the earlier forms;** the household results shift slightly (§0a).
+- **LaTeX for the Methods** (all changed equations and the parameter table): `2026-10-30/methods_equations_simplified.tex`.
+- **Calibration figures:** `figures/calibration/` C1–C6. **Theoretical tests:** `figures/theoretical-tests/` T1–T5 (§0b). **Paper figures:** `figures/paper/` R1–R5. All on the new forms.
+
+**Next actions, in order (user to choose):**
+1. Refresh the numbers in `paper_draft.tex` and the Methods text: the edits are listed under "Text in the Methods to change by hand" in §0a. Reconcile the no-migrant sample: 3,730 households, 0.6% observed (C1), vs 3,749 and 0.7% in the draft.
+2. The 2022 margin tension. The model puts a rise in need on households receiving (+5.8%) rather than transfers per receiving household (+3.9%); ENIGH shows −2.7% / +9.3%. T5 shows this is structural. Decide: state it as a limitation, or test need raising transfers per sender.
+3. Theoretical tests, next step (§0b): correlated job loss within households, network structure, occupation-specific shocks, targeted need (η).
+4. Still on the earlier forms: `robustness/calibrate_own_year.py`, `robustness/calibrate_period.py`, the persistence scripts (closed extension), and `figures/S1_receipt_curve_examples_sample.png`.
+5. Paper choices: whether to keep the grey log-form line in C3; where the min(D, A) identity goes (Methods or Discussion).
+
+**Run order on the new forms** (each reads the previous one's outputs):
+1. `calibrate_mmp.py`
+2. `household_layer.py --calibrate-only --kappa 1`
+3. `run_shocks.py --tag simple` (and `--quick --need E:0 / R:1 --tag simple-need-E0 / -R1`)
+4. `household_layer.py --rho 0.8992`
+5. `run_households.py`, `enigh_aligned.py`
+6. Figures: `make_calibration_figures.py`, `make_kappa_effect_figure.py` (with `PYTHONIOENCODING=utf-8`), `make_transition_figures.py`, `make_transition_kappa.py`, `make_paper_results_figures.py`, `theoretical_tests.py`
+7. `check_special_cases.py` checks the library (all four checks pass).
+
+On Windows, a run can be stopped for low memory; `run_shocks.py` now saves after each κ.
+
+## 0a. Simplified functional forms (13 Nov 2026; recalibrated and rerun 13–16 Nov)
+
+**Why:** feedback on the Methods section asked for simpler functional forms (one desire equation for core and kin, no logs, the receipt curve in one line). Decided with the user on 13 Nov 2026. The numbers in §0 below and in `paper_draft.tex` are from the earlier forms; the new ones are in this section and in "Start here".
+
+**The model in the new forms (equation numbers as in the Methods draft):**
+
+- **Ability (eq. 3), unchanged in substance.** Since π = 1, write a_{j,t} = max(e_{o(j),t}, S_t): every migrant is able in a check month. π drops out of the parameter table (12 → 11 parameters). Not written as an expit: e is an observed CPS rate, not an index, and an expit would add a parameter with no clear meaning.
+- **Desire (eq. 4): one equation for both roles.**
+  d_{j,t} = expit(α_{r(j)} + δ·M_j + η_w·NoWorker_h + η_o·Older_h + β·N*_t), where M_j is the number of core migrants in j's household *other than j* (N^c_h − 1 for a core migrant, N^c_h for kin). This replaces g·[core]·log N^c_h.
+  - One δ for both roles: kin defer to core migrants just as core migrants coordinate among themselves. Kin counts are not used, because they are partly a coding artefact (distant relatives are merged into one link) and kin desire is low.
+  - α_c is the desire of a household's only core migrant; α_k is the desire of kin in a household without core migrants (it was the desire of an average kin migrant).
+  - Not N^c_h − 1 for everyone: that would give kin in kin-only households M = −1, a desire boost.
+- **Effective senders (eq. 6), one line with a role index:** E^r = W^r + X^r, X^r ~ Binomial(L^r, κ), r ∈ {c, k}. Replacements are capped by the reserve, core roles first, and a replacement takes the lost sender's role (all unchanged).
+- **Receipt (eq. 7), one line, linear:** s_{h,t} = expit(b0 + b_c·E^c + b_k·E^k). This replaces b_any·[E^c > 0] + b_c·log(1 + E^c) + b_k0·[N^c = 0]·log(1 + E^k). Kin senders now raise receipt in every household; before, a core household whose kin sent received in about 1% of months. The expit saturates, so a linear term reproduces the old one-sender levels (97% core, 89% kin) and adds almost nothing for a second sender.
+- **Tests built into the calibration:** δ_c = δ_k (Stage 1, LR test) and b_c = b_k (Stage 2, LR test). If b_c = b_k is not rejected, the receipt curve becomes expit(b0 + b·E). Roles then stop mattering for receipt, and eq. 6 becomes E = W + min(X, R), X ~ Bin(L, κ) (capping the total equals capping core first, then kin). This option is **not implemented yet**: decide after the test.
+- **Paper text to rewrite after recalibration:** the paragraph "In these households kin senders do not change the chance of receiving…", the parameter table, and the 60% / 97% / 89% / 1% figures. Typos noted in the 13 Nov Methods draft: "lostt", "two component", "carry over across period", "We  core migrant… of them .".
+
+**Code changes (13 Nov 2026, all in `2026-10-30/`):**
+
+- `willing_able.py`
+  - `desire(..., delta, delta_k=None)` uses `other_core(pop)` (M_j). `delta_k` exists only for the equality test.
+  - New `receipt_prob(b, Ec, Ek)` is the single place the receipt curve is written. `receipt_grid` and `design` use it (3 columns).
+  - `B_NAMES = [b0, b_c, b_k]`. New `CAL_FILE = calibration_simple.csv`, the default of `load_calibration`. `params_for` returns `delta` and fails loudly on a calibration file from the earlier forms.
+  - The replacement and state tables are unchanged.
+- `calibrate_mmp.py`
+  - Stage 1 fits (α_c, α_k, δ), plus the δ = 0 check against M1 and the separate-δ test.
+  - Stage 2 fits (η_w, η_o, b0, b_c ≥ 0, b_k ≥ 0) and refits with b_c = b_k for the LR test.
+  - Outputs carry the suffix `_simple`; the earlier `calibration.csv`, `stage1*.csv` stay as the record of the old forms. Run time about 20 min.
+- `check_special_cases.py`: check 2 (nesting in `run_household_model`) is replaced by an analytic check on single-migrant households. All four checks pass (13 Nov).
+- `run_shocks.py` reads `calibration_simple.csv` by default.
+- `p['g']` was renamed to `p['delta']`, and the copied receipt formula replaced by `wa.receipt_prob`, in: `run_households.py`, `household_layer.py`, `make_transition_figures.py`, `make_transition_kappa.py`, `make_kappa_effect_figure.py`, `persistence_a.py`, `persistence_a2.py`, `persistence_b.py`, `run_persistence_b.py`.
+- **Not updated (still the earlier forms):**
+  - `robustness/calibrate_own_year.py` and `robustness/calibrate_period.py` have their own Stage 1 and Stage 2 code.
+  - Figure labels and the hand-coded desire in `make_calibration_figures.py` (C3, C5 text) and `sample_receipt_figure.py`.
+
+**Calibration results (13 Nov 2026; `outputs/stage1_simple.csv`, `stage1_by_core_simple.csv`, `calibration_simple.csv`, log `outputs/calibrate_simple.log`):**
+
+- **Stage 1:** α_c = 0.26, α_k = −3.38, δ = −0.35; loglik −1143.5 (old forms −1139.5; δ = 0: −1189.0).
+  - Core desire for 1 / 2 / 3 / 4 core migrants: 56 / 48 / 39 / 31% (old 60 / 43 / 34 / 28%).
+  - Kin desire: 3.3% with no core migrant, 2.4% with one.
+  - Receipt by number of core migrants (1 / 2 / 3 / 4+): fitted 0.547 / 0.707 / 0.757 / 0.711 vs observed 0.588 / 0.660 / 0.692 / 0.748 (old forms 0.584 / 0.666 / 0.707 / 0.737). A linear δ cannot bend the way the data do: households with one core migrant are underpredicted and those with 2–3 overpredicted.
+  - **δ_c = δ_k not rejected:** δ_c −0.35, δ_k −0.94; LR 1.01, p = 0.31. δ_k is imprecise because only mixed households identify it.
+- **Stage 2 (κ = 0):** η_w 0.33, η_o 0.12; b0 −4.38, b_c 7.81, b_k 5.96; loglik −1137.8, AIC 2285.6 (old 2274.7 with one more parameter).
+  - Receipt with no sender is 1.2% (no-migrant households: 0.7% observed); with one core sender 96.9%; with one kin sender 82.9%.
+  - **b_c = b_k not rejected:** LR 0.66, p = 0.42. With one b: b0 −5.04, b 8.25, η_w 0.33, η_o 0.16, loglik −1138.1. Receipt with no sender is 0.6% (closer to the 0.7% observed), with one sender of either role 96.3%.
+- **Caveat on the b test (13 Nov):** it has little power and is not evidence that core and kin senders are alike. Only receipt is observed, so a lower b_k is close to observationally equivalent to a lower α_k. Stage 1 estimated α_k assuming every sender delivers, which already treats core and kin senders alike. Present one b as a normalisation (core–kin differences placed in desire), not as a finding.
+- **Cost of the simplification:** 6.5 loglik points, about 4 of them from making δ linear (Stage 1). The p-values ignore the two-stage set-up (Stage-1 estimates are treated as known in Stage 2).
+
+**Decision (user, 13 Nov 2026): one b for every sender.** Receipt is s = expit(b0 + b·E), with E = E^c + E^k. This is presented as a normalisation: the survey records receipt but not who sent, so all core–kin differences are placed in desire. Eq. 6 becomes role-free: E = W + min(X, R), X ~ Bin(L, κ). Capping the total gives the same distribution of E as capping core roles first, then kin, so the code keeps its role split and the results are identical.
+
+- **Code:**
+  - `willing_able.py`: `B_NAMES = [b0, b]`; `receipt_prob` and `design` use the total E; `design_by_role` and `B_ROLE_NAMES` are kept for the test only.
+  - `calibrate_mmp.py` fits one b and refits separate b_c, b_k as the test (columns `sep_*`, `lr_b`, `p_b_equal`).
+  - `check_special_cases.py`: all four checks pass.
+- **Calibration rerun (13 Nov):**
+  - Stage 1 unchanged.
+  - Stage 2: η_w 0.33, η_o 0.16, b0 −5.04, b 8.25; loglik −1138.1, AIC 2284.3.
+  - Receipt: 0.6% with no sender, 96.1% with one, ≈100% with two.
+  - Survey parameters are now 7 (α_c, α_k, δ, η_w, η_o, b0, b); 10 in total with ρ, κ, β (π dropped).
+- **LaTeX** of every affected equation (ability, desire, effective senders, receipt, transfers) and the new parameter table: `2026-10-30/methods_equations_simplified.tex`. ρ, κ, β are marked [TBD].
+
+**ρ recalibrated on 2018 conditions (13 Nov; `household_layer.py --calibrate-only --kappa K`, outputs `outputs/household-layer/calibration_rho_simple_k{0,1}.csv` and `rho_simple_k*.log`, 100 seeds):**
+
+- **ρ = 0.899 at κ = 1; 0.916 at κ = 0** (old forms 0.928 at κ = 1).
+- κ matters more than expected. Stepping-in already steadies 2018 receipt, so less habit is needed. The gap of 0.017 is about 3 times the uncertainty that the ENIGH target's standard error (0.011) implies for ρ.
+- So ρ is final only once κ is: use 0.90 provisionally if κ stays at 1.
+- Check against ENIGH 2018 at κ = 1, ρ ≈ 0.90 (grid point): one-month share 14.9% (ENIGH 20.3%; old forms 17.9%), mean months 4.48 (4.08; old 4.44). The one-month share is a little worse than with the old forms.
+
+**COVID-years calibration on the new forms (16 Nov 2026; `run_shocks.py --tag simple`, full grid κ 0–1 by 0.1, β 0–1.2 by 0.05; outputs `outputs/shocks-simple/`, log `outputs/shocks_simple.log`).**
+
+`run_shocks.py` now saves its outputs after each κ. A first run was stopped by Claude Code for low memory and lost everything, because the script wrote only at the end.
+
+- **Best fit: κ = 1, β = 0.153**, with κ at the edge of the grid; the fit improves steadily with κ, as before.
+  - Fit error 2020Q2–2021Q4: 0.013 (κ = 0: 0.047).
+  - 2022 holdout: 0.024; 2022 mean index 1.103 (data 1.100).
+  - 2020Q2 index: 0.970 (data 0.974; κ = 0 gives 0.886).
+  - Stimulus jumps, not fitted: +4.0 / +2.7 (data +4.1 / +3.6; κ = 0 gives +13.6 / +10.1).
+  - Core desire of an only core migrant: 56.5% → 60.2% by Dec 2021.
+- **Almost identical to the earlier forms:** κ = 1, β = 0.153, the same fit error and holdout to the third decimal; 2020Q2 0.970 vs 0.971. The national index is a ratio (COVID / no-COVID run), so the normal-times functional forms largely cancel. The national results do not depend on the simplification.
+- **The reserve:** at κ = 1, 1.4% of households run out of reserve in 2020Q2. 30% of the replacements drawn in 2020Q2 go unfilled (28% over Apr 2020–Dec 2021), so even full stepping-in replaces about 70% of lost senders (cf. T2).
+- **ENIGH checks:**
+  - 2022 receipt index +7.9% vs transfers per receiving household +2.2%, against ENIGH −2% / +9%: the margin tension persists, as T5 predicts.
+  - Mar → Apr 2020 receipt −0.034 vs ENIGH +0.016 (s.e. 0.048): compatible.
+- **ρ = 0.90 is now final** (calibrated at κ = 1). `methods_equations_simplified.tex` has κ = 1, β = 0.15, ρ = 0.90.
+- **Downstream rerun on the new forms (16 Nov 2026).** `wa.SHOCKS = outputs/shocks-simple` is now read by `household_layer.py`, `enigh_aligned.py`, `make_transition_figures.py`, `make_transition_kappa.py`, `make_kappa_effect_figure.py` and `make_paper_results_figures.py`. `run_households.py` uses `--shocks-tag simple` by default and writes `outputs/households-simple/`.
+  - Rerun in order (logs in `outputs/logs-simple/`):
+    1. need series E:0 and R:1, quick grid (`outputs/shocks-simple-need-E0`, `-R1`);
+    2. `household_layer.py --rho 0.8992`;
+    3. `run_households.py`;
+    4. `enigh_aligned.py`;
+    5. `make_kappa_effect_figure.py` (needs `PYTHONIOENCODING=utf-8` on Windows: it prints κ);
+    6. `make_transition_figures.py`, `make_transition_kappa.py`;
+    7. `make_paper_results_figures.py` (R1–R3).
+  - The persistence scripts (closed extension) still read `outputs/shocks/`.
+  - **Household layer (ρ = 0.899) vs old (ρ = 0.928):**
+    - ENIGH 2018 one-month share 15.0% (old 17.9%; ENIGH 20.3%), mean months 4.47 (4.44; 4.08).
+    - All-six change: 2020 −1.7 pp (ENIGH −2.5), 2022 +1.8 pp (ENIGH +7.8).
+    - Share of lost months borne by households losing 3+ months: 49% (old 52%); core-only 53% (56%).
+    - Households losing any month 2.3%, gaining any 4.5% (old 3.7%).
+    - ENIGH-aligned 2022: receiving +0.058, transfers per receiving household +0.039 (ENIGH −0.027 / +0.093).
+    - mig174 (share of core migrants able and wanting in at least one of L months, MMP heads 0.70–0.93): 0.45 / 0.52 / 0.62 / 0.75 / 0.92 for 3–60 months, slightly closer than before (old 0.43 / 0.48 / 0.57 / 0.69 / 0.87).
+    - National check: simulated = exact.
+  - **Need series (κ = 1):** monthly excess deaths fit 0.046, 2022 holdout 0.092; placebo ramp fit 0.010, holdout 0.035, 2022 at 1.137 vs 1.100. Identical to the old forms; the argument for the cumulative series holds unchanged.
+- Old-forms outputs kept: `outputs/shocks/`, `shocks-quick-base/`, `shocks-need-*/`, `households/`. Overwritten in place: `household-layer/`, `enigh_aligned.csv`, `figures/paper/R1–R3` (old versions in git HEAD); `transitions/` and `figures/paper/R4*`, `R5*` (never committed, so the old-forms versions are gone).
+
+**Calibration figures remade on the new forms (13 Nov; `make_calibration_figures.py` → `figures/calibration/` C1–C6 + `captions.md`):**
+
+- `make_calibration_figures.py` and `sample_receipt_figure.py` (its `household_receipt`, used by C4) are now on the new forms and read `calibration_simple.csv`.
+- C3 adds the earlier log-form fit as a dotted grey reference line. The caption now states the miss: one core migrant is underpredicted, two to three overpredicted.
+- C1 shows one decimal for shares under 10%.
+- C4: a label was moved off the stepping-in arrow.
+- Saves retry when the PNG is briefly locked (a viewer or sync tool locked files during the run).
+- Results:
+  - No-migrant households: model 0.6%, observed 0.6% (3,730 households with complete records). The Methods draft says 0.7% for 3,749 households, a different sample definition to reconcile.
+  - C5: the lowest core band (score ≈ −0.2, mostly single-core households) sits clearly above the curve (58% observed vs ≈ 45%).
+  - C6: the clear miss is still kin-only households with an older resident (17% vs 7%). With a core migrant, "no worker, older resident" is overpredicted (74% vs 66%; not compared with the earlier forms).
+- `S1_receipt_curve_examples_sample.png` (in `figures/`) has not been regenerated.
+
+**Next:** rerun the shock map (κ, β), then fix ρ at the fitted κ; fill in the [TBD] values; update the robustness and figure scripts still on the earlier forms.
+
+## 0b. Theoretical tests of the system (13 Nov 2026; first pass, user to decide how to proceed)
+
+**Setup** (user, 13 Nov): `2026-10-30/theoretical_tests.py` → `figures/theoretical-tests/` T1–T5, `captions.md`, `theoretical_tests.csv`.
+
+- 2019 calibration on the new forms, exact computation, runs in about 1 minute.
+- Unemployment is raised by u percentage points in every occupation: a = max(e − u, 0).
+- Need is a shift of every migrant's desire on the log-odds scale (as β·N* does).
+- κ ∈ {0, 0.5, 1} is treated as a dimension. No COVID shocks, network changes or correlated job loss yet.
+
+**Key identity:** with κ = 1, E = W + min(L, R) = min(D, A), the smaller of how many want to send and how many can.
+
+**Findings:**
+
+- **T1, response to unemployment.**
+  - Without stepping-in, transfers fall in proportion to jobs (−10.4% at +10 points, −31% at +30).
+  - With full stepping-in they fall by −3.1% / −12%. About 70% of the loss is absorbed at +10 points, 61% at +30.
+  - The response accelerates: the loss per 10 points grows 3.1 → 3.9 → 4.9 pp.
+- **T2, the buffer.**
+  - Household-months with a lost sender rise from 1.4% (2019) to 9.7% at +30 points; short ones (lost senders exceed the reserve) from 0.4% to 3.7%.
+  - Share of lost senders who are replaceable: 73% → 62%. The same shock adds lost senders and removes reserve members.
+- **T3, unemployment × need.** At κ = 1 the loss from +10 points rises from 2.7% to 3.8% as desire goes from −1 to +1.5 log-odds (share wanting to send 6% → 27%). Need draws the reserve into sending and erodes the buffer. Without stepping-in, need barely changes the loss (about 10%).
+- **T4, who bears the loss.** Single-migrant households (236 core-only, 1,341 kin-only) are not protected: −10.4% and −8.6% at +10 points, the same with or without stepping-in. Networks of 3 or more are almost fully protected at κ = 1.
+- **T5, two margins.**
+  - Unemployment acts almost only on the number of households receiving.
+  - Need also acts mostly there: +1 log-odds raises households receiving by 0.40 log points and transfers per receiving household by 0.13. This structure puts a need-driven rise on households receiving, against the ENIGH 2022 pattern (receiving −0.027, transfers per receiving household +0.093).
+  - The desire shifts in T3/T5 are far larger than the fitted crisis effect (core desire 60 → 64%, about +0.15 log-odds).
+
 ## 0. Update 30 Oct–2 Nov 2026: the willing-and-able model (calibrated; quick shock map, need series, persistence tested)
 
 **Direction (user, 30 Oct):** the next base model is the willing-and-able model in `2026-10-30/model_plan.tex` (Steps 0–10; script map in `2026-10-30/README.md`). **The 2019 calibration is done and verified; the quick shock map and a comparison of need series have been run (below); the full map and the robustness runs have not.** Until the new model is adopted, the results in §2–§5 (option 6a, `run_household_model.py`) remain the current base, and the paper draft (`paper/main.pdf`, 29 Oct) is written on them.
@@ -179,6 +362,40 @@ Numbers in the draft come from the quick map (κ 0, 0.5, 0.8, 1); key ones: job 
 Commit only when the user asks; the repository is public (never `data/` or MMP/IPUMS-derived microdata; `2026-10-30/outputs/` holds aggregates only).
 
 **Working style (user):** go point by point and end every answer with a short "Still open" list; plain language; propose and wait for approval before implementing; stepping-in is the preferred coordination mechanism (qualitative literature); robustness checks run as separate agents when asked.
+
+## Colleagues' feedback (collected 10 Nov 2026)
+
+All comments received so far, with their status against the **current base (willing-and-able model)**. Original write-up of the presentation comments: `network-compatibility-model/handoff.md`, section "Colleague feedback (presentation, 27 Oct 2026)". Status key: **done** (on the current base), **done on old base** (needs rerunning or restating for the willing-and-able model), **open**, **answered** (no analysis needed, a statement in the paper), **dropped**.
+
+### A. Presentation, 27 Oct 2026
+
+| # | Comment | What it asks for | Status | Next step |
+|---|---|---|---|---|
+| A1 | Out-of-sample validation: "calibrate to 2018, can you replicate the next year without adjustment?" | Calibrate with 2018 CPS employment, run 2019 forward without refitting, expect an index ≈ 1. Present the 2022 holdout explicitly as a test. | **done on old base** (robustness 6e: index within ±0.5% per quarter, placebo passed). The 2022 holdout is in the paper draft as a test. | Rerun 2018 → 2019 on the willing-and-able model (cheap). |
+| A2 | Same, stronger version | Backcast the 2008–09 recession (remittances to Mexico about −15%). | **open** (optional) | Needs CPS occupation rates for 2007–09: the IPUMS extract `cps_00001.dat` starts in Jan 2010, so a new extract is needed. MMP networks would be those reported in 2010–19, which is a caveat. |
+| A3 | Tipping points: are there thresholds or nonlinear responses? | Scale the employment shock (×0.5, 1, 1.5, 2) and test whether aggregate receipt and the share of households losing everything respond linearly. | **open**. Answer to state: no aggregate tipping points by construction (no feedback between households); household thresholds exist (single-migrant households, the reserve cap). | Run the shock-scaling scenario on the current base. |
+| A4 | Normalisation (PPP, inflation) | Whether amounts must be deflated or converted. | **answered**: the target is counts against the Banxico trend, so no normalisation is needed; PPP not needed (all comparisons within Mexico over time). Household outputs in real MXN are moot (the model counts transfers, not amounts). | State in the Methods. |
+| A5 | Baseline vs scenarios, HP filter, seasonality | Present the counterfactual design clearly; check that "2020 flat, excess in 2021" does not depend on the trend. | **partly done**: COVID vs no-COVID runs with the same index as the data (in the Methods rewrite); trend windows checked (28 Oct, §5; robustness 6h on old base: κ ≈ 1 holds, β moves). | Still open: HP filter fitted on pre-2020 data, STL/X-13, plain year-on-year. Rerun 6h on the current base. |
+| A6 | Competing explanations: use maximum likelihood, not only maps | A likelihood surface over the (κ, β) grid: quarterly log residuals model vs data, Gaussian with the trend residual SD (0.014 quarterly), giving a confidence region, a principled tolerance and likelihood ratios between explanations. | **done on old base** (log residuals scaled by the trend SD in `run_household_model.py`). Current base reports log RMSE only. | Add the likelihood surface and confidence region to the full map on the current base; caveats: 7 quarters, autocorrelated residuals, report ratios rather than p-values. |
+| A7 | Inequality and wealth | Distribution within households; differences between rich and poor households. | **answered** for within-household (out of scope, the household is the unit). Between households: **open**. | Optional: asset index from items in both MMP and ENIGH (amenities, housing); descriptive only (remittances fund assets). |
+| A8 | ENIGH distribution vs wealth | Extend the ENIGH 2018 → 2020/2022 comparison to receipt by income decile and by the asset index. | **open** (optional) | Relative changes only (ENIGH covers ≈ 8% of the Banxico total). |
+| A9 | Offers to discuss | Two colleagues offered to discuss ideas (no time for analysis). | – | Contact when the full map and paper draft are refreshed. |
+
+### B. Proposal of a household-level receipt model, 27 Oct 2026
+
+- **Comment:** model household receipt as a function of need and the number of linked migrants (household-level logit, roughly `K = α + β·Kin(π_send) + δ·FarFam`, 6 parameters), instead of independent migrant senders.
+- **What happened:** first kept the migrant-level logit (27 Oct, need added there), then compared both (`network-compatibility-model/recipient-level/`): the household logit fits MMP receipt better (AIC 2303 vs 2374). **Adopted 28 Oct** as the receipt layer; it survives in the willing-and-able model as the receipt curve s_h (any core sender, kin only without core migrants, need in desire).
+- **Status: done.**
+
+### C. The colleague's own specification, compared 30 Oct 2026
+
+- **Comment / model:** a two-level model with "keen" migrants, an employment effect on sending (B), need on receipt, and **no stepping-in** (`network-compatibility-model/recipient-level/robustness/colleague_spec.py`, README in `outputs/robustness/colleague_spec/`).
+- **Result:** it fits the national series as well as the base if out-of-work migrants keep sending at about half the employed rate. Stepping-in (κ) and continued sending (B) cannot be separated on the national series. Its receipt equation fits 2019 MMP receipt clearly worse than the base logit. It puts the whole 2021–22 rise on the number of receiving households, the same tension as in the current base (§0, shock map).
+- **Status: answered on old base.** Claim-1 framing still pending: "the shock was absorbed", with stepping-in as base and continued sending as the observationally equivalent alternative (cf. robustness 6a, savings). To rerun on the current base with the robustness set.
+
+### Cheap items to schedule
+
+A1 rerun (2018 → 2019), A3 shock scaling, A5 HP/STL/year-on-year, A6 likelihood surface (with the full map), C rerun. A2, A7, A8 optional.
 
 ## 1. The paper in one paragraph
 

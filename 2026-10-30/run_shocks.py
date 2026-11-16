@@ -5,7 +5,8 @@ Run (after calibrate_mmp.py; not run yet):
     python 2026-10-30/run_shocks.py --rounds 2020-04 2021-01 2021-03 --tag all-rounds   all three rounds (robustness)
     python 2026-10-30/run_shocks.py --pi 0                   no stimulus effect
     --kappas / --betas  subsets of the grids;  --quick  kappa {0, 0.5, 0.8, 1}, beta step 0.1;  --tag NAME
-Reads outputs/calibration.csv (normal times calibrated at kappa = 0; kappa enters only here, in both runs). For each
+Reads outputs/calibration_simple.csv (simplified forms, 13 Nov 2026; normal times calibrated at kappa = 0; kappa
+enters only here, in both runs). For each
 kappa and each beta (beta_fit.csv also reports cf_*_vs_k0: the no-COVID level at kappa vs kappa = 0):
     COVID run: CPS employment 2019-01..2022-12, stimulus in the rounds switched on, crisis N*_t (cumulative
                excess deaths, run_household_model.need_stock); no-COVID run: same calendar month of 2019,
@@ -74,14 +75,14 @@ class Shocks:
         """No-COVID run (independent of beta): (T, H) receipt and transfers."""
         if kappa not in self._cf:
             p = wa.params_for(self.cal, kappa)
-            d = wa.desire(self.pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'], g=p['g'])
+            d = wa.desire(self.pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'], delta=p['delta'])
             self._cf[kappa] = wa.receipt_and_transfers(self.pop, wa.StateTables(self.pop, self.a_cf, d).pairs(kappa),
                                                        p['b'])
         return self._cf[kappa]
 
     def run(self, kappa, beta):
         p = wa.params_for(self.cal, kappa)
-        d = wa.desire(self.pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'], beta, self.need, p['g'])
+        d = wa.desire(self.pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'], beta, self.need, p['delta'])
         Pc, Tc = wa.receipt_and_transfers(self.pop, wa.StateTables(self.pop, self.a_covid, d).pairs(kappa), p['b'])
         Pf, Tf = self.counterfactual(kappa)
         s = lambda z: pd.Series(z.sum(1), index=hm.DATES)
@@ -120,7 +121,7 @@ class Shocks:
     def shortage(self, kappa, beta):
         """How often stepping-in is capped by the reserve (decision 2: core roles first), COVID run."""
         p = wa.params_for(self.cal, kappa)
-        d = wa.desire(self.pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'], beta, self.need, p['g'])
+        d = wa.desire(self.pop, len(hm.DATES), p['a_c'], p['a_k'], p['eta'], beta, self.need, p['delta'])
         drawn, unfilled, short = wa.StateTables(self.pop, self.a_covid, d).shortage(kappa)
         out = {}
         for name, m in (('2020q2', (hm.DATES >= '2020-04-01') & (hm.DATES <= '2020-06-01')),
@@ -138,7 +139,7 @@ def main():
     ap.add_argument('--betas', type=float, nargs='*', default=None)
     ap.add_argument('--quick', action='store_true')
     ap.add_argument('--tag', default='')
-    ap.add_argument('--calibration', default='calibration.csv',
+    ap.add_argument('--calibration', default=wa.CAL_FILE,
                     help='calibration file in outputs/ (e.g. calibration_shift_+0.5_shift.csv for the desire-level check)')
     ap.add_argument('--need', default='E:1', help='CODE:LAMBDA, e.g. E:1 (base), E:0 monthly excess deaths, '
                                                    'S:0, L:0, R:1 (see need_series)')
@@ -167,12 +168,12 @@ def main():
                          theta_core_2021_12=float(wa.expit(wa.params_for(cal, kappa)['a_c'] + res.x))))
         paths.append(p.assign(fitted=True)), monthly.append(m.assign(fitted=True))
         print(f'kappa {kappa}: beta {res.x:.3f}, rmse {res.fun:.4f}', flush=True)
-
-    grid = pd.DataFrame(rows)
-    grid.to_csv(out / 'map.csv', index=False)
-    pd.DataFrame(fits).to_csv(out / 'beta_fit.csv', index=False)
-    pd.concat(paths, ignore_index=True).to_csv(out / 'quarterly_paths.csv', index=False)
-    pd.concat(monthly, ignore_index=True).to_csv(out / 'monthly_paths.csv', index=False)
+        # save after every kappa (16 Nov 2026: a run was stopped for low memory and lost everything)
+        grid = pd.DataFrame(rows)
+        grid.to_csv(out / 'map.csv', index=False)
+        pd.DataFrame(fits).to_csv(out / 'beta_fit.csv', index=False)
+        pd.concat(paths, ignore_index=True).to_csv(out / 'quarterly_paths.csv', index=False)
+        pd.concat(monthly, ignore_index=True).to_csv(out / 'monthly_paths.csv', index=False)
     best = grid.loc[grid.rmse_fit.idxmin()]
     settings = dict(
         plan='2026-10-30/model_plan.tex, Steps 1-7 and 9', calibration=args.calibration,

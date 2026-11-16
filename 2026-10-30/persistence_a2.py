@@ -79,7 +79,7 @@ def run_checks(pop, cal, seeds=200, rc=0.8, rk=0.9):
                 r1, t1 = pa.simulate(pop, *args, 7000 + s, rho=0.0, rho_kin=0.0)
                 same &= np.array_equal(r0, r1) and np.array_equal(t0, t1)
     res['rho0_simulate_identical'] = bool(same)
-    d19 = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], g=p['g'])
+    d19 = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], delta=p['delta'])
     res['constant_d_m_equals_d'] = bool(np.allclose(pa.marginal(d19, core, rc, rk), d19))
     # (b) simulated mean desire of core and kin migrants vs m_t, beta = 1.5 (E:1) so d moves strongly
     need = rs.need_series('E:1', hm.DATES)
@@ -211,7 +211,7 @@ def run_calibrate(pop, cal, seeds_grid=100, seeds_refine=200, seeds_final=400):
 # %% Step 3: shock years, quick map
 def mean_marginals(pop, p, rc, rk, beta, need):
     T = len(hm.DATES)
-    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['g'])
+    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['delta'])
     m = pa.marginal(d, pop['core'], rc, rk)
     out = {}
     for g, msk in (('core', pop['core']), ('kin', ~pop['core'])):
@@ -373,7 +373,7 @@ def run_households_a2(pop, cal, rc, rk, need_spec, kappas, seeds=200):
 def run_mig174(pop, cal, rhos, reps=200, lengths=(3, 6, 12, 24, 60)):
     p = wa.params_for(cal, 0.0)
     core = np.flatnonzero(pop['core'])
-    d = wa.desire(pop, 1, p['a_c'], p['a_k'], p['eta'], g=p['g'])[0, core]
+    d = wa.desire(pop, 1, p['a_c'], p['a_k'], p['eta'], delta=p['delta'])[0, core]
     d19 = pd.date_range('2019-01-01', '2019-12-01', freq='MS')
     rates = wa.abm.make_inputs(d19, pop['rate_columns']).rates[:, pop['job_index'][core]]
     phi = wa.abm.employment_phi()

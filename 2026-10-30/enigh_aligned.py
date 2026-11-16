@@ -1,6 +1,6 @@
 """Model margins measured as ENIGH measures them (receipt-vs-transfers test 2; 2 Nov 2026).
 
-Run: python 2026-10-30/enigh_aligned.py            (after run_shocks.py; reads outputs/shocks/beta_fit.csv)
+Run: python 2026-10-30/enigh_aligned.py            (after run_shocks.py; reads outputs/shocks-simple/beta_fit.csv)
      --kappas 1 0.8   (beta: the fitted value for each);  --seeds 200
 ENIGH counts a household as receiving if it received at least once in the six months before an Aug-Nov interview.
 The shock-run index instead compares the monthly receipt probability. With persistent receipt within households,
@@ -43,8 +43,8 @@ def main():
     ap.add_argument('--kappas', type=float, nargs='*', default=[1.0])
     ap.add_argument('--seeds', type=int, default=200)
     args = ap.parse_args()
-    fits = pd.read_csv(wa.OUT / 'shocks' / 'beta_fit.csv')
-    settings = pd.read_json(wa.OUT / 'shocks' / 'run_settings.json', typ='series')
+    fits = pd.read_csv(wa.SHOCKS / 'beta_fit.csv')
+    settings = pd.read_json(wa.SHOCKS / 'run_settings.json', typ='series')
     pi, rounds = float(settings['pi']), list(settings['stimulus_rounds'])
     pop = wa.load_population()
     cal = wa.load_calibration()

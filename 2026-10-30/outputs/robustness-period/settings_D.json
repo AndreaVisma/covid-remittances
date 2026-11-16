@@ -1,0 +1,13 @@
+{
+  "script": "2026-10-30/robustness/calibrate_period.py",
+  "split": "P_h = [surveyyr >= 2015]",
+  "households": 3252,
+  "households_late": 1683,
+  "employment": "2019 CPS rates for all households (as base), kappa = 0, rho = 0",
+  "variants": {
+    "R": "b_p P_h in the receipt index; Stage 1 at base; Stage 2 refit",
+    "D": "d_p P_h in every migrant desire; Stage 1 refit with d_p, then Stage 2",
+    "D2": "d_p P_h in desire; a_c, a_k, g at base; d_p in the Stage 2 outer loop"
+  },
+  "se": "numerical Hessian of the log-likelihood (central differences); b_c fixed when at bound 0"
+}

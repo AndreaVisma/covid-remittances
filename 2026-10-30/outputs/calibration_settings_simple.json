@@ -1,0 +1,14 @@
+{
+  "plan": "2026-10-30/model_plan.tex, Step 8",
+  "households": 3252,
+  "receiving": 756,
+  "forms": "simplified 13 Nov 2026: desire expit(a_role + delta M_j + eta need), M_j = other core migrants of the household; receipt expit(b0 + b E), E = all effective senders (one b, 13 Nov 2026)",
+  "stage1": "independent senders, P = mean_t[1 - prod(1 - a d)]; ML (Nelder-Mead); LR test delta_c = delta_k",
+  "stage2": "a_c, a_k, delta fixed; eta by Nelder-Mead (outer), (b0, b) by L-BFGS-B with analytic gradient (inner), b >= 0, per kappa; separate b_c, b_k refitted for the LR test of b_c = b_k",
+  "kappas": [
+    0.0
+  ],
+  "shift": null,
+  "employment": "2019 CPS rates, rho = 0, no stimulus",
+  "receipt_target": "MMP remus == 1, mean monthly receipt probability (mapping assumption)"
+}

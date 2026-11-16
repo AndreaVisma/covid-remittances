@@ -1,7 +1,7 @@
 """Household paths of the willing-and-able model (plan Step 9 test 4 and Step 10; 30 Oct 2026).
 
 Run (after calibrate_mmp.py and run_shocks.py; not run yet):
-    python 2026-10-30/run_households.py                 kappa and beta from outputs/shocks/beta_fit.csv (best fit)
+    python 2026-10-30/run_households.py                 kappa and beta from outputs/shocks-simple/beta_fit.csv
     --kappas 0 0.5 1   kappas to report (beta: the fitted value for each);  --seeds 200;  --shocks-tag NAME
 Simulates paired paths with common random numbers (each household against its no-COVID twin):
     employment: latent Gaussian AR(1) per migrant (phi from CPS flows, abm.employment_phi), employed if
@@ -40,7 +40,7 @@ def simulate(pop, inputs, p, kappa, beta, need, pi, stim, seed, rho=0.0):
     T, M, H, hid, core = len(inputs.dates), pop['M'], pop['H'], pop['hid'], pop['core']
     streams = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(6)]
     phi = wa.abm.employment_phi()
-    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['g'])
+    d = wa.desire(pop, T, p['a_c'], p['a_k'], p['eta'], beta, need, p['delta'])
     nc, nk = pop['n_core'], pop['n_kin']
     rec, trans = np.zeros((T, H), bool), np.zeros((T, H), int)
     z = streams[0].standard_normal(M)
@@ -66,8 +66,7 @@ def simulate(pop, inputs, p, kappa, beta, need, pi, stim, seed, rho=0.0):
         xc = np.minimum(Xc, R)
         xk = np.minimum(Xk, R - xc)
         Ec, Ek = wa.relabel(Wc + xc, Wk + xk, nc, nk)
-        b0, b_any, b_c, b_k0 = p['b']
-        s = wa.expit(b0 + b_any * (Ec > 0) + b_c * np.log1p(Ec) + b_k0 * (nc == 0) * np.log1p(Ek))
+        s = wa.receipt_prob(p['b'], Ec, Ek)
         rec[t] = streams[5].random(H) < s
         trans[t] = rec[t] * np.maximum(Ec + Ek, 1)
     return rec, trans
@@ -96,7 +95,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--kappas', type=float, nargs='*', default=None)
     ap.add_argument('--seeds', type=int, default=200)
-    ap.add_argument('--shocks-tag', default='')
+    ap.add_argument('--shocks-tag', default='simple')   # shocks-simple (16 Nov 2026)
     args = ap.parse_args()
     shocks = wa.OUT / ('shocks' + (f'-{args.shocks_tag}' if args.shocks_tag else ''))
     out = wa.OUT / ('households' + (f'-{args.shocks_tag}' if args.shocks_tag else ''))
